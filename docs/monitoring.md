@@ -4,7 +4,7 @@
 - External uptime check for the public homepage.
 - Smoke check for the /auth page.
 - Scheduled smoke test for browse/report workflow once a non-production test account and safe cleanup are available.
-- Review Lovable deployment logs after each release and when a user reports a failure.
+- Review the selected hosting provider's deployment logs after each release and when a user reports a failure.
 
 ## Alerts
 - Homepage unavailable for 5 minutes: investigate hosting/deployment and roll back if the latest release caused it.
