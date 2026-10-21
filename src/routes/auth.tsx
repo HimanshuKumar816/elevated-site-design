@@ -41,6 +41,9 @@ function AuthPage() {
     const uid = normalizeUid(f.get("uid"));
     const password = String(f.get("password"));
     try {
+      if (!isValidUid(uid)) {
+        return setError("Enter a valid university ID (5–20 letters and numbers only).");
+      }
       if (mode === "in") {
         const r = await signIn({ data: { uid, password } });
         if (!r.ok) return setError(r.error);
@@ -48,7 +51,6 @@ function AuthPage() {
         navigate({ to: redirect, replace: true });
       } else {
         const email = String(f.get("email")).trim().toLowerCase();
-        if (!isValidUid(uid)) return setError("Enter a valid university ID (5–20 letters and numbers only).");
         if (password.length < 8) return setError("Password must be at least 8 characters.");
         const { error } = await supabase.auth.signUp({
           email, password,
