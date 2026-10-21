@@ -6,9 +6,9 @@ CampusFind is a campus lost-and-found website for Chandigarh University students
 ## Stack (do not change without asking)
 - Frontend: React + TypeScript + TanStack Start/Router + Tailwind CSS
 - Backend: TanStack Start server functions
-- Database: PostgreSQL through the Lovable Cloud/Supabase integration
+- Database: PostgreSQL through the configured Supabase-compatible backend
 - Auth: Supabase Auth
-- Hosting: Lovable, synchronized with GitHub
+- Hosting: run locally with Vite; deploy separately only when explicitly configured
 
 ## Rules
 - Never commit secrets. Keep all credentials in environment variables and document variable names in .env.example.
