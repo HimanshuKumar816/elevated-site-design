@@ -4,7 +4,7 @@
 CampusFind is an early-stage campus lost-and-found app. It needs UID-based sign-in, student reports, and simple operation by a small team.
 
 ## Decision
-Keep the existing React/TanStack Start app as a modular monolith. Use Supabase Auth for password verification and session handling, Supabase Postgres for data, Lovable for hosting, and a server-only UID-to-auth-user lookup.
+Keep the existing React/TanStack Start app as a modular monolith. Use Supabase Auth for password verification and session handling, Supabase Postgres for data, Vite/TanStack Start for local development, hosting selected separately, and a server-only UID-to-auth-user lookup.
 
 ## Alternatives considered
 - Custom password hashing/session storage: rejected because it duplicates security-sensitive functionality.
