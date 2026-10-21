@@ -1,14 +1,14 @@
 # Architecture — CampusFind
 
 ## Request flow
-Browser (React/TanStack Router) → TanStack Start server function for privileged work → Supabase Auth/Postgres via the endpoint configured by Lovable Cloud.
+Browser (React/TanStack Router) → TanStack Start server function for privileged work → Supabase Auth/Postgres via the endpoint configured in the local or deployment environment.
 
 ## Components
 - UI: routes/components; never contains service-role credentials.
 - Auth: Supabase Auth handles passwords, confirmation, access tokens, refresh tokens.
 - UID mapping: server-only function normalizes UID, looks up `profiles.id`, resolves the Auth user's email, then calls Supabase password sign-in.
 - Data: Postgres `profiles` and `items`; RLS governs user access.
-- Hosting: Lovable-hosted app; source is synchronized with GitHub.
+- Hosting: local Vite development; external hosting is configured separately.
 
 ## Critical environment rule
 The app's `.env` uses a Lovable Cloud runtime hostname. Do not replace it with a guessed `*.supabase.co` URL. Confirm the configured project ID, publishable key, service-role key, and database dashboard all refer to the same backend.
