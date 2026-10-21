@@ -1,5 +1,5 @@
 -- Production hardening for CampusFind auth and least-privilege access.
--- Apply only to this Lovable project's linked cloud database.
+-- Apply to the configured Supabase project.
 begin;
 
 -- Profiles are only needed by the signed-in owner on the client. UID-to-email
@@ -7,7 +7,7 @@ begin;
 drop policy if exists "Signed-in users can view profiles" on public.profiles;
 drop policy if exists "Users view own profile" on public.profiles;
 create policy "Users view own profile" on public.profiles
-  for select to authenticated using (auth.uid() = id);
+  for select to authenticated using ((select auth.uid()) = id);
 
 -- No client-side profile editing is currently needed. This prevents a client
 -- from changing its UID or profile identity through the public API.
@@ -45,8 +45,6 @@ begin
     raise exception 'Full name must be at most 80 characters';
   end if;
 
-  -- Never rewrite an existing profile's UID on conflict. The unique UID
-  -- constraint prevents one account from claiming another student's UID.
   insert into public.profiles (id, uid, full_name)
   values (new.id, normalized_uid, normalized_name)
   on conflict (id) do nothing;
