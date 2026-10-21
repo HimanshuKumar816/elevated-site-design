@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
 import { CATEGORIES } from "@/lib/items";
+import { isValidIsoDate } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/report")({
