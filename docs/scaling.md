@@ -1,7 +1,7 @@
 # Scaling readiness
 
 ## Current stage
-Keep the application as a stateless modular monolith on Lovable and Supabase. Do not add microservices, Kubernetes, Redis, sharding, or background queues without measurements that justify the cost.
+Keep the application as a stateless modular monolith on the configured hosting platform and Supabase. Do not add microservices, Kubernetes, Redis, sharding, or background queues without measurements that justify the cost.
 
 ## First bottlenecks to measure
 1. Unbounded item-list queries and missing pagination.
