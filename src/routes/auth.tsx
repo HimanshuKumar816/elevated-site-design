@@ -63,7 +63,7 @@ function AuthPage() {
         navigate({ to: redirect, replace: true });
       } else {
         const email = String(f.get("email")).trim().toLowerCase();
-        if (!/^[^@\\s]+@cuchd\\.in$/.test(email)) {
+        if (!/^[^@\s]+@cuchd\.in$/.test(email)) {
           return setError("Use your Chandigarh University email address ending in @cuchd.in.");
         }
         if (password.length < 8) return setError("Password must be at least 8 characters.");
