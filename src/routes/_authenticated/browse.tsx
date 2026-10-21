@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/browse")({
 });
 
 function Browse() {
-  const [items, setItems] = useState<Item[] | null>(null);
+  const [items, setItems] = useState<(Item & { image_url?: string })[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -35,7 +35,13 @@ function Browse() {
         .select("*")
         .order("created_at", { ascending: false });
       if (queryError) throw queryError;
-      setItems((data ?? []) as Item[]);
+      const rows = (data ?? []) as Item[];
+      const withImages = await Promise.all(rows.map(async (item) => {
+        if (!item.image_path) return item;
+        const { data: signed, error: signedUrlError } = await supabase.storage.from("item-images").createSignedUrl(item.image_path, 60 * 60);
+        return { ...item, image_url: signedUrlError ? undefined : signed?.signedUrl };
+      }));
+      setItems(withImages);
     } catch {
       setItems(null);
       setError("We couldn't load reports. Check your connection and try again.");
@@ -96,7 +102,8 @@ function Browse() {
                 <span className={`kicker rounded-full px-3 py-1 ${i.type === "Found" ? "bg-accent/25 text-foreground" : "bg-primary text-primary-foreground"}`}>{i.type}</span>
                 <span className="text-xs text-muted-foreground">{i.item_date}</span>
               </div>
-              <h2 className="mt-5 text-3xl">{i.name}</h2>
+              {i.image_url && <img src={i.image_url} alt={i.name} loading="lazy" className="mt-5 aspect-[4/3] w-full rounded-xl object-cover" />}
+              <h2 className={`${i.image_url ? "mt-4" : "mt-5"} text-3xl`}>{i.name}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{i.category} · {i.location}</p>
               {i.note && <p className="mt-4 text-sm">{i.note}</p>}
               {i.user_id === me && <button disabled={removingId === i.id} onClick={() => remove(i.id)} className="mt-4 text-xs text-muted-foreground underline hover:text-destructive disabled:opacity-50">{removingId === i.id ? "Removing…" : "Remove my report"}</button>}
