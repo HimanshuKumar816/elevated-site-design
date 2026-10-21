@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
 import { CATEGORIES, type Item } from "@/lib/items";
 
-export const Route = createFileRoute("/report")({
+export const Route = createFileRoute("/_authenticated/report")({
   head: () => ({
     meta: [
       { title: "Report a lost or found item — CampusFind" },

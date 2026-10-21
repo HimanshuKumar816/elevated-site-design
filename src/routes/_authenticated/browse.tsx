@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Page } from "@/components/site";
 import { CATEGORIES, SAMPLE_ITEMS, type Item } from "@/lib/items";
 
-export const Route = createFileRoute("/browse")({
+export const Route = createFileRoute("/_authenticated/browse")({
   head: () => ({
     meta: [
       { title: "Browse lost & found items — CampusFind" },
