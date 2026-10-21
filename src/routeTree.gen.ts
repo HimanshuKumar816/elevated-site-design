@@ -12,9 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedBrowseRouteImport } from './routes/_authenticated/browse'
 import { Route as AuthenticatedHowItWorksRouteImport } from './routes/_authenticated/how-it-works'
 import { Route as AuthenticatedReportRouteImport } from './routes/_authenticated/report'
+import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiHealthLiveRouteImport } from './routes/api.health.live'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,6 +31,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedBrowseRoute = AuthenticatedBrowseRouteImport.update({
@@ -45,49 +53,89 @@ const AuthenticatedReportRoute = AuthenticatedReportRouteImport.update({
   path: '/report',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthLiveRoute = ApiHealthLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => ApiHealthRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/browse': typeof AuthenticatedBrowseRoute
   '/how-it-works': typeof AuthenticatedHowItWorksRoute
   '/report': typeof AuthenticatedReportRoute
+  '/api/health': typeof ApiHealthRouteWithChildren
+  '/api/health/live': typeof ApiHealthLiveRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/browse': typeof AuthenticatedBrowseRoute
   '/how-it-works': typeof AuthenticatedHowItWorksRoute
   '/report': typeof AuthenticatedReportRoute
+  '/api/health': typeof ApiHealthRouteWithChildren
+  '/api/health/live': typeof ApiHealthLiveRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/browse': typeof AuthenticatedBrowseRoute
   '/_authenticated/how-it-works': typeof AuthenticatedHowItWorksRoute
   '/_authenticated/report': typeof AuthenticatedReportRoute
+  '/api/health': typeof ApiHealthRouteWithChildren
+  '/api/health/live': typeof ApiHealthLiveRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/browse' | '/how-it-works' | '/report'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/browse'
+    | '/how-it-works'
+    | '/report'
+    | '/api/health'
+    | '/api/health/live'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/browse' | '/how-it-works' | '/report'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/browse'
+    | '/how-it-works'
+    | '/report'
+    | '/api/health'
+    | '/api/health/live'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/reset-password'
     | '/_authenticated/browse'
     | '/_authenticated/how-it-works'
     | '/_authenticated/report'
+    | '/api/health'
+    | '/api/health/live'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiHealthRoute: typeof ApiHealthRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -113,6 +161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/browse': {
       id: '/_authenticated/browse'
       path: '/browse'
@@ -134,6 +189,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health/live': {
+      id: '/api/health/live'
+      path: '/live'
+      fullPath: '/api/health/live'
+      preLoaderRoute: typeof ApiHealthLiveRouteImport
+      parentRoute: typeof ApiHealthRoute
+    }
   }
 }
 
@@ -152,10 +221,24 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiHealthRouteChildren {
+  ApiHealthLiveRoute: typeof ApiHealthLiveRoute
+}
+
+const ApiHealthRouteChildren: ApiHealthRouteChildren = {
+  ApiHealthLiveRoute: ApiHealthLiveRoute,
+}
+
+const ApiHealthRouteWithChildren = ApiHealthRoute._addFileChildren(
+  ApiHealthRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  ApiHealthRoute: ApiHealthRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
