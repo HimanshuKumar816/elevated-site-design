@@ -4,7 +4,7 @@
 UID login queries public.profiles. If that table is absent, the UID lookup cannot succeed. A migration in Git does not execute against the live database.
 
 ## Safe procedure
-1. Confirm the actual backend connected to the Lovable project. Do not infer it from the Lovable runtime hostname alone.
+1. Confirm the exact backend configured in the local or deployment environment. Do not infer the project from a runtime hostname alone.
 2. Confirm the dashboard project ID matches the environment configuration in the connected project. Never paste secret keys into a terminal transcript, screenshot, or chat.
 3. Take or verify a current backup before applying schema changes.
 4. Review drizzle/migrations/0001_uid_auth_repair.sql.
