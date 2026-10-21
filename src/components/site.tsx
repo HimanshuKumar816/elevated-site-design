@@ -6,29 +6,60 @@ import { supabase } from "@/integrations/supabase/client";
 function useProfile() {
   const [uid, setUid] = useState<string | null>(null);
   useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+
     async function load() {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) return setUid(null);
-      const { data: p } = await supabase.from("profiles").select("uid").eq("id", data.user.id).maybeSingle();
-      setUid(p?.uid ?? "Student");
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!active) return;
+        if (!data.user) {
+          setUid(null);
+          return;
+        }
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("uid")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        if (active) setUid(profile?.uid ?? "Student");
+      } catch {
+        // A missing or temporarily unavailable backend must not crash the public page.
+        if (active) setUid(null);
+      }
     }
-    load();
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") {
-        setUid(null);
-        return;
-      }
-      if (event === "SIGNED_IN" && session?.user) {
-        const userId = session.user.id;
-        // Do not call another Supabase auth method inside this callback:
-        // auth callbacks must return quickly to avoid client-side deadlocks.
-        void Promise.resolve()
-          .then(() => supabase.from("profiles").select("uid").eq("id", userId).maybeSingle())
-          .then(({ data: profile }) => setUid(profile?.uid ?? "Student"))
-          .catch(() => setUid("Student"));
-      }
-    });
-    return () => sub.subscription.unsubscribe();
+
+    try {
+      void load();
+      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_OUT") {
+          setUid(null);
+          return;
+        }
+        if (event === "SIGNED_IN" && session?.user) {
+          const userId = session.user.id;
+          // Do not call another Supabase auth method inside this callback:
+          // auth callbacks must return quickly to avoid client-side deadlocks.
+          void Promise.resolve()
+            .then(() => supabase.from("profiles").select("uid").eq("id", userId).maybeSingle())
+            .then(({ data: profile }) => {
+              if (active) setUid(profile?.uid ?? "Student");
+            })
+            .catch(() => {
+              if (active) setUid("Student");
+            });
+        }
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
+    } catch {
+      // Keep the landing page usable even if auth configuration is unavailable.
+      setUid(null);
+    }
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, []);
   return uid;
 }
