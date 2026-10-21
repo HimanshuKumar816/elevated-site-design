@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,13 +24,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
       - name: Lint
-        run: npm run lint
+        run: bun run lint
       - name: Tests
-        run: npm test
+        run: bun run test
       - name: Production build
-        run: npm run build
+        run: bun run build
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: bunx tsc --noEmit
