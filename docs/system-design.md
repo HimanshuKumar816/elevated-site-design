@@ -39,3 +39,21 @@ CampusFind is a campus lost-and-found website for Chandigarh University students
 
 ## Out of scope for initial launch
 Payments, subscription billing, organisation multi-tenancy, realtime chat, AI image matching, Kubernetes, microservices, and paid analytics until validated need exists.
+
+
+## Tenancy and scale
+- Tenancy model: one university campus; not a multi-tenant commercial product.
+- Illustrative planning scenario and calculations are in docs/capacity-estimate.md; they are assumptions, not observed usage.
+- No file upload or paid billing workflow is currently in scope.
+
+## Privacy and operational requirements
+- Keep UIDs, email addresses, auth tokens, and passwords out of logs and public item reports.
+- The connected provider's data retention, backups, and restoration capability must be confirmed before launch.
+- The app should remain usable on mobile and keyboard navigation; verify form labels, focus states, and clear loading/error states.
+
+## Open questions to confirm before production
+- Which exact database project is connected to the Lovable Cloud runtime?
+- Are all existing Auth users' UID metadata values present and unique?
+- What retention/deletion policy should apply to lost/found reports and user accounts?
+- Which person receives production incident alerts?
+- What privacy notice and terms should be published for the university context?
