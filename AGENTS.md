@@ -1,18 +1,7 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
-
 # CampusFind project instructions
 
 ## Product and stack
-CampusFind is a campus lost-and-found app for Chandigarh University students. Preserve the current editorial design and routes. Stack: React, TypeScript, TanStack Start/Router, Tailwind CSS, Supabase Auth/Postgres through Lovable Cloud.
+CampusFind is a campus lost-and-found app for Chandigarh University students. Preserve the current editorial design and routes. Stack: React, TypeScript, TanStack Start/Router, Tailwind CSS, Supabase Auth/Postgres through the configured backend.
 
 ## Safety and engineering rules
 - Never print, commit, or expose .env values, API keys, service-role keys, tokens, passwords, or user credentials.
