@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
-import { CATEGORIES, type Item } from "@/lib/items";
+import { CATEGORIES } from "@/lib/items";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/report")({
+export const Route = createFileRoute("/_authenticated/report")({
   head: () => ({
     meta: [
       { title: "Report a lost or found item — CampusFind" },
@@ -21,16 +22,21 @@ function Report() {
   const [type, setType] = useState<"Lost" | "Found">("Lost");
   const [done, setDone] = useState(false);
 
-  function submit(e: FormEvent<HTMLFormElement>) {
+  const [error, setError] = useState("");
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError("");
     const f = new FormData(e.currentTarget);
-    const item: Item = {
-      id: crypto.randomUUID(), type,
-      name: String(f.get("name")), category: String(f.get("category")),
-      location: String(f.get("location")), date: String(f.get("date")), note: String(f.get("note") || ""),
-    };
-    const saved = JSON.parse(localStorage.getItem("campusfind-items") || "[]");
-    localStorage.setItem("campusfind-items", JSON.stringify([item, ...saved]));
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return setError("Please sign in again.");
+    const { error } = await supabase.from("items").insert({
+      user_id: u.user.id, type,
+      name: String(f.get("name")).trim().slice(0, 120), category: String(f.get("category")),
+      location: String(f.get("location")).trim().slice(0, 160), item_date: String(f.get("date")),
+      note: String(f.get("note") || "").trim().slice(0, 500),
+    });
+    if (error) return setError("Could not save your report. Please try again.");
     setDone(true);
   }
 
@@ -45,7 +51,7 @@ function Report() {
         {done ? (
           <div className="rounded-3xl bg-gradient-ink p-10 text-ink-foreground">
             <h2 className="text-4xl">Report received.</h2>
-            <p className="mt-4 opacity-80">Your item is now on the board. We'll surface any similar reports.</p>
+            <p className="mt-4 opacity-80">Your item is now on the board for every signed-in student to see.</p>
             <div className="mt-8 flex gap-3">
               <Link to="/browse" className="rounded-full bg-accent px-6 py-3 font-medium text-accent-foreground">View the board</Link>
               <button onClick={() => setDone(false)} className="rounded-full border border-ink-foreground/30 px-6 py-3">Report another</button>
@@ -65,6 +71,7 @@ function Report() {
             </div>
             <label className="mt-4 block text-sm font-medium">Location<input required name="location" placeholder="e.g. Central Library" className={field} /></label>
             <label className="mt-4 block text-sm font-medium">Public description<textarea name="note" rows={3} placeholder="Avoid details that prove ownership" className={field} /></label>
+            {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
             <button className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground hover:opacity-90">Submit report</button>
           </form>
         )}

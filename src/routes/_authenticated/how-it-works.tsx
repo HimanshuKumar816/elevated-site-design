@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Page } from "@/components/site";
 
-export const Route = createFileRoute("/how-it-works")({
+export const Route = createFileRoute("/_authenticated/how-it-works")({
   head: () => ({
     meta: [
       { title: "How it works — CampusFind" },
