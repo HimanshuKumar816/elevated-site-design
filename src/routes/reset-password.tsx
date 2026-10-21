@@ -50,7 +50,7 @@ function ResetPasswordPage() {
       }
       setDone(true);
       window.setTimeout(() => {
-        void supabase.auth.signOut().finally(() => navigate({ to: "/auth", replace: true }));
+        void supabase.auth.signOut().finally(() => navigate({ to: "/auth", search: { redirect: "/browse" }, replace: true }));
       }, 900);
     } catch {
       setError("Something went wrong. Please request a new reset link and try again.");
