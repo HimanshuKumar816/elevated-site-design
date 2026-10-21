@@ -68,11 +68,13 @@ function AuthPage() {
         }
         if (password.length < 8) return setError("Password must be at least 8 characters.");
         if (password.length > 128) return setError("Password must be at most 128 characters.");
+        const fullName = String(f.get("full_name") ?? "").trim();
+        if (!fullName || fullName.length > 80) return setError("Enter your full name (up to 80 characters).");
         const { error } = await supabase.auth.signUp({
           email, password,
-          options: { emailRedirectTo: window.location.origin + "/auth", data: { uid, full_name: String(f.get("full_name")).trim() } },
+          options: { emailRedirectTo: window.location.origin + "/auth", data: { uid, full_name: fullName } },
         });
-        if (error) return setError(error.message.includes("Database") ? "This university ID is already registered." : error.message);
+        if (error) return setError("We couldn't create the account. Check that your university ID is unused and your CU email is correct, then try again.");
         setSent(true);
       }
     } catch {
@@ -106,7 +108,7 @@ function AuthPage() {
             {mode === "up" && <label className="mt-6 block text-sm font-medium">Full name<input required name="full_name" maxLength={80} className={field} /></label>}
             {mode !== "forgot" && <label className="mt-6 block text-sm font-medium">University ID (UID)<input required name="uid" placeholder="e.g. 23BCS10001" autoComplete="username" className={`${field} uppercase`} /></label>}
             {(mode === "up" || mode === "forgot") && <label className="mt-4 block text-sm font-medium">CU email<input required type="email" name="email" placeholder="you@cuchd.in" className={field} /></label>}
-            {mode !== "forgot" && <label className="mt-4 block text-sm font-medium">Password<input required type="password" name="password" autoComplete={mode === "in" ? "current-password" : "new-password"} className={field} /></label>}
+            {mode !== "forgot" && <label className="mt-4 block text-sm font-medium">Password<input required type="password" name="password" minLength={mode === "in" ? undefined : 8} maxLength={128} autoComplete={mode === "in" ? "current-password" : "new-password"} className={field} /></label>}
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
             {mode === "in" && <button type="button" onClick={() => { setMode("forgot"); setError(""); }} className="mt-4 text-sm text-muted-foreground underline">Forgot password?</button>}
             {mode === "forgot" && <button type="button" onClick={() => { setMode("in"); setError(""); }} className="mt-4 text-sm text-muted-foreground underline">Back to sign in</button>}
