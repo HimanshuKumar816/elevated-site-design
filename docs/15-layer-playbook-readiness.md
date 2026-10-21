@@ -33,3 +33,7 @@ Before calling a task done, run lint, typecheck, tests, and production build; sh
 
 ## Assumptions and scope
 CampusFind is a single-campus student product, not a multi-tenant paid SaaS. The capacity numbers in docs/capacity-estimate.md are illustrative assumptions, not measured traffic. No payment, file-upload, paid monitoring, Redis, or microservice infrastructure has been added because the current product does not require it.
+
+
+## Additional security incident discovered during repository review
+A real .env file was present in the repository. It has now been removed from the current branch and .gitignore excludes future local .env files. Removing it from the latest revision does not erase the old Git commit history. Treat the service-role credential from that file as exposed: rotate/revoke it in the connected Supabase/Lovable backend, update the hosting secret, and verify the app still connects. Do not paste the old or new value into chat. After rotation, inspect the public bundle and repository history as part of the security review.
