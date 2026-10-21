@@ -23,21 +23,65 @@ function Report() {
   const [done, setDone] = useState(false);
 
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy) return;
     setError("");
-    const f = new FormData(e.currentTarget);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return setError("Please sign in again.");
-    const { error } = await supabase.from("items").insert({
-      user_id: u.user.id, type,
-      name: String(f.get("name")).trim().slice(0, 120), category: String(f.get("category")),
-      location: String(f.get("location")).trim().slice(0, 160), item_date: String(f.get("date")),
-      note: String(f.get("note") || "").trim().slice(0, 500),
-    });
-    if (error) return setError("Could not save your report. Please try again.");
-    setDone(true);
+    setBusy(true);
+    const form = new FormData(e.currentTarget);
+    const name = String(form.get("name") ?? "").trim();
+    const category = String(form.get("category") ?? "");
+    const location = String(form.get("location") ?? "").trim();
+    const date = String(form.get("date") ?? "");
+    const note = String(form.get("note") ?? "").trim();
+
+    if (!name || name.length > 120) {
+      setError("Enter an item name (up to 120 characters).");
+      setBusy(false);
+      return;
+    }
+    if (!CATEGORIES.includes(category)) {
+      setError("Choose a valid category.");
+      setBusy(false);
+      return;
+    }
+    if (!location || location.length > 160) {
+      setError("Enter a location (up to 160 characters).");
+      setBusy(false);
+      return;
+    }
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
+      setError("Choose a valid date.");
+      setBusy(false);
+      return;
+    }
+    if (note.length > 500) {
+      setError("Description must be 500 characters or fewer.");
+      setBusy(false);
+      return;
+    }
+
+    try {
+      const { data: u, error: authError } = await supabase.auth.getUser();
+      if (authError || !u.user) {
+        setError("Please sign in again.");
+        return;
+      }
+      const { error: insertError } = await supabase.from("items").insert({
+        user_id: u.user.id, type, name, category, location, item_date: date, note,
+      });
+      if (insertError) {
+        setError("Could not save your report. Please check your connection and try again.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("Something went wrong while saving your report. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -70,9 +114,9 @@ function Report() {
               <label className="block text-sm font-medium">Date<input required type="date" name="date" className={field} /></label>
             </div>
             <label className="mt-4 block text-sm font-medium">Location<input required name="location" placeholder="e.g. Central Library" className={field} /></label>
-            <label className="mt-4 block text-sm font-medium">Public description<textarea name="note" rows={3} placeholder="Avoid details that prove ownership" className={field} /></label>
+            <label className="mt-4 block text-sm font-medium">Public description<textarea name="note" rows={3} maxLength={500} placeholder="Avoid details that prove ownership" className={field} /></label>
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-            <button className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground hover:opacity-90">Submit report</button>
+            <button disabled={busy} className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Saving report…" : "Submit report"}</button>
           </form>
         )}
       </section>
