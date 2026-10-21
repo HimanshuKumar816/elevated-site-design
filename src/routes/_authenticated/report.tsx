@@ -52,7 +52,7 @@ function Report() {
       setBusy(false);
       return;
     }
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
       setError("Choose a valid date.");
       setBusy(false);
       return;
