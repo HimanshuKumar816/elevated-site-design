@@ -6,9 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { signInWithUid } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    redirect: typeof s.redirect === "string" && s.redirect.startsWith("/") && !s.redirect.startsWith("//") ? s.redirect : "/browse",
-  }),
+  validateSearch: (s: Record<string, unknown>) => {
+    const r = s["redirect"];
+    return { redirect: typeof r === "string" && r.startsWith("/") && !r.startsWith("//") ? r : "/browse" };
+  },
   head: () => ({
     meta: [
       { title: "Sign in — CampusFind" },
