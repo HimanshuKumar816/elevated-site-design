@@ -7,11 +7,11 @@ This checklist follows the uploaded 36-page playbook, including its Part 0 agent
 | 0. Agent setup and working loop | AGENTS.md and CLAUDE.md; universal don't-fool-me verification rule | Review diffs and test output on each release |
 | 1. System design | docs/system-design.md describes roles, flows, privacy, out-of-scope work | Confirm launch assumptions and legal/privacy requirements |
 | 2. System architecture | docs/architecture.md and two ADRs document modular monolith and UID mapping | Review with a fresh reviewer before launch |
-| 3. Database and storage | Versioned SQL migration, indexes, RLS, trigger, metadata backfill; database runbook | Apply only to verified live backend; confirm backups and test restore; no file upload exists yet |
-| 4. Auth and permissions | UID validation helper/tests, server-only UID lookup, permissions matrix, safer infrastructure errors | Test signup, email confirmation, login/logout/session expiry and two-account RLS against the live backend |
+| 3. Database and storage | Versioned SQL migrations 0000–0002, indexes, RLS, trigger, metadata backfill; database runbook | Migration 0002 is committed but not applied: Lovable free-plan database action limit blocked execution; confirm backups and test restore; no file upload exists yet |
+| 4. Auth and permissions | UID validation helper/tests, server-only UID lookup, CU email signup validation, password-reset request and completion UI, safer infrastructure errors | Apply migration 0002; test signup, email confirmation, reset link, login/logout/session expiry and two-account RLS against the live backend |
 | 5. APIs and backend logic | API conventions and bounded-input rules documented; UID server validation | Audit all server functions and verify every mutation enforces ownership |
-| 6. Frontend | Existing visual design retained; shared UID validation used by signup/login | Browser audit for mobile, keyboard/focus, loading/empty/error/success and form accessibility |
-| 7. CI/CD and version control | GitHub Actions CI for lint, tests, build and typecheck; .env.example and agent memory | Verify CI run succeeds, Lovable sync, secret scanning and rollback controls |
+| 6. Frontend | Existing visual design retained; shared UID validation, report validation/error states, browse loading/error handling and password-reset screens | Browser audit for mobile, keyboard/focus, loading/empty/error/success and form accessibility |
+| 7. CI/CD and version control | GitHub Actions CI for lint, tests, build and typecheck; .env.example and agent memory | Latest verified successful run: 39555388826. The newer password-reset commit exposed a typecheck error, which was fixed; verify the current head's run before release. Verify Lovable sync, secret scanning and rollback controls |
 | 8. Testing | Unit tests for UID normalization/validation | CI output and end-to-end tests for real auth/report workflows still required |
 | 9. Hosting and cloud | Hosting/environment guide; /api/health and /api/health/live endpoints | Confirm matching backend keys, HTTPS, live deployment, provider settings and billing alerts |
 | 10. Security | Threat model, permission matrix, profile RLS repair migration, server-only admin client | Fresh code review, dependency audit, production bundle inspection and direct RLS abuse tests |
@@ -25,11 +25,11 @@ This checklist follows the uploaded 36-page playbook, including its Part 0 agent
 Before calling a task done, run lint, typecheck, tests, and production build; show exact output; list changed files; list skipped/stubbed work and assumptions. Do not claim live migration, login, deployment, backup restore, monitoring, alerts, or load testing is complete unless actually verified.
 
 ## Immediate release blockers
-1. Connect the Supabase provider so the actual database projects can be inspected without guessing.
-2. Identify the database used by the Lovable Cloud project and apply drizzle/migrations/0001_uid_auth_repair.sql there only.
-3. Verify existing Auth users have UID metadata. Backfill cannot infer missing UIDs.
-4. Run the GitHub CI workflow and fix any failures it reveals.
-5. Test new signup, email confirmation, correct UID/password, wrong UID/password, logout, report creation, and cross-user ownership against the intended backend.
+1. Apply drizzle/migrations/0001_uid_auth_repair.sql and 0002_auth_least_privilege.sql to this Lovable project's linked cloud database only. A database action limit currently blocks this operation; do not apply to the separate Supabase project by guesswork.
+2. Verify existing Auth users have UID metadata. Backfill cannot infer missing UIDs.
+3. Confirm the latest GitHub Actions run passes lint, tests, production build, and typecheck.
+4. Test signup, email confirmation, password reset, correct/wrong UID-password, logout, report creation, and cross-user ownership against the intended backend.
+5. Rotate the previously exposed service-role credential in the actual connected backend and hosting settings; never paste credentials into chat.
 
 ## Assumptions and scope
 CampusFind is a single-campus student product, not a multi-tenant paid SaaS. The capacity numbers in docs/capacity-estimate.md are illustrative assumptions, not measured traffic. No payment, file-upload, paid monitoring, Redis, or microservice infrastructure has been added because the current product does not require it.
