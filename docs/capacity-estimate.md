@@ -18,7 +18,7 @@ Item reports are small relational records. If 2,000 reports average 2 KB of text
 4. Provider rate limits or network latency before raw compute capacity.
 
 ## Decisions
-- Use the managed Supabase/Lovable stack at launch.
+- Use managed Supabase at launch.
 - Keep item list reads bounded and add pagination before the data set grows.
 - Measure p50/p95/p99 latency and errors before upgrading infrastructure.
 - Do not add Redis, microservices, sharding, or Kubernetes until measured results justify them.
