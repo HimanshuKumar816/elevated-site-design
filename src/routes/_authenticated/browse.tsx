@@ -19,13 +19,29 @@ export const Route = createFileRoute("/_authenticated/browse")({
 function Browse() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [type, setType] = useState<"All" | "Lost" | "Found">("All");
   const [cat, setCat] = useState("All");
 
   async function load() {
-    const { data } = await supabase.from("items").select("*").order("created_at", { ascending: false });
-    setItems((data ?? []) as Item[]);
+    setLoading(true);
+    setError("");
+    try {
+      const { data, error: queryError } = await supabase
+        .from("items")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (queryError) throw queryError;
+      setItems((data ?? []) as Item[]);
+    } catch {
+      setItems(null);
+      setError("We couldn't load reports. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => {
     load();
@@ -33,8 +49,17 @@ function Browse() {
   }, []);
 
   async function remove(id: string) {
-    await supabase.from("items").delete().eq("id", id);
-    load();
+    setRemovingId(id);
+    setError("");
+    try {
+      const { error: deleteError } = await supabase.from("items").delete().eq("id", id);
+      if (deleteError) throw deleteError;
+      await load();
+    } catch {
+      setError("We couldn't remove that report. Please try again.");
+    } finally {
+      setRemovingId(null);
+    }
   }
 
   const shown = useMemo(
@@ -57,6 +82,13 @@ function Browse() {
             {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
           </select>
         </div>
+        {error && (
+          <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+            <span>{error}</span>
+            <button onClick={load} className="underline">Try again</button>
+          </div>
+        )}
+        {loading && <p role="status" className="mt-8 text-muted-foreground">Loading reports…</p>}
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((i) => (
             <article key={i.id} className="rounded-2xl border border-border bg-card p-6 shadow-soft">
@@ -67,11 +99,11 @@ function Browse() {
               <h2 className="mt-5 text-3xl">{i.name}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{i.category} · {i.location}</p>
               {i.note && <p className="mt-4 text-sm">{i.note}</p>}
-              {i.user_id === me && <button onClick={() => remove(i.id)} className="mt-4 text-xs text-muted-foreground underline hover:text-destructive">Remove my report</button>}
+              {i.user_id === me && <button disabled={removingId === i.id} onClick={() => remove(i.id)} className="mt-4 text-xs text-muted-foreground underline hover:text-destructive disabled:opacity-50">{removingId === i.id ? "Removing…" : "Remove my report"}</button>}
             </article>
           ))}
         </div>
-        {items && shown.length === 0 && (
+        {!loading && items && shown.length === 0 && (
           <p className="mt-6 text-muted-foreground">{items.length === 0 ? <>No reports yet. <Link to="/report" className="underline">Be the first to report an item.</Link></> : "No items match your search."}</p>
         )}
       </section>
