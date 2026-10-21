@@ -1,0 +1,74 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, type FormEvent } from "react";
+import { Page } from "@/components/site";
+import { CATEGORIES, type Item } from "@/lib/items";
+
+export const Route = createFileRoute("/report")({
+  head: () => ({
+    meta: [
+      { title: "Report a lost or found item — CampusFind" },
+      { name: "description", content: "Report a lost or found item on campus in under a minute." },
+      { property: "og:title", content: "Report an item — CampusFind" },
+      { property: "og:description", content: "Report a lost or found item on campus in under a minute." },
+    ],
+  }),
+  component: Report,
+});
+
+const field = "mt-2 w-full rounded-xl border border-input bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring";
+
+function Report() {
+  const [type, setType] = useState<"Lost" | "Found">("Lost");
+  const [done, setDone] = useState(false);
+
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const item: Item = {
+      id: crypto.randomUUID(), type,
+      name: String(f.get("name")), category: String(f.get("category")),
+      location: String(f.get("location")), date: String(f.get("date")), note: String(f.get("note") || ""),
+    };
+    const saved = JSON.parse(localStorage.getItem("campusfind-items") || "[]");
+    localStorage.setItem("campusfind-items", JSON.stringify([item, ...saved]));
+    setDone(true);
+  }
+
+  return (
+    <Page>
+      <section className="mx-auto grid max-w-6xl gap-16 px-6 py-20 md:grid-cols-[1fr_1.3fr]">
+        <div>
+          <p className="kicker text-muted-foreground">Takes under a minute</p>
+          <h1 className="mt-4 text-6xl leading-tight">Report an item</h1>
+          <p className="mt-6 text-muted-foreground">Keep one identifying detail to yourself — it's how we'll verify the real owner before any handoff.</p>
+        </div>
+        {done ? (
+          <div className="rounded-3xl bg-gradient-ink p-10 text-ink-foreground">
+            <h2 className="text-4xl">Report received.</h2>
+            <p className="mt-4 opacity-80">Your item is now on the board. We'll surface any similar reports.</p>
+            <div className="mt-8 flex gap-3">
+              <Link to="/browse" className="rounded-full bg-accent px-6 py-3 font-medium text-accent-foreground">View the board</Link>
+              <button onClick={() => setDone(false)} className="rounded-full border border-ink-foreground/30 px-6 py-3">Report another</button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="rounded-3xl border border-border bg-card p-8 shadow-soft">
+            <div className="grid grid-cols-2 gap-2 rounded-full bg-secondary p-1">
+              {(["Lost", "Found"] as const).map((t) => (
+                <button type="button" key={t} onClick={() => setType(t)} className={`rounded-full py-2 text-sm font-medium ${type === t ? "bg-primary text-primary-foreground" : ""}`}>I {t.toLowerCase()} something</button>
+              ))}
+            </div>
+            <label className="mt-6 block text-sm font-medium">Item<input required name="name" placeholder="e.g. Black leather wallet" className={field} /></label>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium">Category<select name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
+              <label className="block text-sm font-medium">Date<input required type="date" name="date" className={field} /></label>
+            </div>
+            <label className="mt-4 block text-sm font-medium">Location<input required name="location" placeholder="e.g. Central Library" className={field} /></label>
+            <label className="mt-4 block text-sm font-medium">Public description<textarea name="note" rows={3} placeholder="Avoid details that prove ownership" className={field} /></label>
+            <button className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground hover:opacity-90">Submit report</button>
+          </form>
+        )}
+      </section>
+    </Page>
+  );
+}
