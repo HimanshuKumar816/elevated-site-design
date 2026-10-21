@@ -25,7 +25,7 @@ This checklist follows the uploaded 36-page playbook, including its Part 0 agent
 Before calling a task done, run lint, typecheck, tests, and production build; show exact output; list changed files; list skipped/stubbed work and assumptions. Do not claim live migration, login, deployment, backup restore, monitoring, alerts, or load testing is complete unless actually verified.
 
 ## Immediate release blockers
-1. Apply drizzle/migrations/0001_uid_auth_repair.sql and 0002_auth_least_privilege.sql to this Lovable project's linked cloud database only. A database action limit currently blocks this operation; do not apply to the separate Supabase project by guesswork.
+1. Apply drizzle/migrations/0001_uid_auth_repair.sql and 0002_auth_least_privilege.sql only to the verified database configured for this project. A database action limit currently blocks this operation; do not apply to the separate Supabase project by guesswork.
 2. Verify existing Auth users have UID metadata. Backfill cannot infer missing UIDs.
 3. Confirm the latest GitHub Actions run passes lint, tests, production build, and typecheck.
 4. Test signup, email confirmation, password reset, correct/wrong UID-password, logout, report creation, and cross-user ownership against the intended backend.
