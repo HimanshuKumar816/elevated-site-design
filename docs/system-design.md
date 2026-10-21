@@ -52,7 +52,7 @@ Payments, subscription billing, organisation multi-tenancy, realtime chat, AI im
 - The app should remain usable on mobile and keyboard navigation; verify form labels, focus states, and clear loading/error states.
 
 ## Open questions to confirm before production
-- Which exact database project is connected to the Lovable Cloud runtime?
+- Which exact database project is configured for the running environment?
 - Are all existing Auth users' UID metadata values present and unique?
 - What retention/deletion policy should apply to lost/found reports and user accounts?
 - Which person receives production incident alerts?
