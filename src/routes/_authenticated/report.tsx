@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
 import { CATEGORIES } from "@/lib/items";
 import { isValidIsoDate } from "@/lib/date";
+import { validateItemImage } from "@/lib/item-image";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/report")({
@@ -40,12 +41,9 @@ function Report() {
     }
     setImageFile(null);
     setImagePreview("");
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError("Choose a JPG, PNG, or WebP image.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be 5 MB or smaller.");
+    const validationError = validateItemImage(file);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setImageFile(file);
@@ -82,7 +80,7 @@ function Report() {
       setBusy(false);
       return;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
+    if (!isValidIsoDate(date)) {
       setError("Choose a valid date.");
       setBusy(false);
       return;
@@ -101,6 +99,11 @@ function Report() {
       }
       let imagePath: string | null = null;
       if (imageFile) {
+        const imageValidationError = validateItemImage(imageFile);
+        if (imageValidationError) {
+          setError(imageValidationError);
+          return;
+        }
         const extension = imageFile.type === "image/jpeg" ? "jpg" : imageFile.type === "image/png" ? "png" : "webp";
         imagePath = `${u.user.id}/${crypto.randomUUID()}.${extension}`;
         const { error: uploadError } = await supabase.storage.from("item-images").upload(imagePath, imageFile, {
