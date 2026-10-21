@@ -1,9 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { isValidUid, normalizeUid } from "@/lib/uid";
 
-// Signs a student in with their university UID + password.
-// The UID -> email lookup happens only on the server, so emails are never exposed.
+// UID-to-email lookup and password verification run inside the Supabase Edge Function.
+// The service-role credential never needs to be present in the local web-server environment.
 export const signInWithUid = createServerFn({ method: "POST" })
   .inputValidator((input: { uid: string; password: string }) => {
     const uid = normalizeUid(input.uid);
@@ -12,45 +11,35 @@ export const signInWithUid = createServerFn({ method: "POST" })
     return { uid, password };
   })
   .handler(async ({ data }) => {
-    const fail = { ok: false as const, error: "Incorrect UID or password." };
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: profile, error: profileLookupError } = await supabaseAdmin
-      .from("profiles")
-      .select("id")
-      .eq("uid", data.uid)
-      .maybeSingle();
-
-    if (profileLookupError) {
-      // Keep diagnostics useful without logging the UID, email, or credentials.
-      console.error("[UID auth] Profile lookup failed", { code: profileLookupError.code });
+    const url = process.env["SUPABASE_URL"];
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!url || !key) {
+      console.error("[UID auth] Supabase server configuration is incomplete");
       return { ok: false as const, error: "Login is temporarily unavailable. Please try again later." };
     }
-    if (!profile) return fail;
 
-    const { data: u, error: userLookupError } = await supabaseAdmin.auth.admin.getUserById(profile.id);
-    if (userLookupError) {
-      console.error("[UID auth] Auth user lookup failed", { status: userLookupError.status });
-      return { ok: false as const, error: "Login is temporarily unavailable. Please try again later." };
-    }
-    const email = u.user?.email;
-    if (!email) return fail;
-
-    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-    const client = createClient(process.env["SUPABASE_URL"]!, key, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: {
-        fetch: (input, init) => {
-          const h = new Headers(init?.headers);
-          if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
-          h.set("apikey", key);
-          return fetch(input, { ...init, headers: h });
+    try {
+      const response = await fetch(`${url.replace(/\/+$/, "")}/functions/v1/uid-signin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: key,
         },
-      },
-    });
-    const { data: s, error } = await client.auth.signInWithPassword({ email, password: data.password });
-    if (error || !s.session) {
-      if (error?.message.toLowerCase().includes("confirm")) return { ok: false as const, error: "Please confirm your email first — check your CU inbox." };
-      return fail;
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.ok || !result.access_token || !result.refresh_token) {
+        if (response.status >= 500) {
+          return { ok: false as const, error: "Login is temporarily unavailable. Please try again later." };
+        }
+        return { ok: false as const, error: result?.error || "Incorrect UID or password." };
+      }
+      return {
+        ok: true as const,
+        access_token: String(result.access_token),
+        refresh_token: String(result.refresh_token),
+      };
+    } catch {
+      return { ok: false as const, error: "Login is temporarily unavailable. Please try again later." };
     }
-    return { ok: true as const, access_token: s.session.access_token, refresh_token: s.session.refresh_token };
   });
