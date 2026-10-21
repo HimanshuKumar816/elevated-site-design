@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
 import { CATEGORIES } from "@/lib/items";
 import { isValidIsoDate } from "@/lib/date";
@@ -22,6 +22,35 @@ const field = "mt-2 w-full rounded-xl border border-input bg-card px-4 py-3 outl
 function Report() {
   const [type, setType] = useState<"Lost" | "Found">("Lost");
   const [done, setDone] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  function handleImageChange(file: File | null) {
+    setError("");
+    if (!file) {
+      setImageFile(null);
+      setImagePreview("");
+      return;
+    }
+    setImageFile(null);
+    setImagePreview("");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Choose a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be 5 MB or smaller.");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,13 +99,31 @@ function Report() {
         setError("Please sign in again.");
         return;
       }
+      let imagePath: string | null = null;
+      if (imageFile) {
+        const extension = imageFile.type === "image/jpeg" ? "jpg" : imageFile.type === "image/png" ? "png" : "webp";
+        imagePath = `${u.user.id}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from("item-images").upload(imagePath, imageFile, {
+          contentType: imageFile.type,
+          upsert: false,
+        });
+        if (uploadError) {
+          imagePath = null;
+          setError("Could not upload the image. Please check the storage setup and try again.");
+          return;
+        }
+      }
+
       const { error: insertError } = await supabase.from("items").insert({
-        user_id: u.user.id, type, name, category, location, item_date: date, note,
+        user_id: u.user.id, type, name, category, location, item_date: date, note, image_path: imagePath,
       });
       if (insertError) {
+        if (imagePath) await supabase.storage.from("item-images").remove([imagePath]);
         setError("Could not save your report. Please check your connection and try again.");
         return;
       }
+      setImageFile(null);
+      setImagePreview("");
       setDone(true);
     } catch {
       setError("Something went wrong while saving your report. Please try again.");
@@ -115,6 +162,8 @@ function Report() {
               <label className="block text-sm font-medium">Date<input required type="date" name="date" className={field} /></label>
             </div>
             <label className="mt-4 block text-sm font-medium">Location<input required name="location" placeholder="e.g. Central Library" className={field} /></label>
+            <label className="mt-4 block text-sm font-medium">Item photo (optional)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className={field} /><span className="mt-1 block text-xs text-muted-foreground">JPG, PNG, or WebP · up to 5 MB</span></label>
+            {imagePreview && <div className="mt-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-xl border border-border object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 text-sm text-muted-foreground underline">Remove photo</button></div>}
             <label className="mt-4 block text-sm font-medium">Public description<textarea name="note" rows={3} maxLength={500} placeholder="Avoid details that prove ownership" className={field} /></label>
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
             <button disabled={busy} className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Saving report…" : "Submit report"}</button>
