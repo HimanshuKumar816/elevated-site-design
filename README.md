@@ -38,3 +38,25 @@ npm run dev
 The repair migration is versioned in Git, but adding a SQL file to Git does **not** execute it against the hosted database. Apply it only in the SQL editor for the exact database used by the Lovable Cloud project. The app's configured endpoint is a Lovable Cloud runtime hostname, so do not substitute a guessed Supabase URL. After applying, verify `public.profiles`, the `on_auth_user_created` trigger, and a test account's UID metadata; then test signup, email confirmation, UID login, and incorrect credentials.
 
 Do not paste or commit any `.env` values or service-role key.
+
+
+## Engineering and release documentation
+
+- System design: docs/system-design.md
+- Architecture: docs/architecture.md
+- API conventions: docs/api-conventions.md
+- Permission model: docs/permissions.md
+- Threat model: docs/security/threat-model.md
+- Hosting/environment: docs/hosting.md
+- Caching: docs/caching.md
+- Rate limiting: docs/rate-limiting.md
+- Monitoring: docs/monitoring.md
+- Scaling: docs/scaling.md
+- Database migration runbook: docs/runbooks/database-migration.md
+- Backup, deploy, and incident runbooks: docs/runbooks/
+- Fifteen-layer playbook checklist: docs/15-layer-playbook-readiness.md
+- Environment variable template: .env.example
+
+## UID login repair
+
+UID login depends on public.profiles and the on_auth_user_created trigger in the same database that the Lovable project uses. The migration file is versioned in drizzle/migrations/0001_uid_auth_repair.sql, but committing SQL does not apply it to the live database. Follow docs/runbooks/database-migration.md and verify the connected project before applying it. The service-role key must remain server-side.
