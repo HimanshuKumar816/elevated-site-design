@@ -28,9 +28,9 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Lint
         run: npm run lint
-      - name: Typecheck
-        run: npx tsc --noEmit
       - name: Tests
         run: npm test
       - name: Production build
         run: npm run build
+      - name: Typecheck
+        run: npx tsc --noEmit
