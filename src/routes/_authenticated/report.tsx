@@ -115,7 +115,8 @@ function Report() {
       }
 
       const { error: insertError } = await supabase.from("items").insert({
-        user_id: u.user.id, type, name, category, location, item_date: date, note, image_path: imagePath,
+        user_id: u.user.id, type, name, category, location, item_date: date, note,
+        ...(imagePath ? { image_path: imagePath } : {}),
       });
       if (insertError) {
         if (imagePath) await supabase.storage.from("item-images").remove([imagePath]);
