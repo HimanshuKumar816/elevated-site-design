@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Page } from "@/components/site";
-import { CATEGORIES, SAMPLE_ITEMS, type Item } from "@/lib/items";
+import { supabase } from "@/integrations/supabase/client";
+import { CATEGORIES, type Item } from "@/lib/items";
 
 export const Route = createFileRoute("/_authenticated/browse")({
   head: () => ({
@@ -16,18 +17,28 @@ export const Route = createFileRoute("/_authenticated/browse")({
 });
 
 function Browse() {
-  const [items, setItems] = useState<Item[]>(SAMPLE_ITEMS);
+  const [items, setItems] = useState<Item[] | null>(null);
+  const [me, setMe] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [type, setType] = useState<"All" | "Lost" | "Found">("All");
   const [cat, setCat] = useState("All");
 
+  async function load() {
+    const { data } = await supabase.from("items").select("*").order("created_at", { ascending: false });
+    setItems((data ?? []) as Item[]);
+  }
   useEffect(() => {
-    const saved: Item[] = JSON.parse(localStorage.getItem("campusfind-items") || "[]");
-    setItems([...saved, ...SAMPLE_ITEMS]);
+    load();
+    supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null));
   }, []);
 
+  async function remove(id: string) {
+    await supabase.from("items").delete().eq("id", id);
+    load();
+  }
+
   const shown = useMemo(
-    () => items.filter((i) => (type === "All" || i.type === type) && (cat === "All" || i.category === cat) && `${i.name} ${i.location} ${i.note}`.toLowerCase().includes(q.toLowerCase())),
+    () => (items ?? []).filter((i) => (type === "All" || i.type === type) && (cat === "All" || i.category === cat) && `${i.name} ${i.location} ${i.note}`.toLowerCase().includes(q.toLowerCase())),
     [items, q, type, cat],
   );
 
@@ -51,15 +62,18 @@ function Browse() {
             <article key={i.id} className="rounded-2xl border border-border bg-card p-6 shadow-soft">
               <div className="flex items-center justify-between">
                 <span className={`kicker rounded-full px-3 py-1 ${i.type === "Found" ? "bg-accent/25 text-foreground" : "bg-primary text-primary-foreground"}`}>{i.type}</span>
-                <span className="text-xs text-muted-foreground">{i.date}</span>
+                <span className="text-xs text-muted-foreground">{i.item_date}</span>
               </div>
               <h2 className="mt-5 text-3xl">{i.name}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{i.category} · {i.location}</p>
-              <p className="mt-4 text-sm">{i.note}</p>
+              {i.note && <p className="mt-4 text-sm">{i.note}</p>}
+              {i.user_id === me && <button onClick={() => remove(i.id)} className="mt-4 text-xs text-muted-foreground underline hover:text-destructive">Remove my report</button>}
             </article>
           ))}
-          {shown.length === 0 && <p className="text-muted-foreground">No items match your search.</p>}
         </div>
+        {items && shown.length === 0 && (
+          <p className="mt-6 text-muted-foreground">{items.length === 0 ? <>No reports yet. <Link to="/report" className="underline">Be the first to report an item.</Link></> : "No items match your search."}</p>
+        )}
       </section>
     </Page>
   );
