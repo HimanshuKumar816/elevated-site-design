@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithUid } from "@/lib/auth.functions";
+import { isValidUid, normalizeUid } from "@/lib/uid";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => {
@@ -37,7 +38,7 @@ function AuthPage() {
     setError("");
     setBusy(true);
     const f = new FormData(e.currentTarget);
-    const uid = String(f.get("uid")).trim().toUpperCase();
+    const uid = normalizeUid(f.get("uid"));
     const password = String(f.get("password"));
     try {
       if (mode === "in") {
@@ -47,7 +48,7 @@ function AuthPage() {
         navigate({ to: redirect, replace: true });
       } else {
         const email = String(f.get("email")).trim().toLowerCase();
-        if (!/^[A-Z0-9]{5,20}$/.test(uid)) return setError("Enter a valid university ID (letters and numbers only).");
+        if (!isValidUid(uid)) return setError("Enter a valid university ID (5–20 letters and numbers only).");
         if (password.length < 8) return setError("Password must be at least 8 characters.");
         const { error } = await supabase.auth.signUp({
           email, password,
