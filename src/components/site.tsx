@@ -13,8 +13,20 @@ function useProfile() {
       setUid(p?.uid ?? "Student");
     }
     load();
-    const { data: sub } = supabase.auth.onAuthStateChange((e) => {
-      if (e === "SIGNED_IN" || e === "SIGNED_OUT") load();
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUid(null);
+        return;
+      }
+      if (event === "SIGNED_IN" && session?.user) {
+        const userId = session.user.id;
+        // Do not call another Supabase auth method inside this callback:
+        // auth callbacks must return quickly to avoid client-side deadlocks.
+        void Promise.resolve()
+          .then(() => supabase.from("profiles").select("uid").eq("id", userId).maybeSingle())
+          .then(({ data: profile }) => setUid(profile?.uid ?? "Student"))
+          .catch(() => setUid("Student"));
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
