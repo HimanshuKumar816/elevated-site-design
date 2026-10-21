@@ -24,3 +24,17 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+
+## Project engineering docs
+
+- [System design](docs/system-design.md)
+- [Architecture and UID login diagnosis](docs/architecture.md)
+- [15-layer Vibe Coding Playbook readiness checklist](docs/15-layer-playbook-readiness.md)
+- [UID login repair SQL migration](drizzle/migrations/0001_uid_auth_repair.sql)
+
+## UID login repair — important deployment note
+
+The repair migration is versioned in Git, but adding a SQL file to Git does **not** execute it against the hosted database. Apply it only in the SQL editor for the exact database used by the Lovable Cloud project. The app's configured endpoint is a Lovable Cloud runtime hostname, so do not substitute a guessed Supabase URL. After applying, verify `public.profiles`, the `on_auth_user_created` trigger, and a test account's UID metadata; then test signup, email confirmation, UID login, and incorrect credentials.
+
+Do not paste or commit any `.env` values or service-role key.
