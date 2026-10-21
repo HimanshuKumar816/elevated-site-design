@@ -1,31 +1,35 @@
 # Vibe Coding a Real SaaS — 15-Layer Playbook Applied to CampusFind
 
-This checklist applies the user's uploaded 36-page *Vibe Coding a Real SaaS: The 15-Layer Playbook*. It distinguishes repository changes from live-provider setup that cannot be verified from code alone.
+This checklist follows the uploaded 36-page playbook, including its Part 0 agent memory/verification loop, all 15 layers, and the final pre-launch gate. Repository work and provider actions are deliberately distinguished.
 
-| Layer | CampusFind action | Status / evidence required |
+| Layer | Repository work completed | Still needs real verification |
 |---|---|---|
-| 1. System design | Define users, workflows, data, non-functional requirements, out-of-scope work | Documented in system-design.md |
-| 2. Architecture | Keep a modular monolith; document request/data flow and risks | Documented in architecture.md |
-| 3. Database/storage | Version schema migration; backfill profiles; verify RLS and backups | Migration committed; live SQL and restore test still required |
-| 4. Auth/permissions | Supabase Auth, UID lookup, email confirmation, RLS | Code exists; live signup/login and cross-user tests required |
-| 5. APIs/backend | Validate server inputs; enforce ownership and consistent errors | Review all server functions before launch |
-| 6. Frontend | Preserve design; validate loading/empty/error/success and mobile/accessibility | Browser audit required |
-| 7. CI/CD/version control | Keep .env out of Git; CI for lint/typecheck/tests/build; review changes | Verify workflow and Lovable sync |
-| 8. Testing | Unit, integration, E2E tests for signup/login/report flows | Run commands and add real-backend tests |
-| 9. Hosting/cloud | Match environment variables to the intended Lovable backend; HTTPS and rollback | Provider settings require verification |
-| 10. Security | Review RLS, XSS, CSRF, redirects, cookies, headers, dependencies, secret exposure | Security review required before production |
-| 11. Rate limiting | Throttle signup/login and expensive endpoints with shared limits | Provider/app configuration not verified |
-| 12. Caching/CDN | Cache static assets; never shared-cache authenticated/private responses | Inspect deployed headers |
-| 13. Error tracking/logs | Structured, redacted logs; request IDs; error tracking | Provider setup not verified |
-| 14. Monitoring/alerts | Uptime checks and actionable runbooks for homepage/auth/report flow | Configure externally and test alerts |
-| 15. Scaling | Indexes, pagination, measure then load-test | Defer infrastructure expansion until measured |
+| 0. Agent setup and working loop | AGENTS.md and CLAUDE.md; universal don't-fool-me verification rule | Review diffs and test output on each release |
+| 1. System design | docs/system-design.md describes roles, flows, privacy, out-of-scope work | Confirm launch assumptions and legal/privacy requirements |
+| 2. System architecture | docs/architecture.md and two ADRs document modular monolith and UID mapping | Review with a fresh reviewer before launch |
+| 3. Database and storage | Versioned SQL migration, indexes, RLS, trigger, metadata backfill; database runbook | Apply only to verified live backend; confirm backups and test restore; no file upload exists yet |
+| 4. Auth and permissions | UID validation helper/tests, server-only UID lookup, permissions matrix, safer infrastructure errors | Test signup, email confirmation, login/logout/session expiry and two-account RLS against the live backend |
+| 5. APIs and backend logic | API conventions and bounded-input rules documented; UID server validation | Audit all server functions and verify every mutation enforces ownership |
+| 6. Frontend | Existing visual design retained; shared UID validation used by signup/login | Browser audit for mobile, keyboard/focus, loading/empty/error/success and form accessibility |
+| 7. CI/CD and version control | GitHub Actions CI for lint, tests, build and typecheck; .env.example and agent memory | Verify CI run succeeds, Lovable sync, secret scanning and rollback controls |
+| 8. Testing | Unit tests for UID normalization/validation | CI output and end-to-end tests for real auth/report workflows still required |
+| 9. Hosting and cloud | Hosting/environment guide; /api/health and /api/health/live endpoints | Confirm matching backend keys, HTTPS, live deployment, provider settings and billing alerts |
+| 10. Security | Threat model, permission matrix, profile RLS repair migration, server-only admin client | Fresh code review, dependency audit, production bundle inspection and direct RLS abuse tests |
+| 11. Rate limiting | Rate-limit and abuse-control requirements documented | Verify provider rate limits and repeated-attempt throttling; no fake in-memory production limiter added |
+| 12. Caching and CDN | Safe caching policy documented; health responses use no-store | Inspect production Cache-Control headers and run Lighthouse |
+| 13. Error tracking and logs | UID lookup now records safe error codes without logging UID/email/password; incident guidance | Provider error tracking and request IDs are not configured; verify logs contain no sensitive values |
+| 14. Monitoring and alerts | Monitoring plan and incident runbook documented; database readiness endpoint added | Configure uptime/alerts externally and test notification delivery |
+| 15. Scaling | Transparent illustrative capacity estimate and scaling plan documented | Measure real p50/p95/p99, query plans, load and costs before any scale upgrade |
 
 ## Universal verification gate
-Before calling a task done: run lint, typecheck if available, tests, and build; report exact output; list changed files; identify skipped/stubbed work and assumptions. Do not claim database migration, live login, deployment, backup restore, monitoring, or CI is complete unless actually verified.
+Before calling a task done, run lint, typecheck, tests, and production build; show exact output; list changed files; list skipped/stubbed work and assumptions. Do not claim live migration, login, deployment, backup restore, monitoring, alerts, or load testing is complete unless actually verified.
 
-## First release priorities
-1. Confirm app URL and all keys belong to the intended backend.
-2. Apply `drizzle/migrations/0001_uid_auth_repair.sql` to that backend only.
-3. Verify existing users' Auth metadata includes UID; backfill cannot infer missing UIDs.
-4. Test a new signup, email confirmation, successful UID login, wrong-password login, logout, and item ownership.
-5. Run build/lint/tests and review the production bundle for secrets.
+## Immediate release blockers
+1. Connect the Supabase provider so the actual database projects can be inspected without guessing.
+2. Identify the database used by the Lovable Cloud project and apply drizzle/migrations/0001_uid_auth_repair.sql there only.
+3. Verify existing Auth users have UID metadata. Backfill cannot infer missing UIDs.
+4. Run the GitHub CI workflow and fix any failures it reveals.
+5. Test new signup, email confirmation, correct UID/password, wrong UID/password, logout, report creation, and cross-user ownership against the intended backend.
+
+## Assumptions and scope
+CampusFind is a single-campus student product, not a multi-tenant paid SaaS. The capacity numbers in docs/capacity-estimate.md are illustrative assumptions, not measured traffic. No payment, file-upload, paid monitoring, Redis, or microservice infrastructure has been added because the current product does not require it.
