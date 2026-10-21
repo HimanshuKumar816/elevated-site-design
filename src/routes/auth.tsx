@@ -28,7 +28,7 @@ function AuthPage() {
   const { redirect } = Route.useSearch();
   const navigate = useNavigate();
   const signIn = useServerFn(signInWithUid);
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -41,6 +41,18 @@ function AuthPage() {
     const uid = normalizeUid(f.get("uid"));
     const password = String(f.get("password"));
     try {
+      if (mode === "forgot") {
+        const email = String(f.get("email") ?? "").trim().toLowerCase();
+        if (!/^[^@\s]+@cuchd\.in$/.test(email)) {
+          return setError("Enter the CU email address associated with your account.");
+        }
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + "/reset-password",
+        });
+        if (resetError) return setError("We couldn't send the reset email. Please try again.");
+        setSent(true);
+        return;
+      }
       if (!isValidUid(uid)) {
         return setError("Enter a valid university ID (5–20 letters and numbers only).");
       }
@@ -75,13 +87,13 @@ function AuthPage() {
       <section className="mx-auto grid max-w-6xl gap-16 px-6 py-20 md:grid-cols-2">
         <div>
           <p className="kicker text-muted-foreground">Chandigarh University students</p>
-          <h1 className="mt-4 text-6xl leading-tight">{mode === "in" ? "Welcome back." : "Create your account."}</h1>
-          <p className="mt-6 max-w-md text-muted-foreground">Sign in with your university ID (UID) and password to browse and report items across campus.</p>
+          <h1 className="mt-4 text-6xl leading-tight">{mode === "in" ? "Welcome back." : mode === "up" ? "Create your account." : "Reset your password."}</h1>
+          <p className="mt-6 max-w-md text-muted-foreground">{mode === "forgot" ? "Enter your Chandigarh University email and we'll send you a secure password reset link." : "Sign in with your university ID (UID) and password to browse and report items across campus."}</p>
         </div>
         {sent ? (
           <div className="rounded-3xl bg-gradient-ink p-10 text-ink-foreground">
             <h2 className="text-4xl">Check your email.</h2>
-            <p className="mt-4 opacity-80">We sent a confirmation link to your CU email. Click it, then sign in with your UID and password.</p>
+            <p className="mt-4 opacity-80">{mode === "forgot" ? "If an account exists for that CU email, a password reset link has been sent. Open it on this device to choose a new password." : "We sent a confirmation link to your CU email. Click it, then sign in with your UID and password."}</p>
             <button onClick={() => { setSent(false); setMode("in"); }} className="mt-8 rounded-full bg-accent px-6 py-3 font-medium text-accent-foreground">Back to sign in</button>
           </div>
         ) : (
@@ -92,12 +104,14 @@ function AuthPage() {
               ))}
             </div>
             {mode === "up" && <label className="mt-6 block text-sm font-medium">Full name<input required name="full_name" maxLength={80} className={field} /></label>}
-            <label className="mt-6 block text-sm font-medium">University ID (UID)<input required name="uid" placeholder="e.g. 23BCS10001" autoComplete="username" className={`${field} uppercase`} /></label>
-            {mode === "up" && <label className="mt-4 block text-sm font-medium">CU email<input required type="email" name="email" placeholder="you@cuchd.in" className={field} /></label>}
-            <label className="mt-4 block text-sm font-medium">Password<input required type="password" name="password" autoComplete={mode === "in" ? "current-password" : "new-password"} className={field} /></label>
+            {mode !== "forgot" && <label className="mt-6 block text-sm font-medium">University ID (UID)<input required name="uid" placeholder="e.g. 23BCS10001" autoComplete="username" className={`${field} uppercase`} /></label>}
+            {(mode === "up" || mode === "forgot") && <label className="mt-4 block text-sm font-medium">CU email<input required type="email" name="email" placeholder="you@cuchd.in" className={field} /></label>}
+            {mode !== "forgot" && <label className="mt-4 block text-sm font-medium">Password<input required type="password" name="password" autoComplete={mode === "in" ? "current-password" : "new-password"} className={field} /></label>}
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+            {mode === "in" && <button type="button" onClick={() => { setMode("forgot"); setError(""); }} className="mt-4 text-sm text-muted-foreground underline">Forgot password?</button>}
+            {mode === "forgot" && <button type="button" onClick={() => { setMode("in"); setError(""); }} className="mt-4 text-sm text-muted-foreground underline">Back to sign in</button>}
             <button disabled={busy} className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60">
-              {busy ? "Please wait…" : mode === "in" ? "Sign in" : "Create account"}
+              {busy ? "Please wait…" : mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Send reset link"}
             </button>
           </form>
         )}
