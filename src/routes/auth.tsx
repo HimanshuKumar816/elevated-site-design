@@ -51,7 +51,11 @@ function AuthPage() {
         navigate({ to: redirect, replace: true });
       } else {
         const email = String(f.get("email")).trim().toLowerCase();
+        if (!/^[^@\\s]+@cuchd\\.in$/.test(email)) {
+          return setError("Use your Chandigarh University email address ending in @cuchd.in.");
+        }
         if (password.length < 8) return setError("Password must be at least 8 characters.");
+        if (password.length > 128) return setError("Password must be at most 128 characters.");
         const { error } = await supabase.auth.signUp({
           email, password,
           options: { emailRedirectTo: window.location.origin + "/auth", data: { uid, full_name: String(f.get("full_name")).trim() } },
