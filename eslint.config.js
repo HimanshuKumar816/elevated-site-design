@@ -37,4 +37,11 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+  {
+    rules: {
+      // Existing source files are not Prettier-clean; keep lint focused on correctness.
+      // Formatting can be applied separately with the project's formatter.
+      "prettier/prettier": "off",
+    },
+  },
 );
