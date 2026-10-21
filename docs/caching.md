@@ -1,7 +1,7 @@
 # Caching and CDN policy
 
 ## Current strategy
-- Let Lovable's hosting/CDN handle fingerprinted static assets.
+- Let the configured hosting platform/CDN handle fingerprinted static assets.
 - Public marketing pages may use hosting defaults.
 - Authenticated responses, session data, profile data, and private user data must not be cached by a shared CDN.
 - Do not add Redis or a paid cache service without a measured performance problem.
