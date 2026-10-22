@@ -70,6 +70,21 @@ function Home() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+        <div className="grid gap-8 md:grid-cols-[0.8fr_1.2fr] md:items-center">
+          <div>
+            <p className="kicker text-muted-foreground">Find your way back</p>
+            <h2 className="mt-4 text-4xl leading-tight sm:text-5xl">Around Chandigarh University.</h2>
+            <p className="mt-4 text-muted-foreground">Use the campus-area map to orient yourself. Add the nearest building or campus landmark when reporting an item.</p>
+            <a href="https://www.openstreetmap.org/?mlat=30.7689&mlon=76.5750#map=16/30.7689/76.5750" target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground">Open CU map</a>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+            <iframe title="Map around Chandigarh University, Gharuan" src="https://www.openstreetmap.org/export/embed.html?bbox=76.555%2C30.755%2C76.595%2C30.782&layer=mapnik&marker=30.7689%2C76.5750" className="h-80 w-full sm:h-96" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+            <p className="px-4 py-3 text-xs text-muted-foreground">Map data © OpenStreetMap contributors · Confirm the exact building or gate when reporting.</p>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-6xl px-6 py-24">
         <div className="rounded-3xl bg-gradient-ink p-12 text-ink-foreground md:p-16">
           <p className="kicker text-accent">Built on trust</p>
