@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Item = { id: string; user_id: string; type: "Lost" | "Found"; name: string; category: string; location: string; note: string };
+type Item = { id: string; user_id: string; type: "Lost" | "Found"; name: string; category: string; location: string; note: string; image_path?: string | null };
 
 function similarity(a: string, b: string) {
   const words = (value: string) => new Set(value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((word) => word.length > 1));
@@ -53,16 +53,34 @@ Deno.serve(async (request) => {
   if (!itemId) return Response.json({ error: "Item ID required" }, { status: 400, headers: corsHeaders });
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-  const { data: item, error: itemError } = await admin.from("items").select("id,user_id,type,name,category,location,note").eq("id", itemId).single();
+  const { data: item, error: itemError } = await admin.from("items").select("id,user_id,type,name,category,location,note,image_path").eq("id", itemId).single();
   if (itemError || !item || item.user_id !== authData.user.id) return Response.json({ error: "Report not found" }, { status: 404, headers: corsHeaders });
 
-  const { data: candidates } = await admin.from("items").select("id,user_id,type,name,category,location,note").neq("user_id", item.user_id).eq("type", item.type === "Lost" ? "Found" : "Lost").limit(150);
+  const { data: candidates } = await admin.from("items").select("id,user_id,type,name,category,location,note,image_path").neq("user_id", item.user_id).eq("type", item.type === "Lost" ? "Found" : "Lost").limit(150);
   const candidateItems = (candidates ?? []) as Item[];
   let matches = candidateItems.map((candidate) => ({ item: candidate, score: matchScore(item as Item, candidate) })).filter((entry) => entry.score >= 45).sort((a, b) => b.score - a.score).slice(0, 5);
   let matchingMethod = "text-similarity";
   const openAiKey = Deno.env.get("OPENAI_API_KEY");
   if (openAiKey && candidateItems.length > 0) {
     try {
+      const visualCandidates = candidateItems.slice(0, 12);
+      const aiContent: Array<Record<string, unknown>> = [{
+        type: "text",
+        text: JSON.stringify({
+          report: { type: item.type, name: item.name, category: item.category, location: item.location, note: item.note },
+          candidates: visualCandidates.map((candidate) => ({ id: candidate.id, type: candidate.type, name: candidate.name, category: candidate.category, location: candidate.location, note: candidate.note })),
+          instruction: "Images, when supplied after this text, appear first for the new report and then in candidate order. Use image evidence as well as descriptions. Missing images are not evidence against a match.",
+        }),
+      }];
+      if (item.image_path) {
+        const { data: currentImage } = await admin.storage.from("item-images").createSignedUrl(item.image_path, 300);
+        if (currentImage?.signedUrl) aiContent.push({ type: "text", text: "Photo of the newly reported item:" }, { type: "image_url", image_url: { url: currentImage.signedUrl } });
+      }
+      for (const candidate of visualCandidates) {
+        if (!candidate.image_path) continue;
+        const { data: candidateImage } = await admin.storage.from("item-images").createSignedUrl(candidate.image_path, 300);
+        if (candidateImage?.signedUrl) aiContent.push({ type: "text", text: `Photo for candidate ${candidate.id}:` }, { type: "image_url", image_url: { url: candidateImage.signedUrl } });
+      }
       const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
@@ -72,7 +90,7 @@ Deno.serve(async (request) => {
           response_format: { type: "json_object" },
           messages: [
             { role: "system", content: "You match lost and found reports. Score whether each opposite-type report refers to the same real-world item. Compare item identity, category, location, date context if present, and descriptions. Never treat a category alone as proof. Return JSON only: {\"matches\":[{\"id\":\"candidate id\",\"score\":0-100,\"reason\":\"short reason\"}]}. Include only plausible matches with score >= 45. Do not infer private identifying details." },
-            { role: "user", content: JSON.stringify({ report: { type: item.type, name: item.name, category: item.category, location: item.location, note: item.note }, candidates: candidateItems.slice(0, 60).map((candidate) => ({ id: candidate.id, type: candidate.type, name: candidate.name, category: candidate.category, location: candidate.location, note: candidate.note })) }) },
+            { role: "user", content: aiContent },
           ],
         }),
       });
