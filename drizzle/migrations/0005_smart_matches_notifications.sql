@@ -50,7 +50,7 @@ BEGIN
         i.category = NEW.category
         OR similarity(lower(i.name), lower(NEW.name)) >= 0.25
       )
-      AND i.created_at > now() - interval '180 days'
+      AND i.created_at > now() - make_interval(days => 180)
     ORDER BY similarity(lower(i.name), lower(NEW.name)) DESC
     LIMIT 25
   LOOP
