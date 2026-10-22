@@ -89,7 +89,7 @@ function Report() {
       setBusy(false);
       return;
     }
-    if (phoneNumber && !/^\\+?[1-9]\\d{9,14}$/.test(phoneNumber)) {
+    if (phoneNumber && !/^\+?[1-9]\d{9,14}$/.test(phoneNumber)) {
       setError("Enter a valid phone number with country code, for example +919876543210.");
       setBusy(false);
       return;
@@ -142,6 +142,9 @@ function Report() {
         setError("Could not save your report. Please check your connection and try again.");
         return;
       }
+      // SMS is sent only when provider secrets are configured and the student opted in.
+      const { data: savedItem } = await supabase.from("items").select("id").eq("user_id", u.user.id).eq("name", name).eq("item_date", date).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (savedItem?.id) void supabase.functions.invoke("notify-item-matches", { body: { item_id: savedItem.id } }).catch(() => undefined);
       setImageFile(null);
       setImagePreview("");
       try {
