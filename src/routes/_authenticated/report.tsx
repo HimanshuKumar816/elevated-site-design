@@ -133,18 +133,17 @@ function Report() {
         }
       }
 
-      const { error: insertError } = await supabase.from("items").insert({
+      const { data: insertedItem, error: insertError } = await supabase.from("items").insert({
         user_id: u.user.id, type, name, category, location, item_date: date, note,
         ...(imagePath ? { image_path: imagePath } : {}),
-      });
+      }).select("id").single();
       if (insertError) {
         if (imagePath) await supabase.storage.from("item-images").remove([imagePath]);
         setError("Could not save your report. Please check your connection and try again.");
         return;
       }
       // SMS is sent only when provider secrets are configured and the student opted in.
-      const { data: savedItem } = await supabase.from("items").select("id").eq("user_id", u.user.id).eq("name", name).eq("item_date", date).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (savedItem?.id) void supabase.functions.invoke("notify-item-matches", { body: { item_id: savedItem.id } }).catch(() => undefined);
+      if (insertedItem?.id) void supabase.functions.invoke("notify-item-matches", { body: { item_id: insertedItem.id } }).catch(() => undefined);
       setImageFile(null);
       setImagePreview("");
       try {
