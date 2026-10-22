@@ -40,7 +40,7 @@ function Browse() {
       const withImages = await Promise.all(rows.map(async (item) => {
         if (!item.image_path) return item;
         const { data: signed, error: signedUrlError } = await supabase.storage.from("item-images").createSignedUrl(item.image_path, 60 * 60);
-        return { ...item, image_url: signedUrlError ? undefined : signed?.signedUrl };
+        return signedUrlError || !signed?.signedUrl ? item : { ...item, image_url: signed.signedUrl };
       }));
       setItems(withImages);
     } catch {
