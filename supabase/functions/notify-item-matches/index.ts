@@ -57,8 +57,55 @@ Deno.serve(async (request) => {
   if (itemError || !item || item.user_id !== authData.user.id) return Response.json({ error: "Report not found" }, { status: 404, headers: corsHeaders });
 
   const { data: candidates } = await admin.from("items").select("id,user_id,type,name,category,location,note").neq("user_id", item.user_id).eq("type", item.type === "Lost" ? "Found" : "Lost").limit(150);
-  const matches = ((candidates ?? []) as Item[]).map((candidate) => ({ item: candidate, score: matchScore(item as Item, candidate) })).filter((entry) => entry.score >= 45).sort((a, b) => b.score - a.score).slice(0, 5);
-  if (matches.length === 0) return Response.json({ ok: true, sms_sent: 0, matches: 0 }, { headers: corsHeaders });
+  const candidateItems = (candidates ?? []) as Item[];
+  let matches = candidateItems.map((candidate) => ({ item: candidate, score: matchScore(item as Item, candidate) })).filter((entry) => entry.score >= 45).sort((a, b) => b.score - a.score).slice(0, 5);
+  let matchingMethod = "text-similarity";
+  const openAiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openAiKey && candidateItems.length > 0) {
+    try {
+      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: "You match lost and found reports. Score whether each opposite-type report refers to the same real-world item. Compare item identity, category, location, date context if present, and descriptions. Never treat a category alone as proof. Return JSON only: {\"matches\":[{\"id\":\"candidate id\",\"score\":0-100,\"reason\":\"short reason\"}]}. Include only plausible matches with score >= 45. Do not infer private identifying details." },
+            { role: "user", content: JSON.stringify({ report: { type: item.type, name: item.name, category: item.category, location: item.location, note: item.note }, candidates: candidateItems.slice(0, 60).map((candidate) => ({ id: candidate.id, type: candidate.type, name: candidate.name, category: candidate.category, location: candidate.location, note: candidate.note })) }) },
+          ],
+        }),
+      });
+      if (aiResponse.ok) {
+        const aiBody = await aiResponse.json();
+        const parsed = JSON.parse(aiBody.choices?.[0]?.message?.content ?? "{}");
+        const allowedIds = new Set(candidateItems.map((candidate) => candidate.id));
+        const aiMatches = (Array.isArray(parsed.matches) ? parsed.matches : [])
+          .filter((entry: { id?: string; score?: number }) => typeof entry.id === "string" && allowedIds.has(entry.id) && Number(entry.score) >= 45)
+          .map((entry: { id: string; score: number }) => ({ item: candidateItems.find((candidate) => candidate.id === entry.id)!, score: Math.max(0, Math.min(100, Math.round(Number(entry.score)))) }))
+          .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+          .slice(0, 5);
+        if (aiMatches.length > 0) {
+          matches = aiMatches;
+          matchingMethod = "ai";
+        }
+      }
+    } catch {
+      // Keep the service available with transparent text-similarity fallback.
+    }
+  }
+  if (matches.length === 0) return Response.json({ ok: true, sms_sent: 0, matches: 0, matching_method: matchingMethod }, { headers: corsHeaders });
+
+  // Add in-app alerts for AI matches not already created by the database's similarity trigger.
+  for (const match of matches) {
+    for (const recipient of [
+      { user_id: match.item.user_id, item_id: match.item.id, matched_item_id: item.id, body: `A new ${String(item.type).toLowerCase()} report may match your ${String(match.item.type).toLowerCase()} report: ${item.name}. Open CampusFind to compare details.` },
+      { user_id: item.user_id, item_id: item.id, matched_item_id: match.item.id, body: `Your ${String(item.type).toLowerCase()} report may match an existing ${String(match.item.type).toLowerCase()} report: ${match.item.name}. Open CampusFind to compare details.` },
+    ]) {
+      const { data: existing } = await admin.from("notifications").select("id").eq("user_id", recipient.user_id).eq("item_id", recipient.item_id).eq("matched_item_id", recipient.matched_item_id).limit(1);
+      if (!existing?.length) await admin.from("notifications").insert({ user_id: recipient.user_id, item_id: recipient.item_id, matched_item_id: recipient.matched_item_id, title: "Possible item match", body: recipient.body });
+    }
+  }
 
   const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -90,5 +137,5 @@ Deno.serve(async (request) => {
     });
     if (response.ok) sent += 1;
   }
-  return Response.json({ ok: true, sms_sent: sent, matches: matches.length, sms_configured: true }, { headers: corsHeaders });
+  return Response.json({ ok: true, sms_sent: sent, matches: matches.length, sms_configured: true, matching_method: matchingMethod }, { headers: corsHeaders });
 });
