@@ -79,12 +79,12 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-3 sm:px-6">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-primary font-display text-lg text-primary-foreground">C</span>
-          <span className="font-display text-2xl">CampusFind</span>
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary font-sans text-xs font-black tracking-tight text-primary-foreground">CU</span>
+          <span><span className="block font-display text-xl leading-tight sm:text-2xl">CampusFind</span><span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:block">Chandigarh University</span></span>
         </Link>
-        <nav className="flex items-center gap-5">
+        <nav className="flex items-center gap-2 sm:gap-5">
           <Link to="/how-it-works" className={`${link} hidden sm:inline`} activeProps={{ className: "text-foreground" }}>How it works</Link>
           <Link to="/browse" className={`${link} hidden sm:inline`} activeProps={{ className: "text-foreground" }}>Browse items</Link>
           {uid ? (
@@ -110,7 +110,7 @@ export function Footer() {
           <p className="font-display text-3xl">CampusFind</p>
           <p className="mt-2 max-w-sm text-sm opacity-70">Lost → Report → Match → Verify → Return. A calmer way to reconnect students with what they lose.</p>
         </div>
-        <p className="text-xs opacity-60">A design thinking project · © 2026</p>
+        <p className="text-xs opacity-60">A student design project · © 2026</p>
       </div>
     </footer>
   );

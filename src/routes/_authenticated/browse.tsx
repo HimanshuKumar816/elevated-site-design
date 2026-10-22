@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/browse")({
 });
 
 function Browse() {
-  const [items, setItems] = useState<Item[] | null>(null);
+  const [items, setItems] = useState<(Item & { image_url?: string })[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -25,6 +25,7 @@ function Browse() {
   const [q, setQ] = useState("");
   const [type, setType] = useState<"All" | "Lost" | "Found">("All");
   const [cat, setCat] = useState("All");
+  const [alerts, setAlerts] = useState<Array<{ id: string; title: string; body: string; created_at: string; read_at: string | null }>>([]);
 
   async function load() {
     setLoading(true);
@@ -35,7 +36,13 @@ function Browse() {
         .select("*")
         .order("created_at", { ascending: false });
       if (queryError) throw queryError;
-      setItems((data ?? []) as Item[]);
+      const rows = (data ?? []) as Item[];
+      const withImages = await Promise.all(rows.map(async (item) => {
+        if (!item.image_path) return item;
+        const { data: signed, error: signedUrlError } = await supabase.storage.from("item-images").createSignedUrl(item.image_path, 60 * 60);
+        return signedUrlError || !signed?.signedUrl ? item : { ...item, image_url: signed.signedUrl };
+      }));
+      setItems(withImages);
     } catch {
       setItems(null);
       setError("We couldn't load reports. Check your connection and try again.");
@@ -45,8 +52,19 @@ function Browse() {
   }
   useEffect(() => {
     load();
-    supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null));
+    supabase.auth.getUser().then(async ({ data }) => {
+      const userId = data.user?.id ?? null;
+      setMe(userId);
+      if (!userId) return;
+      const { data: notificationRows } = await supabase.from("notifications").select("id,title,body,created_at,read_at").order("created_at", { ascending: false }).limit(10);
+      setAlerts((notificationRows ?? []) as typeof alerts);
+    });
   }, []);
+
+  async function markRead(id: string) {
+    const { error: updateError } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+    if (!updateError) setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, read_at: new Date().toISOString() } : alert));
+  }
 
   async function remove(id: string) {
     setRemovingId(id);
@@ -73,7 +91,9 @@ function Browse() {
     <Page>
       <section className="mx-auto max-w-6xl px-6 py-20">
         <p className="kicker text-muted-foreground">Live board</p>
-        <h1 className="mt-4 text-6xl">Browse items</h1>
+        <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-primary">Chandigarh University · Student lost & found</p>
+        <h1 className="mt-2 text-5xl leading-tight sm:text-6xl">Browse items</h1>
+        {alerts.length > 0 && <section aria-label="Match notifications" className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-semibold">Match alerts</h2><span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">{alerts.filter((alert) => !alert.read_at).length} unread</span></div><ul className="mt-4 space-y-3">{alerts.map((alert) => <li key={alert.id} className={`rounded-xl border border-border bg-card p-4 ${alert.read_at ? "opacity-70" : ""}`}><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{alert.title}</p><p className="mt-1 text-sm text-muted-foreground">{alert.body}</p><p className="mt-2 text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString()}</p></div>{!alert.read_at && <button onClick={() => markRead(alert.id)} className="shrink-0 text-xs underline">Mark read</button>}</div></li>)}</ul></section>}
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by item, place or detail…" className="mt-10 w-full rounded-2xl border border-input bg-card px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-ring" />
         <div className="mt-4 flex flex-wrap gap-2">
           {(["All", "Lost", "Found"] as const).map((t) => <button key={t} onClick={() => setType(t)} className={pill(type === t)}>{t}</button>)}
@@ -96,7 +116,8 @@ function Browse() {
                 <span className={`kicker rounded-full px-3 py-1 ${i.type === "Found" ? "bg-accent/25 text-foreground" : "bg-primary text-primary-foreground"}`}>{i.type}</span>
                 <span className="text-xs text-muted-foreground">{i.item_date}</span>
               </div>
-              <h2 className="mt-5 text-3xl">{i.name}</h2>
+              {i.image_url && <img src={i.image_url} alt={i.name} loading="lazy" className="mt-5 aspect-[4/3] w-full rounded-xl object-cover" />}
+              <h2 className={`${i.image_url ? "mt-4" : "mt-5"} text-3xl`}>{i.name}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{i.category} · {i.location}</p>
               {i.note && <p className="mt-4 text-sm">{i.note}</p>}
               {i.user_id === me && <button disabled={removingId === i.id} onClick={() => remove(i.id)} className="mt-4 text-xs text-muted-foreground underline hover:text-destructive disabled:opacity-50">{removingId === i.id ? "Removing…" : "Remove my report"}</button>}

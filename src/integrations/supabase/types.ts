@@ -19,6 +19,7 @@ export type Database = {
           category: string
           created_at: string
           id: string
+          image_path: string | null
           item_date: string
           location: string
           name: string
@@ -30,6 +31,7 @@ export type Database = {
           category: string
           created_at?: string
           id?: string
+          image_path?: string | null
           item_date: string
           location: string
           name: string
@@ -41,6 +43,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          image_path?: string | null
           item_date?: string
           location?: string
           name?: string
@@ -57,6 +60,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_preferences: {
+        Row: {
+          phone_number: string | null
+          sms_notifications_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          phone_number?: string | null
+          sms_notifications_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          phone_number?: string | null
+          sms_notifications_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          item_id: string | null
+          matched_item_id: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          matched_item_id?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          matched_item_id?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
