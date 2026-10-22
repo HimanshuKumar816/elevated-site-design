@@ -107,7 +107,7 @@ function Report() {
         return;
       }
       if (phoneNumber) {
-        const { error: profileError } = await supabase.from("profiles").update({ phone_number: phoneNumber, sms_notifications_enabled: smsEnabled }).eq("id", u.user.id);
+        const { error: profileError } = await supabase.from("notification_preferences").upsert({ user_id: u.user.id, phone_number: phoneNumber, sms_notifications_enabled: smsEnabled, updated_at: new Date().toISOString() });
         if (profileError) {
           setError("Your report setup needs the latest CampusFind database update. Please try again after the update is applied.");
           return;
@@ -144,6 +144,13 @@ function Report() {
       }
       setImageFile(null);
       setImagePreview("");
+      try {
+        const { data: rows } = await supabase.from("items").select("*").eq("type", type === "Lost" ? "Found" : "Lost").neq("user_id", u.user.id).limit(100);
+        const freshItem: Item = { id: "new-report", user_id: u.user.id, type, name, category, location, item_date: date, note };
+        setMatches(findItemMatches(freshItem, (rows ?? []) as Item[]));
+      } catch {
+        setMatches([]);
+      }
       setDone(true);
     } catch {
       setError("Something went wrong while saving your report. Please try again.");
