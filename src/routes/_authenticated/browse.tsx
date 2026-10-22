@@ -25,6 +25,7 @@ function Browse() {
   const [q, setQ] = useState("");
   const [type, setType] = useState<"All" | "Lost" | "Found">("All");
   const [cat, setCat] = useState("All");
+  const [alerts, setAlerts] = useState<Array<{ id: string; title: string; body: string; created_at: string; read_at: string | null }>>([]);
 
   async function load() {
     setLoading(true);
@@ -51,8 +52,19 @@ function Browse() {
   }
   useEffect(() => {
     load();
-    supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null));
+    supabase.auth.getUser().then(async ({ data }) => {
+      const userId = data.user?.id ?? null;
+      setMe(userId);
+      if (!userId) return;
+      const { data: notificationRows } = await supabase.from("notifications").select("id,title,body,created_at,read_at").order("created_at", { ascending: false }).limit(10);
+      setAlerts((notificationRows ?? []) as typeof alerts);
+    });
   }, []);
+
+  async function markRead(id: string) {
+    const { error: updateError } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+    if (!updateError) setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, read_at: new Date().toISOString() } : alert));
+  }
 
   async function remove(id: string) {
     setRemovingId(id);
@@ -79,7 +91,9 @@ function Browse() {
     <Page>
       <section className="mx-auto max-w-6xl px-6 py-20">
         <p className="kicker text-muted-foreground">Live board</p>
-        <h1 className="mt-4 text-6xl">Browse items</h1>
+        <p className="mt-4 text-sm font-semibold uppercase tracking-[0.18em] text-primary">Chandigarh University · Student lost & found</p>
+        <h1 className="mt-2 text-5xl leading-tight sm:text-6xl">Browse items</h1>
+        {alerts.length > 0 && <section aria-label="Match notifications" className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-5"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-semibold">Match alerts</h2><span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">{alerts.filter((alert) => !alert.read_at).length} unread</span></div><ul className="mt-4 space-y-3">{alerts.map((alert) => <li key={alert.id} className={`rounded-xl border border-border bg-card p-4 ${alert.read_at ? "opacity-70" : ""}`}><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{alert.title}</p><p className="mt-1 text-sm text-muted-foreground">{alert.body}</p><p className="mt-2 text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString()}</p></div>{!alert.read_at && <button onClick={() => markRead(alert.id)} className="shrink-0 text-xs underline">Mark read</button>}</div></li>)}</ul></section>}
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by item, place or detail…" className="mt-10 w-full rounded-2xl border border-input bg-card px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-ring" />
         <div className="mt-4 flex flex-wrap gap-2">
           {(["All", "Lost", "Found"] as const).map((t) => <button key={t} onClick={() => setType(t)} className={pill(type === t)}>{t}</button>)}
