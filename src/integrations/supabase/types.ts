@@ -61,6 +61,60 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          phone_number: string | null
+          sms_notifications_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          phone_number?: string | null
+          sms_notifications_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          phone_number?: string | null
+          sms_notifications_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          item_id: string | null
+          matched_item_id: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          matched_item_id?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          matched_item_id?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
