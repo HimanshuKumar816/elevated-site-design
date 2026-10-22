@@ -29,9 +29,9 @@ function Home() {
         <img src={hero} alt="A forgotten wallet and ID card on a campus bench at sunset" width={1600} height={1008} className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/80 to-ink/10" />
         <div className="relative mx-auto max-w-6xl px-6 py-32 text-ink-foreground md:py-44">
-          <p className="kicker text-accent">Smart campus lost & found</p>
-          <h1 className="mt-6 max-w-2xl text-6xl leading-[0.95] md:text-8xl">Lost something? <em className="text-accent">Find it</em> faster.</h1>
-          <p className="mt-6 max-w-lg text-lg opacity-80">One trusted place to report, search and safely return belongings — instead of scattered WhatsApp groups and notice boards.</p>
+          <p className="kicker text-accent">CHANDIGARH UNIVERSITY · CAMPUSFIND</p>
+          <h1 className="mt-6 max-w-2xl text-5xl leading-[0.98] sm:text-6xl md:text-8xl">Lost something? <em className="text-accent">Find it</em> faster.</h1>
+          <p className="mt-6 max-w-lg text-lg opacity-80">A CU-focused lost-and-found hub. Report an item, discover likely matches, and get notified when someone reports something similar.</p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link to="/report" className="rounded-full bg-accent px-6 py-3 font-medium text-accent-foreground hover:opacity-90">Report an item</Link>
             <Link to="/browse" className="rounded-full border border-ink-foreground/30 px-6 py-3 font-medium hover:bg-ink-foreground/10">Browse found items</Link>
@@ -67,6 +67,21 @@ function Home() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+        <div className="grid gap-8 md:grid-cols-[0.8fr_1.2fr] md:items-center">
+          <div>
+            <p className="kicker text-muted-foreground">Find your way back</p>
+            <h2 className="mt-4 text-4xl leading-tight sm:text-5xl">Around Chandigarh University.</h2>
+            <p className="mt-4 text-muted-foreground">Use the campus-area map to orient yourself. Add the nearest building or campus landmark when reporting an item.</p>
+            <a href="https://www.openstreetmap.org/?mlat=30.7689&mlon=76.5750#map=16/30.7689/76.5750" target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground">Open CU map</a>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+            <iframe title="Map around Chandigarh University, Gharuan" src="https://www.openstreetmap.org/export/embed.html?bbox=76.555%2C30.755%2C76.595%2C30.782&layer=mapnik&marker=30.7689%2C76.5750" className="h-80 w-full sm:h-96" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+            <p className="px-4 py-3 text-xs text-muted-foreground">Map data © OpenStreetMap contributors · Confirm the exact building or gate when reporting.</p>
+          </div>
         </div>
       </section>
 
