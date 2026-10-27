@@ -1,16 +1,28 @@
 services:
   - type: web
     name: campusfind
-    runtime: static
+    runtime: node
+    plan: free
+    region: singapore
     branch: main
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm run start
     envVars:
+      - key: NITRO_PRESET
+        value: render-com
+      - key: HOST
+        value: 0.0.0.0
       - key: VITE_SUPABASE_URL
         value: https://upkyaupivigspwwunqpg.supabase.co
+      - key: SUPABASE_URL
+        value: https://upkyaupivigspwwunqpg.supabase.co
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_cM8Eqm_nIzfmh8PSrd8WkA_tA2DBuW8
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_cM8Eqm_nIzfmh8PSrd8WkA_tA2DBuW8
+      - key: VITE_SUPABASE_PROJECT_ID
+        value: upkyaupivigspwwunqpg
+      - key: SUPABASE_PROJECT_ID
+        value: upkyaupivigspwwunqpg
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
