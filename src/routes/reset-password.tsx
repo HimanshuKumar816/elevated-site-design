@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword } from "@/lib/auth-validation";
 
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
@@ -27,12 +28,9 @@ function ResetPasswordPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (password.length < 8 || password.length > 128) {
-      setError("Password must be between 8 and 128 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("The passwords do not match.");
+    const passwordError = validateNewPassword(password, confirm);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -72,10 +70,10 @@ function ResetPasswordPage() {
           ) : (
             <form onSubmit={submit} className="mt-8">
               <label className="block text-sm font-medium">New password
-                <input required type="password" minLength={8} maxLength={128} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
+                <input required type="password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
               </label>
               <label className="mt-4 block text-sm font-medium">Confirm new password
-                <input required type="password" minLength={8} maxLength={128} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} />
+                <input required type="password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} />
               </label>
               {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
               <button disabled={busy} className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground disabled:opacity-60">

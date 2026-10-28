@@ -18,6 +18,9 @@ export const Route = createFileRoute("/_authenticated")({
     }
 
     if (!user) {
+      if (location.pathname === "/admin") {
+        throw redirect({ to: "/admin-login" });
+      }
       throw redirect({ to: "/auth", search: { redirect: location.pathname } });
     }
   },

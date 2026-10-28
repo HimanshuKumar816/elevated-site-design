@@ -1,12 +1,13 @@
-const PHONE_NUMBER_PATTERN = /^\+?[1-9]\d{9,14}$/;
+import { normalizePhoneNumber } from "@/lib/phone";
 
 export function validateNotificationPreference(phoneNumber: string, smsEnabled: boolean): string | null {
   const phone = phoneNumber.trim();
+  const normalizedPhone = normalizePhoneNumber(phone);
 
   if (smsEnabled && !phone) {
     return "Enter a mobile number before enabling SMS alerts.";
   }
-  if (phone && !PHONE_NUMBER_PATTERN.test(phone)) {
+  if (phone && !normalizedPhone) {
     return "Enter a valid phone number with country code, for example +919876543210.";
   }
   if (phone && !smsEnabled) {
@@ -21,12 +22,12 @@ export function buildNotificationPreferencePayload(
   smsEnabled: boolean,
   updatedAt = new Date().toISOString(),
 ) {
-  const phone = phoneNumber.trim();
-  const optedIn = smsEnabled && PHONE_NUMBER_PATTERN.test(phone);
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  const optedIn = smsEnabled && Boolean(normalizedPhone);
 
   return {
     user_id: userId,
-    phone_number: optedIn ? phone : null,
+    phone_number: optedIn ? normalizedPhone : null,
     sms_notifications_enabled: optedIn,
     updated_at: updatedAt,
   };
