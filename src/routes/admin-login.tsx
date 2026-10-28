@@ -179,7 +179,7 @@ function AdminLoginPage() {
             <p className="text-xs leading-5 text-muted-foreground">
               Are you a student? Use the regular CampusFind sign-in to report and browse items.
             </p>
-            <Link to="/auth" className="mt-2 inline-flex items-center gap-1.5 text-sm font-extrabold text-primary transition hover:underline">
+            <Link to="/auth" search={{ redirect: "/browse" }} className="mt-2 inline-flex items-center gap-1.5 text-sm font-extrabold text-primary transition hover:underline">
               Go to student sign in <ArrowRight size={15} />
             </Link>
           </div>
