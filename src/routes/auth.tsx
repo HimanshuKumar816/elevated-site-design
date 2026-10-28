@@ -59,7 +59,14 @@ function AuthPage() {
       if (mode === "in") {
         const r = await signIn({ data: { uid, password } });
         if (!r.ok) return setError(r.error);
-        await supabase.auth.setSession({ access_token: r.access_token, refresh_token: r.refresh_token });
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: r.access_token,
+          refresh_token: r.refresh_token,
+        });
+        if (sessionError) {
+          setError("Your credentials were accepted, but we couldn't start your session. Please try again.");
+          return;
+        }
         navigate({ to: redirect, replace: true });
       } else {
         const email = String(f.get("email")).trim().toLowerCase();
