@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
-import { signInWithUid } from "@/lib/auth.functions";
+import { checkUidAvailability, signInWithUid } from "@/lib/auth.functions";
 import { normalizeUid } from "@/lib/uid";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 import { GENERIC_SIGNIN_ERROR, NO_ADMIN_ACCESS, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, isAdminProfile, validateNewPassword, validateSignup } from "@/lib/auth-validation";
@@ -106,8 +106,8 @@ function AuthPage() {
     setPhoneForOtp("");
   }
 
-  async function requestOtp(phone: string, targetMode: AuthMode, details?: SignupDetails) {
-    if (busy) return;
+  async function requestOtp(phone: string, targetMode: AuthMode, details?: SignupDetails, allowWhileBusy = false) {
+    if (busy && !allowWhileBusy) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -203,9 +203,27 @@ function AuthPage() {
         setError(result.error);
         return;
       }
-      const details = { uid: result.value.uid, fullName: result.value.fullName };
-      setSignupDetails(details);
-      await requestOtp(result.value.phone, mode, details);
+
+      setBusy(true);
+      try {
+        const availability = await checkUidAvailability({ data: { uid: result.value.uid } });
+        if (!availability.ok) {
+          setError(availability.error);
+          return;
+        }
+        if (!availability.available) {
+          setError("That student UID is already registered. Check your UID or sign in to the existing account.");
+          return;
+        }
+
+        const details = { uid: result.value.uid, fullName: result.value.fullName };
+        setSignupDetails(details);
+        await requestOtp(result.value.phone, mode, details, true);
+      } catch {
+        setError("We couldn't check that student UID right now. Please try again.");
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
