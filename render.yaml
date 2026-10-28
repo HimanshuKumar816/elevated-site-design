@@ -7,6 +7,7 @@ services:
     branch: main
     buildCommand: npm install && npm run build
     startCommand: npm run start
+    healthCheckPath: /api/health/live
     envVars:
       - key: NITRO_PRESET
         value: render-com
