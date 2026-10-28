@@ -5,6 +5,7 @@ import { CATEGORIES, type Item } from "@/lib/items";
 import { findItemMatches } from "@/lib/match-score";
 import { isValidIsoDate } from "@/lib/date";
 import { validateItemImage } from "@/lib/item-image";
+import { buildNotificationPreferencePayload, validateNotificationPreference } from "@/lib/notification-preferences";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/report")({
@@ -27,6 +28,44 @@ function Report() {
   const [matches, setMatches] = useState<Array<{ item: Item; score: number }>>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
+  const [preferencesAvailable, setPreferencesAvailable] = useState(true);
+  const [preferencesDirty, setPreferencesDirty] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadNotificationPreferences() {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) throw new Error("Could not read the current user.");
+
+        const { data, error: preferencesError } = await supabase
+          .from("notification_preferences")
+          .select("phone_number,sms_notifications_enabled")
+          .eq("user_id", authData.user.id)
+          .maybeSingle();
+        if (preferencesError) throw preferencesError;
+
+        if (!cancelled && data) {
+          setPhoneNumber(data.phone_number ?? "");
+          setSmsEnabled(Boolean(data.sms_notifications_enabled));
+        }
+      } catch {
+        // SMS preferences are optional; this must not block basic item reporting.
+        if (!cancelled) setPreferencesAvailable(false);
+      } finally {
+        if (!cancelled) setPreferencesLoading(false);
+      }
+    }
+
+    void loadNotificationPreferences();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -66,8 +105,8 @@ function Report() {
     const location = String(form.get("location") ?? "").trim();
     const date = String(form.get("date") ?? "");
     const note = String(form.get("note") ?? "").trim();
-    const phoneNumber = String(form.get("phone_number") ?? "").trim();
-    const smsEnabled = form.get("sms_notifications_enabled") === "on";
+    const submittedPhoneNumber = phoneNumber.trim();
+    const submittedSmsEnabled = smsEnabled;
 
     if (!name || name.length > 120) {
       setError("Enter an item name (up to 120 characters).");
@@ -89,10 +128,13 @@ function Report() {
       setBusy(false);
       return;
     }
-    if (phoneNumber && !/^\+?[1-9]\d{9,14}$/.test(phoneNumber)) {
-      setError("Enter a valid phone number with country code, for example +919876543210.");
-      setBusy(false);
-      return;
+    if (preferencesDirty && preferencesAvailable) {
+      const preferenceError = validateNotificationPreference(submittedPhoneNumber, submittedSmsEnabled);
+      if (preferenceError) {
+        setError(preferenceError);
+        setBusy(false);
+        return;
+      }
     }
     if (note.length > 500) {
       setError("Description must be 500 characters or fewer.");
@@ -106,12 +148,15 @@ function Report() {
         setError("Please sign in again.");
         return;
       }
-      if (phoneNumber) {
-        const { error: profileError } = await supabase.from("notification_preferences").upsert({ user_id: u.user.id, phone_number: phoneNumber, sms_notifications_enabled: smsEnabled, updated_at: new Date().toISOString() });
-        if (profileError) {
-          setError("Your report setup needs the latest CampusFind database update. Please try again after the update is applied.");
+      if (preferencesDirty && preferencesAvailable) {
+        const { error: preferenceSaveError } = await supabase
+          .from("notification_preferences")
+          .upsert(buildNotificationPreferencePayload(u.user.id, submittedPhoneNumber, submittedSmsEnabled));
+        if (preferenceSaveError) {
+          setError("We couldn't update your SMS alert preference. Please try again.");
           return;
         }
+        setPreferencesDirty(false);
       }
       let imagePath: string | null = null;
       if (imageFile) {
@@ -194,7 +239,43 @@ function Report() {
               <label className="block text-sm font-medium">Date<input required type="date" name="date" className={field} /></label>
             </div>
             <label className="mt-4 block text-sm font-medium">Location<input required name="location" placeholder="e.g. Central Library" className={field} /></label>
-            <div className="mt-4 rounded-2xl border border-border p-4"><label className="block text-sm font-medium">Mobile number for match alerts (optional)<input name="phone_number" type="tel" inputMode="tel" autoComplete="tel" placeholder="+919876543210" className={field} /><span className="mt-1 block text-xs text-muted-foreground">Use country code. Your number is stored privately in your student profile, not on the public report.</span></label><label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" name="sms_notifications_enabled" className="mt-1" /><span>I consent to SMS alerts about possible item matches.</span></label></div>
+            <div className="mt-4 rounded-2xl border border-border p-4">
+              {preferencesLoading && <p className="mb-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}
+              {!preferencesLoading && !preferencesAvailable && <p className="mb-3 text-xs text-muted-foreground">SMS settings are temporarily unavailable. You can still submit this report; saved SMS preferences have not been changed.</p>}
+              <label className="block text-sm font-medium">Mobile number for match alerts (optional)
+                <input
+                  name="phone_number"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    setPhoneNumber(e.target.value);
+                    setPreferencesDirty(true);
+                  }}
+                  disabled={preferencesLoading || !preferencesAvailable}
+                  placeholder="+919876543210"
+                  className={field}
+                />
+                <span className="mt-1 block text-xs text-muted-foreground">Use country code. Your number is stored privately in your student profile, not on the public report.</span>
+              </label>
+              <label className="mt-3 flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="sms_notifications_enabled"
+                  checked={smsEnabled}
+                  onChange={(e) => {
+                    const enabled = e.target.checked;
+                    setSmsEnabled(enabled);
+                    setPreferencesDirty(true);
+                    if (!enabled) setPhoneNumber("");
+                  }}
+                  disabled={preferencesLoading || !preferencesAvailable}
+                  className="mt-1"
+                />
+                <span>I consent to SMS alerts about possible item matches.</span>
+              </label>
+            </div>
             <label className="mt-4 block text-sm font-medium">Item photo (optional)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className={field} /><span className="mt-1 block text-xs text-muted-foreground">JPG, PNG, or WebP · up to 5 MB</span></label>
             {imagePreview && <div className="mt-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-xl border border-border object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 text-sm text-muted-foreground underline">Remove photo</button></div>}
             <label className="mt-4 block text-sm font-medium">Public description<textarea name="note" rows={3} maxLength={500} placeholder="Avoid details that prove ownership" className={field} /></label>
