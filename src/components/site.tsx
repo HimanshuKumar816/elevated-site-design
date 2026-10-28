@@ -95,8 +95,8 @@ export function Header() {
           </span>
         </Link>
         <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
-          <Link to="/how-it-works" className={navLink}>How it works</Link>
-          <Link to="/browse" className={navLink}>Browse items</Link>
+          <Link to="/how-it-works" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>How it works</Link>
+          <Link to="/browse" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>Browse items</Link>
           {uid ? (
             <>
               <span className="mx-2 h-6 w-px bg-border" />
@@ -169,5 +169,12 @@ export function Footer() {
 }
 
 export function Page({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-screen flex-col"><Header /><main className="min-w-0 flex-1">{children}</main><Footer /></div>;
+  return (
+    <div className="flex min-h-screen flex-col">
+      <a href="#main-content" className="sr-only z-50 rounded-xl bg-primary px-4 py-3 font-extrabold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to main content</a>
+      <Header />
+      <main id="main-content" tabIndex={-1} className="page-enter min-w-0 flex-1">{children}</main>
+      <Footer />
+    </div>
+  );
 }

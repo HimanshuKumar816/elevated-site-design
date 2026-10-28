@@ -95,10 +95,28 @@ function Home() {
       </section>
 
       <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 sm:py-20 md:grid-cols-[0.8fr_1.2fr] md:items-center">
-          <div><p className="kicker text-emerald-800">A real campus problem</p><h2 className="mt-4 text-3xl font-extrabold leading-tight text-foreground sm:text-4xl">Make the information easier to find.</h2><p className="mt-4 leading-7 text-muted-foreground">CampusFind provides a central place to browse reports, add useful context, and compare details before arranging a return.</p><div className="mt-7 flex flex-wrap gap-3"><Link to="/browse" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground transition hover:bg-primary/90">Browse reports <ArrowRight size={16} /></Link><Link to="/report" className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Add a report</Link></div></div>
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+          <div className="max-w-xl">
+            <p className="kicker text-emerald-800">Made for campus life</p>
+            <h2 className="mt-4 text-3xl font-extrabold leading-tight text-foreground sm:text-4xl">Good returns begin with clear information.</h2>
+            <p className="mt-4 leading-7 text-muted-foreground">CampusFind gives students one organised flow to report an item, search existing reports, and compare details before arranging a handoff.</p>
+            <Link to="/browse" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90">Explore campus reports <ArrowRight size={16} /></Link>
+          </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            {[{ value: "70%", label: "of surveyed students had lost something on campus" }, { value: "30", label: "students interviewed during project research" }, { value: "1", label: "central place to report and search" }].map((item) => <div key={item.value} className="rounded-2xl border border-border bg-background p-5 sm:p-6"><p className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl">{item.value}</p><p className="mt-3 text-sm leading-6 text-muted-foreground">{item.label}</p></div>)}
+            {[
+              { number: "01", title: "Organised reports", description: "Search by item, type, category and location.", icon: Search },
+              { number: "02", title: "Useful context", description: "Share the details that help others recognise an item.", icon: MapPin },
+              { number: "03", title: "Safer handoffs", description: "Keep one identifying detail private until verification.", icon: ShieldCheck },
+            ].map(({ number, title, description, icon: Icon }) => (
+              <article key={number} className="group rounded-2xl border border-border bg-background p-5 transition duration-200 hover:-translate-y-1 hover:border-emerald-900/20 hover:bg-white hover:shadow-xl hover:shadow-primary/5 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold tracking-[0.16em] text-muted-foreground/70">{number}</span>
+                  <span className="grid size-10 place-items-center rounded-xl bg-white text-primary shadow-sm transition group-hover:bg-emerald-100 group-hover:text-emerald-900"><Icon size={19} /></span>
+                </div>
+                <h3 className="mt-7 text-base font-extrabold tracking-tight text-foreground">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>

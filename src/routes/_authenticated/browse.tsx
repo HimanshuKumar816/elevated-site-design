@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Bell, Check, MapPin, PackageSearch, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, Bell, Check, MapPin, PackageSearch, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, type Item } from "@/lib/items";
@@ -26,6 +26,7 @@ function Browse() {
   const [q, setQ] = useState("");
   const [type, setType] = useState<"All" | "Lost" | "Found">("All");
   const [cat, setCat] = useState("All");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
   const [alerts, setAlerts] = useState<Array<{ id: string; title: string; body: string; created_at: string; read_at: string | null }>>([]);
 
   async function load() {
@@ -83,6 +84,18 @@ function Browse() {
     });
   }, []);
 
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(target.tagName))) return;
+      event.preventDefault();
+      document.getElementById("item-search")?.focus();
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
   async function markRead(id: string) {
     const { error: updateError } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
     if (!updateError) setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, read_at: new Date().toISOString() } : alert));
@@ -102,10 +115,21 @@ function Browse() {
     }
   }
 
-  const shown = useMemo(
-    () => (items ?? []).filter((i) => (type === "All" || i.type === type) && (cat === "All" || i.category === cat) && `${i.name} ${i.location} ${i.note}`.toLowerCase().includes(q.toLowerCase())),
-    [items, q, type, cat],
-  );
+  const shown = useMemo(() => {
+    const filtered = (items ?? []).filter(
+      (item) =>
+        (type === "All" || item.type === type) &&
+        (cat === "All" || item.category === cat) &&
+        `${item.name} ${item.location} ${item.note}`.toLowerCase().includes(q.toLowerCase()),
+    );
+
+    return filtered.sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      const dateA = new Date(a.item_date).getTime();
+      const dateB = new Date(b.item_date).getTime();
+      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+    });
+  }, [items, q, type, cat, sortBy]);
 
   const pill = (on: boolean) => `rounded-full px-4 py-2 text-sm transition-colors ${on ? "bg-primary text-primary-foreground" : "bg-card border border-border hover:bg-secondary"}`;
 
@@ -130,16 +154,24 @@ function Browse() {
 
         <div className="mt-8 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
           <label htmlFor="item-search" className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Search reports</label>
-          <div className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-ring/10"><Search size={19} className="shrink-0 text-muted-foreground" /><input id="item-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Try “wallet”, “library”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus:ring-0" />{q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}</div>
-          <div className="mt-4 flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2"><span className="mr-1 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Type</span>{(["All", "Lost", "Found"] as const).map((t) => <button type="button" key={t} onClick={() => setType(t)} aria-pressed={type === t} className={`rounded-xl border px-4 py-2 text-sm font-extrabold transition ${type === t ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-white text-muted-foreground hover:bg-secondary"}`}>{t === "All" ? "All reports" : t + " items"}</button>)}</div>
-            <label className="flex items-center gap-3 text-sm font-bold text-muted-foreground">Category<select aria-label="Filter by category" value={cat} onChange={(e) => setCat(e.target.value)} className="min-h-10 rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10"><option>All</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
+          <div className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-ring/10"><Search size={19} className="shrink-0 text-muted-foreground" /><input id="item-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Try “wallet”, “library”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus:ring-0" />{!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-white px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}{q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}</div>
+          <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-[1.2fr_1fr_1fr] md:items-end">
+            <div>
+              <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Item status</span>
+              <div className="flex flex-wrap items-center gap-2">{(["All", "Lost", "Found"] as const).map((t) => <button type="button" key={t} onClick={() => setType(t)} aria-pressed={type === t} className={`rounded-xl border px-3 py-2 text-sm font-extrabold transition ${type === t ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-white text-muted-foreground hover:bg-secondary"}`}>{t === "All" ? "All reports" : t + " items"}</button>)}</div>
+            </div>
+            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Category
+              <select aria-label="Filter by category" value={cat} onChange={(e) => setCat(e.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10"><option value="All">All categories</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
+            </label>
+            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><span className="inline-flex items-center gap-2"><ArrowUpDown size={14} /> Sort by</span>
+              <select aria-label="Sort reports" value={sortBy} onChange={(e) => setSortBy(e.target.value as "newest" | "oldest" | "name")} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10"><option value="newest">Newest item date</option><option value="oldest">Oldest item date</option><option value="name">Name A–Z</option></select>
+            </label>
           </div>
         </div>
 
         {error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><button type="button" onClick={load} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-extrabold transition hover:bg-destructive/10"><RefreshCw size={15} /> Try again</button></div>}
 
-        <div className="mt-8 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2><p className="mt-1 text-sm text-muted-foreground">{loading ? "Loading the latest reports…" : `Showing ${shown.length} of ${items?.length ?? 0} reports`}</p></div>{items && <p className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-secondary-foreground"><span className="size-2 rounded-full bg-emerald-500" /> Board loaded</p>}</div>
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2><p className="mt-1 text-sm text-muted-foreground">{loading ? "Loading the latest reports…" : `Showing ${shown.length} of ${items?.length ?? 0} reports`}</p></div><div className="flex items-center gap-2">{(q || type !== "All" || cat !== "All") && <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); }} className="rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>}{items && <p className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-secondary-foreground"><span className="size-2 rounded-full bg-emerald-500" /> Board loaded</p>}</div></div>
 
         {loading && <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="animate-pulse rounded-2xl border border-border bg-white p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
 
