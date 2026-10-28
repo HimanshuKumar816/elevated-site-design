@@ -250,7 +250,16 @@ function AuthPage() {
     try {
       const { data, error: verifyError } = await supabase.auth.verifyOtp({ phone: phoneForOtp, token, type: "sms" });
       if (verifyError || !data.session) {
-        setError("We couldn't verify that code. Check the digits or request a new code. For sign-up, your UID must also be unused.");
+        const status = (verifyError as { status?: number } | null)?.status ?? 0;
+        const message = verifyError?.message ?? "";
+
+        if (/expired|invalid.*(otp|token|code)|otp.*invalid|token.*invalid/i.test(message)) {
+          setError("That code is incorrect or expired. Use the most recent six-digit code, or request a new one.");
+        } else if (status >= 500 || !verifyError) {
+          setError("CampusFind couldn't finish verification because of a server error. This doesn't necessarily mean your code is wrong. Please request a fresh code and try again.");
+        } else {
+          setError("We couldn't verify that code. Check that you entered the latest six-digit code, or request a new one.");
+        }
         return;
       }
 
