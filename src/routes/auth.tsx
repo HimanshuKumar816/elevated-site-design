@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
+import { signInWithUid } from "@/lib/auth.functions";
 import { normalizeUid } from "@/lib/uid";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 import { GENERIC_SIGNIN_ERROR, NO_ADMIN_ACCESS, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, isAdminProfile, validateNewPassword, validateSignup } from "@/lib/auth-validation";
@@ -150,6 +151,51 @@ function AuthPage() {
     setError("");
     setNotice("");
 
+    if (mode === "admin") {
+      const adminUid = normalizeUid(uid);
+      if (!/^[A-Z0-9]{5,20}$/.test(adminUid)) {
+        setError("Enter a valid administrator UID.");
+        return;
+      }
+      if (!password) {
+        setError("Enter your password.");
+        return;
+      }
+      setBusy(true);
+      try {
+        // Existing admin account was created with UID/password before phone auth.
+        // Resolve the UID server-side and authenticate through Supabase; never look up email on the client.
+        const result = await signInWithUid({ data: { uid: adminUid, password } });
+        if (!result.ok) {
+          setError(result.error || GENERIC_SIGNIN_ERROR);
+          return;
+        }
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+        });
+        if (sessionError) throw sessionError;
+
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        const { data: profile, error: profileError } = userData.user
+          ? await supabase.from("profiles").select("role").eq("id", userData.user.id).maybeSingle()
+          : { data: null, error: null };
+
+        if (userError || profileError || !isAdminProfile(profile)) {
+          await supabase.auth.signOut();
+          setPassword("");
+          setError(NO_ADMIN_ACCESS);
+          return;
+        }
+        navigate({ to: "/admin", replace: true });
+      } catch {
+        setError("Administrator sign-in is temporarily unavailable. Please try again.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     if (mode === "up") {
       const result = validateSignup({ fullName, uid, phone: phoneInput, password, confirmPassword });
       if (!result.ok) {
@@ -168,7 +214,7 @@ function AuthPage() {
       return;
     }
 
-    if (mode === "in" || mode === "admin") {
+    if (mode === "in") {
       if (!password) {
         setError("Enter your password.");
         return;
@@ -176,20 +222,6 @@ function AuthPage() {
       setBusy(true);
       try {
         if (!(await passwordSignIn(phone))) return;
-        if (mode === "admin") {
-          const { data: userData } = await supabase.auth.getUser();
-          const { data: profile, error: profileError } = userData.user
-            ? await supabase.from("profiles").select("role").eq("id", userData.user.id).maybeSingle()
-            : { data: null, error: null };
-          if (profileError || !isAdminProfile(profile)) {
-            await supabase.auth.signOut();
-            setPassword("");
-            setError(NO_ADMIN_ACCESS);
-            return;
-          }
-          navigate({ to: "/admin", replace: true });
-          return;
-        }
         navigate({ to: redirect, replace: true });
       } catch {
         setError("Sign-in is temporarily unavailable. Please try again later.");
@@ -331,7 +363,7 @@ function AuthPage() {
     code: ["Sign in with a code", "We'll text a one-time code to your registered number."],
     recover: ["Forgot / set password", "Verify your registered number by SMS, then choose a new password."],
     up: ["Create account", "Add your student details and a password, then verify your mobile number."],
-    admin: ["Administrator sign in", "Restricted area. Access is checked against your account role."],
+    admin: ["Administrator sign in", "Use your administrator UID and existing account password. Access is checked against your account role."],
   };
 
   return (
@@ -446,23 +478,28 @@ function AuthPage() {
 
               <form onSubmit={submitDetails} className="mt-6" noValidate={false}>
                 {mode === "up" && (
-                  <>
-                    <label className="mb-4 block text-sm font-extrabold text-foreground">
-                      Student name
-                      <input required name="full_name" maxLength={80} autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Your full name" className={field} />
-                    </label>
-                    <label className="mb-4 block text-sm font-extrabold text-foreground">
-                      Student UID
-                      <input required name="uid" maxLength={20} autoComplete="off" autoCapitalize="characters" value={uid} onChange={(event) => setUid(event.target.value.toUpperCase())} placeholder="e.g. 26BCS11930" className={`${field} uppercase`} />
-                    </label>
-                  </>
+                  <label className="mb-4 block text-sm font-extrabold text-foreground">
+                    Student name
+                    <input required name="full_name" maxLength={80} autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Your full name" className={field} />
+                  </label>
                 )}
 
-                <label className="block text-sm font-extrabold text-foreground">
-                  {mode === "admin" ? "Phone number" : "Student phone number"}
-                  <input required name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={24} value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="98765 43210" className={field} />
-                </label>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">Indian mobile numbers can be entered as 10 digits. For another country, include the +country code.</p>
+                {(mode === "up" || mode === "admin") && (
+                  <label className="mb-4 block text-sm font-extrabold text-foreground">
+                    {mode === "admin" ? "Administrator UID" : "Student UID"}
+                    <input required name="uid" maxLength={20} autoComplete="username" autoCapitalize="characters" value={uid} onChange={(event) => setUid(event.target.value.toUpperCase())} placeholder="e.g. 26BCS11930" className={`${field} uppercase`} />
+                  </label>
+                )}
+
+                {mode !== "admin" && (
+                  <>
+                    <label className="block text-sm font-extrabold text-foreground">
+                      Student phone number
+                      <input required name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={24} value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="98765 43210" className={field} />
+                    </label>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">Indian mobile numbers can be entered as 10 digits. For another country, include the +country code.</p>
+                  </>
+                )}
 
                 {(mode === "in" || mode === "admin") && passwordFields("current-password", false)}
                 {mode === "up" && passwordFields("new-password", true)}
