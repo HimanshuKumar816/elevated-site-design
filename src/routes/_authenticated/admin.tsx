@@ -1,7 +1,7 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Search } from "lucide-react";
-import { Page } from "@/components/site";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
@@ -44,10 +44,22 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type Row = AdminReport & { image_url?: string | null };
 
 function AdminPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<ReportFilter>({ query: "", type: "All", category: "All" });
+
+  async function signOut() {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Clear this browser cache even if the remote logout request fails.
+    }
+    queryClient.clear();
+    navigate({ to: "/admin-login", replace: true });
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -136,7 +148,30 @@ function AdminPage() {
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
 
   return (
-    <Page>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
+          <Link to="/admin" className="flex min-w-0 items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink text-white shadow-sm">
+              <ShieldCheck size={22} />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-display text-lg font-extrabold leading-tight tracking-tight text-foreground">CampusFind</span>
+              <span className="mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">Administrator console</span>
+            </span>
+          </Link>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <span className="hidden rounded-full bg-secondary px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-secondary-foreground sm:inline-flex">Restricted access</span>
+            <Link to="/" className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:text-sm">
+              Student site <ArrowUpRight size={15} />
+            </Link>
+            <button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-2.5 text-xs font-extrabold text-foreground transition hover:bg-secondary sm:px-4 sm:text-sm">
+              <LogOut size={15} /> Sign out
+            </button>
+          </div>
+        </div>
+      </header>
+      <main id="main-content" className="min-w-0">
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -235,6 +270,7 @@ function AdminPage() {
           </div>
         )}
       </section>
-    </Page>
+      </main>
+    </div>
   );
 }
