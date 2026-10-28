@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import {
   ArrowLeft,
@@ -12,10 +12,9 @@ import {
 } from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
-import { checkUidAvailability, signInWithUid } from "@/lib/auth.functions";
-import { normalizeUid } from "@/lib/uid";
+import { checkUidAvailability } from "@/lib/auth.functions";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
-import { GENERIC_SIGNIN_ERROR, NO_ADMIN_ACCESS, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, isAdminProfile, validateNewPassword, validateSignup } from "@/lib/auth-validation";
+import { GENERIC_SIGNIN_ERROR, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword, validateSignup } from "@/lib/auth-validation";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -47,7 +46,7 @@ export const Route = createFileRoute("/auth")({
 const field =
   "mt-2 w-full rounded-xl border border-input bg-background px-4 py-3.5 text-sm transition placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15";
 
-type AuthMode = "in" | "code" | "recover" | "up" | "admin";
+type AuthMode = "in" | "code" | "recover" | "up";
 type AuthStep = "details" | "otp" | "password";
 type SignupDetails = { uid: string; fullName: string };
 
@@ -151,51 +150,6 @@ function AuthPage() {
     if (busy) return;
     setError("");
     setNotice("");
-
-    if (mode === "admin") {
-      const adminUid = normalizeUid(uid);
-      if (!/^[A-Z0-9]{5,20}$/.test(adminUid)) {
-        setError("Enter a valid administrator UID.");
-        return;
-      }
-      if (!password) {
-        setError("Enter your password.");
-        return;
-      }
-      setBusy(true);
-      try {
-        // Existing admin account was created with UID/password before phone auth.
-        // Resolve the UID server-side and authenticate through Supabase; never look up email on the client.
-        const result = await signInWithUid({ data: { uid: adminUid, password } });
-        if (!result.ok) {
-          setError(result.error || GENERIC_SIGNIN_ERROR);
-          return;
-        }
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: result.access_token,
-          refresh_token: result.refresh_token,
-        });
-        if (sessionError) throw sessionError;
-
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        const { data: profile, error: profileError } = userData.user
-          ? await supabase.from("profiles").select("role").eq("id", userData.user.id).maybeSingle()
-          : { data: null, error: null };
-
-        if (userError || profileError || !isAdminProfile(profile)) {
-          await supabase.auth.signOut();
-          setPassword("");
-          setError(NO_ADMIN_ACCESS);
-          return;
-        }
-        navigate({ to: "/admin", replace: true });
-      } catch {
-        setError("Administrator sign-in is temporarily unavailable. Please try again.");
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
 
     if (mode === "up") {
       const result = validateSignup({ fullName, uid, phone: phoneInput, password, confirmPassword });
@@ -391,7 +345,6 @@ function AuthPage() {
     code: ["Sign in with a code", "We'll text a one-time code to your registered number."],
     recover: ["Forgot / set password", "Verify your registered number by SMS, then choose a new password."],
     up: ["Create account", "Add your student details and a password, then verify your mobile number."],
-    admin: ["Administrator sign in", "Use your administrator UID and existing account password. Access is checked against your account role."],
   };
 
   return (
@@ -488,13 +441,13 @@ function AuthPage() {
           ) : (
             <>
               <div>
-                <p className="kicker text-emerald-800">{mode === "admin" ? "Administrator" : "Student access"}</p>
+                <p className="kicker text-emerald-800">Student access</p>
                 <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{titles[mode][0]}</h2>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{titles[mode][1]}</p>
               </div>
 
-              <div className="mt-7 grid grid-cols-3 rounded-xl bg-secondary p-1" role="group" aria-label="Choose account type">
-                {([["in", "Sign in"], ["up", "Create account"], ["admin", "Administrator"]] as const).map(([nextMode, label]) => {
+              <div className="mt-7 grid grid-cols-2 rounded-xl bg-secondary p-1" role="group" aria-label="Choose account type">
+                {([["in", "Sign in"], ["up", "Create account"]] as const).map(([nextMode, label]) => {
                   const active = mode === nextMode || (nextMode === "in" && (mode === "code" || mode === "recover"));
                   return (
                     <button type="button" key={nextMode} disabled={busy} onClick={() => switchMode(nextMode)} aria-pressed={active} className={`rounded-lg px-2 py-2.5 text-xs font-extrabold transition sm:text-sm ${active ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
@@ -512,24 +465,22 @@ function AuthPage() {
                   </label>
                 )}
 
-                {(mode === "up" || mode === "admin") && (
+                {mode === "up" && (
                   <label className="mb-4 block text-sm font-extrabold text-foreground">
-                    {mode === "admin" ? "Administrator UID" : "Student UID"}
+                    Student UID
                     <input required name="uid" maxLength={20} autoComplete="username" autoCapitalize="characters" value={uid} onChange={(event) => setUid(event.target.value.toUpperCase())} placeholder="e.g. 26BCS11930" className={`${field} uppercase`} />
                   </label>
                 )}
 
-                {mode !== "admin" && (
-                  <>
+                <>
                     <label className="block text-sm font-extrabold text-foreground">
                       Student phone number
                       <input required name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={24} value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="98765 43210" className={field} />
                     </label>
                     <p className="mt-2 text-xs leading-5 text-muted-foreground">Indian mobile numbers can be entered as 10 digits. For another country, include the +country code.</p>
-                  </>
-                )}
+                </>
 
-                {(mode === "in" || mode === "admin") && passwordFields("current-password", false)}
+                {mode === "in" && passwordFields("current-password", false)}
                 {mode === "up" && passwordFields("new-password", true)}
 
                 {messages}
@@ -538,9 +489,7 @@ function AuthPage() {
                     ? "Please wait…"
                     : mode === "in"
                       ? "Sign in"
-                      : mode === "admin"
-                        ? "Sign in as administrator"
-                        : mode === "up"
+                      : mode === "up"
                           ? "Send verification code"
                           : mode === "recover"
                             ? "Send reset code"
@@ -565,10 +514,14 @@ function AuthPage() {
               <div className="mt-6 flex items-start gap-3 rounded-xl bg-background p-4">
                 <KeyRound size={17} className="mt-0.5 shrink-0 text-emerald-800" />
                 <p className="text-xs leading-5 text-muted-foreground">
-                  {mode === "admin"
-                    ? "Administrator access is granted only by CampusFind maintainers. Accounts without it are signed out."
-                    : "Existing accounts without a password can use “Forgot / set password” to add one. Never share verification codes."}
+                  Existing accounts without a password can use “Forgot / set password” to add one. Never share verification codes.
                 </p>
+              </div>
+              <div className="mt-5 border-t border-border pt-5">
+                <p className="text-xs leading-5 text-muted-foreground">CampusFind administrator?</p>
+                <Link to="/admin-login" className="mt-2 inline-flex items-center gap-1.5 text-sm font-extrabold text-primary transition hover:underline">
+                  Open administrator portal
+                </Link>
               </div>
             </>
           )}
