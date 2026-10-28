@@ -4,69 +4,71 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowUpRight, LogOut, MapPin, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-function useProfile() {
-  const [uid, setUid] = useState<string | null>(null);
+type HeaderProfile = { uid: string; role: string };
+
+function useProfile(): HeaderProfile | null {
+  const [profile, setProfile] = useState<HeaderProfile | null>(null);
+
   useEffect(() => {
     let active = true;
-    let unsubscribe: (() => void) | undefined;
 
-    async function load() {
+    async function loadProfile(userId: string) {
       try {
-        const { data } = await supabase.auth.getUser();
-        if (!active) return;
-        if (!data.user) {
-          setUid(null);
-          return;
-        }
-        const { data: profile } = await supabase
+        const { data, error } = await supabase
           .from("profiles")
-          .select("uid")
-          .eq("id", data.user.id)
+          .select("uid,role")
+          .eq("id", userId)
           .maybeSingle();
-        if (active) setUid(profile?.uid ?? "Student");
+        if (error) throw error;
+        if (active) {
+          setProfile({
+            uid: data?.uid ?? "Student",
+            role: data?.role ?? "student",
+          });
+        }
       } catch {
-        // A missing or temporarily unavailable backend must not crash the public page.
-        if (active) setUid(null);
+        // Fail closed for admin navigation if the role cannot be verified.
+        if (active) setProfile({ uid: "Student", role: "student" });
       }
     }
 
-    try {
-      void load();
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === "SIGNED_OUT") {
-          setUid(null);
+    async function loadCurrentUser() {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error || !data.user) {
+          if (active) setProfile(null);
           return;
         }
-        if (event === "SIGNED_IN" && session?.user) {
-          const userId = session.user.id;
-          // Do not call another Supabase auth method inside this callback:
-          // auth callbacks must return quickly to avoid client-side deadlocks.
-          void Promise.resolve()
-            .then(() => supabase.from("profiles").select("uid").eq("id", userId).maybeSingle())
-            .then(({ data: profile }) => {
-              if (active) setUid(profile?.uid ?? "Student");
-            })
-            .catch(() => {
-              if (active) setUid("Student");
-            });
-        }
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-    } catch {
-      // Keep the landing page usable even if auth configuration is unavailable.
-      setUid(null);
+        await loadProfile(data.user.id);
+      } catch {
+        if (active) setProfile(null);
+      }
     }
+
+    void loadCurrentUser();
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setProfile(null);
+      } else if (event === "SIGNED_IN" && session?.user) {
+        // Query the profile after this callback returns; don't call auth.getUser here.
+        const userId = session.user.id;
+        void Promise.resolve().then(() => loadProfile(userId));
+      }
+    });
 
     return () => {
       active = false;
-      unsubscribe?.();
+      sub.subscription.unsubscribe();
     };
   }, []);
-  return uid;
+
+  return profile;
 }
 
 export function Header() {
-  const uid = useProfile();
+  const profile = useProfile();
+  const uid = profile?.uid ?? null;
+  const isAdmin = profile?.role === "admin";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -102,6 +104,7 @@ export function Header() {
               <span className="mx-2 h-6 w-px bg-border" />
               <span className="mr-2 max-w-28 truncate rounded-lg bg-secondary px-3 py-2 text-xs font-extrabold text-secondary-foreground" title={uid}>{uid}</span>
               <Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">Report an item <ArrowUpRight size={16} /></Link>
+              {isAdmin && <Link to="/admin" className={navLink}>Admin dashboard</Link>}
               <button type="button" onClick={signOut} className={navLink}>Sign out</button>
             </>
           ) : (
@@ -121,6 +124,7 @@ export function Header() {
             {uid ? (
               <>
                 <Link to="/report" onClick={() => setMenuOpen(false)} className={mobileLink}>Report an item <ArrowUpRight size={16} /></Link>
+                {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className={mobileLink}>Admin dashboard <ArrowUpRight size={16} /></Link>
                 <div className="my-1 flex items-center justify-between rounded-xl bg-secondary px-4 py-3 text-xs font-extrabold text-secondary-foreground"><span>Signed in as</span><span>{uid}</span></div>
                 <button type="button" onClick={signOut} className="flex items-center gap-2 rounded-xl px-4 py-3 text-left text-sm font-bold text-destructive hover:bg-destructive/5"><LogOut size={16} /> Sign out</button>
               </>
