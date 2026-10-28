@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
-import { checkUidAvailability } from "@/lib/auth.functions";
 import { normalizeUid } from "@/lib/uid";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 import { GENERIC_SIGNIN_ERROR, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword, validateSignup } from "@/lib/auth-validation";
@@ -161,21 +160,13 @@ function AuthPage() {
 
       setBusy(true);
       try {
-        const availability = await checkUidAvailability({ data: { uid: result.value.uid } });
-        if (!availability.ok) {
-          setError(availability.error);
-          return;
-        }
-        if (!availability.available) {
-          setError("That student UID is already registered. Check your UID or sign in to the existing account.");
-          return;
-        }
-
+        // Avoid a public UID-existence pre-check. The database unique constraint
+        // and signup trigger are authoritative; this prevents account enumeration.
         const details = { uid: result.value.uid, fullName: result.value.fullName };
         setSignupDetails(details);
         await requestOtp(result.value.phone, mode, details, true);
       } catch {
-        setError("We couldn't check that student UID right now. Please try again.");
+        setError("We couldn't start account creation. Please try again.");
       } finally {
         setBusy(false);
       }
@@ -226,7 +217,11 @@ function AuthPage() {
         const status = (verifyError as { status?: number } | null)?.status ?? 0;
         const message = verifyError?.message ?? "";
 
-        if (/expired|invalid.*(otp|token|code)|otp.*invalid|token.*invalid/i.test(message)) {
+        if (mode === "up" && /already registered|duplicate key|unique constraint|database error saving new user/i.test(message)) {
+          setStep("details");
+          setPhoneInput(phoneForOtp);
+          setError("We couldn't create the account with those details. Check the student UID and phone number, or sign in if you already have an account.");
+        } else if (/expired|invalid.*(otp|token|code)|otp.*invalid|token.*invalid/i.test(message)) {
           setError("That code is incorrect or expired. Use the most recent six-digit code, or request a new one.");
         } else if (status >= 500 || !verifyError) {
           setError("CampusFind couldn't finish verification because of a server error. This doesn't necessarily mean your code is wrong. Please request a fresh code and try again.");

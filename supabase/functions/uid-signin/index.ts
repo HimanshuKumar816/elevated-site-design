@@ -39,21 +39,16 @@ Deno.serve(async (req: Request) => {
 
   let uid = "";
   let password = "";
-  let action = "sign_in";
   try {
     const body = await req.json();
     uid = String(body?.uid ?? "").trim().toUpperCase();
     password = String(body?.password ?? "");
-    action = body?.action === "check_uid" ? "check_uid" : "sign_in";
   } catch {
     return json({ ok: false, error: "Invalid request." }, 400);
   }
 
   if (!/^[A-Z0-9]{5,20}$/.test(uid)) {
-    return json({
-      ok: false,
-      error: action === "check_uid" ? "Enter a valid student UID." : "Incorrect UID or password.",
-    }, 400);
+    return json({ ok: false, error: "Incorrect UID or password." }, 400);
   }
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -67,16 +62,8 @@ Deno.serve(async (req: Request) => {
     console.error("[UID auth] Profile lookup failed", { code: profileError.code });
     return json({
       ok: false,
-      error: action === "check_uid"
-        ? "We couldn't check that UID right now. Please try again."
-        : "Login is temporarily unavailable. Please try again later.",
+      error: "Login is temporarily unavailable. Please try again later.",
     }, 500);
-  }
-
-  if (action === "check_uid") {
-    // This preflight only improves the signup experience. The profiles.uid unique
-    // constraint and database trigger remain the authoritative duplicate guard.
-    return json({ ok: true, available: !profile });
   }
 
   if (password.length === 0 || password.length > 128) {
