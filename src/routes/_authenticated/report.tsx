@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
+import { ArrowRight, BellRing, Camera, CheckCircle2, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
 import { CATEGORIES, type Item } from "@/lib/items";
 import { findItemMatches } from "@/lib/match-score";
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/report")({
   component: Report,
 });
 
-const field = "mt-2 w-full rounded-xl border border-input bg-card px-4 py-3 outline-none focus:ring-2 focus:ring-ring";
+const field = "mt-2 w-full rounded-xl border border-input bg-background px-4 py-3.5 text-sm transition placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-60";
 
 function Report() {
   const [type, setType] = useState<"Lost" | "Found">("Lost");
@@ -208,79 +209,46 @@ function Report() {
 
   return (
     <Page>
-      <section className="mx-auto grid max-w-6xl gap-16 px-6 py-20 md:grid-cols-[1fr_1.3fr]">
-        <div>
-          <p className="kicker text-muted-foreground">Takes under a minute</p>
-          <h1 className="mt-4 text-6xl leading-tight">Report an item</h1>
-          <p className="mt-6 text-muted-foreground">Keep one identifying detail to yourself — it's how we'll verify the real owner before any handoff.</p>
-        </div>
-        {done ? (
-          <div className="rounded-3xl bg-gradient-ink p-10 text-ink-foreground">
-            <h2 className="text-4xl">Report received.</h2>
-            <p className="mt-4 opacity-80">Your report is on the board. CampusFind checks for similar reports and creates alerts when a likely match is found.</p>
-            {matches.length > 0 && <div className="mt-6 rounded-2xl bg-background/10 p-5"><h3 className="text-xl font-semibold">Possible matches found</h3><ul className="mt-3 space-y-3">{matches.map(({ item, score }) => <li key={item.id} className="rounded-xl border border-ink-foreground/20 p-3"><p className="font-medium">{item.name}</p><p className="mt-1 text-sm opacity-80">{item.type} · {item.category} · {item.location}</p><p className="mt-1 text-xs opacity-70">Similarity score: {score}% · Verify details before claiming</p></li>)}</ul></div>}
-            {matches.length === 0 && <p className="mt-3 text-sm opacity-75">No strong match yet. If a similar report is added later, CampusFind can create a notification.</p>}
-            <p className="mt-3 text-xs opacity-70">SMS alerts require the university project’s SMS gateway to be configured. In-app match alerts are recorded in CampusFind.</p>
-            <div className="mt-8 flex gap-3">
-              <Link to="/browse" className="rounded-full bg-accent px-6 py-3 font-medium text-accent-foreground">View the board</Link>
-              <button onClick={() => setDone(false)} className="rounded-full border border-ink-foreground/30 px-6 py-3">Report another</button>
+      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-8 sm:px-8 sm:py-12 lg:grid-cols-[0.78fr_1.22fr] lg:gap-12 lg:py-14">
+        <aside className="relative overflow-hidden rounded-[2rem] bg-gradient-ink p-7 text-ink-foreground sm:p-9 lg:sticky lg:top-28 lg:h-fit">
+          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-emerald-300/15 blur-3xl" />
+          <div className="relative">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-xs font-extrabold text-white/85"><Sparkles size={14} className="text-emerald-200" /> Takes about a minute</span>
+            <h1 className="mt-6 text-4xl font-extrabold leading-tight text-white sm:text-5xl">Help your item find its way back.</h1>
+            <p className="mt-5 leading-7 text-white/70">A few clear details help others recognise a report. Share enough to search—but keep one identifying detail private for verification.</p>
+            <div className="mt-8 space-y-4">
+              <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-300/15 text-emerald-200"><MapPin size={19} /></span><div><p className="text-sm font-extrabold text-white">Add a useful location</p><p className="mt-1 text-xs leading-5 text-white/60">Use a building, gate, lab, or another clear landmark.</p></div></div>
+              <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-300/15 text-emerald-200"><ShieldCheck size={19} /></span><div><p className="text-sm font-extrabold text-white">Protect proof of ownership</p><p className="mt-1 text-xs leading-5 text-white/60">Don't publish passwords, serials, or the only detail an owner can verify.</p></div></div>
             </div>
+            <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5 text-xs font-bold text-white/60"><CheckCircle2 size={16} className="text-emerald-200" /> Your report helps someone start looking.</div>
+          </div>
+        </aside>
+        {done ? (
+          <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10">
+            <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
+            <p className="mt-6 kicker text-emerald-800">Submission complete</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Report received.</h2>
+            <p className="mt-4 max-w-xl leading-7 text-muted-foreground">Your report has been added to the board. CampusFind checks similar reports and may create alerts when a likely match is found.</p>
+            {matches.length > 0 && <div className="mt-7 rounded-2xl border border-emerald-900/10 bg-emerald-50/60 p-5"><h3 className="text-lg font-extrabold">Possible matches</h3><ul className="mt-4 grid gap-3">{matches.map(({ item, score }) => <li key={item.id} className="rounded-xl border border-border bg-white p-4"><p className="font-extrabold text-foreground">{item.name}</p><p className="mt-1 text-sm text-muted-foreground">{item.type} · {item.category} · {item.location}</p><p className="mt-2 text-xs font-bold text-emerald-800">Similarity score: {score}% · Verify details before claiming</p></li>)}</ul></div>}
+            {matches.length === 0 && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm leading-6 text-muted-foreground">No strong match yet. If a similar report is added later, CampusFind can create a notification.</p>}
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">SMS alerts require the project's SMS gateway to be configured. In-app match alerts are recorded in CampusFind.</p>
+            <div className="mt-8 flex flex-wrap gap-3"><Link to="/browse" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground">View the board <ArrowRight size={16} /></Link><button type="button" onClick={() => setDone(false)} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button></div>
           </div>
         ) : (
-          <form onSubmit={submit} className="rounded-3xl border border-border bg-card p-8 shadow-soft">
-            <div className="grid grid-cols-2 gap-2 rounded-full bg-secondary p-1">
-              {(["Lost", "Found"] as const).map((t) => (
-                <button type="button" key={t} onClick={() => setType(t)} className={`rounded-full py-2 text-sm font-medium ${type === t ? "bg-primary text-primary-foreground" : ""}`}>I {t.toLowerCase()} something</button>
-              ))}
+          <form onSubmit={submit} className="rounded-[2rem] border border-border bg-white p-5 shadow-xl shadow-primary/5 sm:p-8 lg:p-10">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-6"><div><p className="kicker text-emerald-800">New report</p><h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">Tell us what happened</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Fields marked with * are required.</p></div><span className="rounded-xl bg-secondary px-3 py-2 text-xs font-extrabold text-secondary-foreground">Step 1 of 1</span></div>
+            <fieldset className="mt-6"><legend className="mb-3 text-sm font-extrabold text-foreground">Are you reporting something lost or found?</legend><div className="grid grid-cols-2 gap-3">{(["Lost", "Found"] as const).map((t) => <button type="button" key={t} aria-pressed={type === t} onClick={() => setType(t)} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-extrabold transition ${type === t ? "border-primary bg-primary text-white shadow-md shadow-primary/10" : "border-border bg-background text-muted-foreground hover:bg-secondary"}`}>{t === "Lost" ? "I lost an item" : "I found an item"}{type === t && <CheckCircle2 size={16} />}</button>)}</div></fieldset>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Item name <span className="text-emerald-800">*</span><input required name="name" maxLength={120} placeholder="e.g. Black leather wallet" className={field} /></label>
+              <label className="block text-sm font-extrabold text-foreground">Category <span className="text-emerald-800">*</span><select required name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
+              <label className="block text-sm font-extrabold text-foreground">Date <span className="text-emerald-800">*</span><input required type="date" name="date" className={field} /></label>
+              <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Where was it lost or found? <span className="text-emerald-800">*</span><span className="relative block"><MapPin size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" /><input required name="location" maxLength={160} placeholder="e.g. Central Library, Block 4" className={`${field} pl-10`} /></span></label>
+              <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Public description <span className="font-semibold text-muted-foreground">(optional)</span><textarea name="note" rows={4} maxLength={500} placeholder="Color, brand, general appearance. Keep one proof-of-ownership detail private." className={`${field} resize-y leading-6`} /><span className="mt-1 block text-xs font-semibold text-muted-foreground">Up to 500 characters. Don't include sensitive or unique identifying information.</span></label>
             </div>
-            <label className="mt-6 block text-sm font-medium">Item<input required name="name" placeholder="e.g. Black leather wallet" className={field} /></label>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-medium">Category<select name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
-              <label className="block text-sm font-medium">Date<input required type="date" name="date" className={field} /></label>
-            </div>
-            <label className="mt-4 block text-sm font-medium">Location<input required name="location" placeholder="e.g. Central Library" className={field} /></label>
-            <div className="mt-4 rounded-2xl border border-border p-4">
-              {preferencesLoading && <p className="mb-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}
-              {!preferencesLoading && !preferencesAvailable && <p className="mb-3 text-xs text-muted-foreground">SMS settings are temporarily unavailable. You can still submit this report; saved SMS preferences have not been changed.</p>}
-              <label className="block text-sm font-medium">Mobile number for match alerts (optional)
-                <input
-                  name="phone_number"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={phoneNumber}
-                  onChange={(e) => {
-                    setPhoneNumber(e.target.value);
-                    setPreferencesDirty(true);
-                  }}
-                  disabled={preferencesLoading || !preferencesAvailable}
-                  placeholder="+919876543210"
-                  className={field}
-                />
-                <span className="mt-1 block text-xs text-muted-foreground">Use country code. Your number is stored privately in your student profile, not on the public report.</span>
-              </label>
-              <label className="mt-3 flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="sms_notifications_enabled"
-                  checked={smsEnabled}
-                  onChange={(e) => {
-                    const enabled = e.target.checked;
-                    setSmsEnabled(enabled);
-                    setPreferencesDirty(true);
-                    if (!enabled) setPhoneNumber("");
-                  }}
-                  disabled={preferencesLoading || !preferencesAvailable}
-                  className="mt-1"
-                />
-                <span>I consent to SMS alerts about possible item matches.</span>
-              </label>
-            </div>
-            <label className="mt-4 block text-sm font-medium">Item photo (optional)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className={field} /><span className="mt-1 block text-xs text-muted-foreground">JPG, PNG, or WebP · up to 5 MB</span></label>
-            {imagePreview && <div className="mt-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-xl border border-border object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 text-sm text-muted-foreground underline">Remove photo</button></div>}
-            <label className="mt-4 block text-sm font-medium">Public description<textarea name="note" rows={3} maxLength={500} placeholder="Avoid details that prove ownership" className={field} /></label>
-            {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-            <button disabled={busy} className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Saving report…" : "Submit report"}</button>
+            <div className="mt-6 rounded-2xl border border-dashed border-border bg-background p-4 sm:p-5"><label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">JPG, PNG, or WebP · 5 MB max</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>{imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div>}</div>
+            <div className="mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><BellRing size={18} /></span><div><p className="text-sm font-extrabold text-foreground">SMS match alerts <span className="font-semibold text-muted-foreground">(optional)</span></p><p className="mt-1 text-xs leading-5 text-muted-foreground">Your number is stored privately and only used for alerts when you explicitly consent.</p></div></div>{preferencesLoading && <p className="mt-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}{!preferencesLoading && !preferencesAvailable && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">SMS settings are temporarily unavailable. You can still submit this report; saved preferences haven't been changed.</p>}<label className="mt-4 block text-sm font-extrabold text-foreground">Mobile number<input name="phone_number" type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => { setPhoneNumber(e.target.value); setPreferencesDirty(true); }} disabled={preferencesLoading || !preferencesAvailable} placeholder="+919876543210" className={field} /></label><label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white p-3 text-sm"><input type="checkbox" name="sms_notifications_enabled" checked={smsEnabled} onChange={(e) => { const enabled = e.target.checked; setSmsEnabled(enabled); setPreferencesDirty(true); if (!enabled) setPhoneNumber(""); }} disabled={preferencesLoading || !preferencesAvailable} className="mt-1 size-4 accent-emerald-700" /><span><span className="block font-extrabold text-foreground">I consent to SMS alerts</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">You can opt out by unchecking this at any time.</span></span></label></div>
+            {error && <p role="alert" className="mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold leading-6 text-destructive">{error}</p>}
+            <button disabled={busy} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Saving your report…" : "Submit report"}{!busy && <ArrowRight size={17} />}</button>
+            <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">By submitting, you agree to share these details with other CampusFind students.</p>
           </form>
         )}
       </section>
