@@ -124,7 +124,7 @@ export function Header() {
             {uid ? (
               <>
                 <Link to="/report" onClick={() => setMenuOpen(false)} className={mobileLink}>Report an item <ArrowUpRight size={16} /></Link>
-                {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className={mobileLink}>Admin dashboard <ArrowUpRight size={16} /></Link>
+                {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className={mobileLink}>Admin dashboard <ArrowUpRight size={16} /></Link>}
                 <div className="my-1 flex items-center justify-between rounded-xl bg-secondary px-4 py-3 text-xs font-extrabold text-secondary-foreground"><span>Signed in as</span><span>{uid}</span></div>
                 <button type="button" onClick={signOut} className="flex items-center gap-2 rounded-xl px-4 py-3 text-left text-sm font-bold text-destructive hover:bg-destructive/5"><LogOut size={16} /> Sign out</button>
               </>
