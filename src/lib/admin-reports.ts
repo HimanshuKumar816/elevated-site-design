@@ -15,7 +15,7 @@ export type AdminReport = {
 
 export type ReportFilter = { query: string; type: "All" | "Lost" | "Found"; category: string };
 
-export function filterReports(reports: AdminReport[], f: ReportFilter): AdminReport[] {
+export function filterReports<T extends AdminReport>(reports: T[], f: ReportFilter): T[] {
   const q = f.query.trim().toLowerCase();
   return reports.filter((r) => {
     if (f.type !== "All" && r.type !== f.type) return false;
