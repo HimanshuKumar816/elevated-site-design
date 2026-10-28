@@ -12,21 +12,23 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 24
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
+          node-version: 22
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
       - name: Lint
-        run: npm run lint
+        run: bun run lint
       - name: Unit tests
-        run: npm test
+        run: bun run test
       - name: TypeScript type check
-        run: npx tsc --noEmit
+        run: bunx tsc --noEmit
       - name: Production build
-        run: npm run build
+        run: bun run build
