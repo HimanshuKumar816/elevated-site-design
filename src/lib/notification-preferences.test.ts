@@ -18,6 +18,16 @@ describe("notification preferences", () => {
     expect(validateNotificationPreference("+919876543210", true)).toBeNull();
   });
 
+  it("normalizes a 10-digit Indian number before saving SMS preferences", () => {
+    expect(validateNotificationPreference("98765 43210", true)).toBeNull();
+    expect(buildNotificationPreferencePayload("user-1", "98765 43210", true, "2026-10-28T10:00:00.000Z")).toEqual({
+      user_id: "user-1",
+      phone_number: "+919876543210",
+      sms_notifications_enabled: true,
+      updated_at: "2026-10-28T10:00:00.000Z",
+    });
+  });
+
   it("does not save a number without explicit SMS consent", () => {
     expect(validateNotificationPreference("+919876543210", false)).toBe(
       "Check the SMS consent box to save your mobile number, or clear the number to continue.",
