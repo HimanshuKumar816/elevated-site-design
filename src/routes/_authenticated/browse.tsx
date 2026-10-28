@@ -37,10 +37,20 @@ function Browse() {
         .order("created_at", { ascending: false });
       if (queryError) throw queryError;
       const rows = (data ?? []) as Item[];
+      // Image storage is optional: one expired or inaccessible image URL must
+      // not make the entire lost-and-found board disappear.
       const withImages = await Promise.all(rows.map(async (item) => {
         if (!item.image_path) return item;
-        const { data: signed, error: signedUrlError } = await supabase.storage.from("item-images").createSignedUrl(item.image_path, 60 * 60);
-        return signedUrlError || !signed?.signedUrl ? item : { ...item, image_url: signed.signedUrl };
+        try {
+          const { data: signed, error: signedUrlError } = await supabase.storage
+            .from("item-images")
+            .createSignedUrl(item.image_path, 60 * 60);
+          return signedUrlError || !signed?.signedUrl
+            ? item
+            : { ...item, image_url: signed.signedUrl };
+        } catch {
+          return item;
+        }
       }));
       setItems(withImages);
     } catch {
@@ -56,8 +66,19 @@ function Browse() {
       const userId = data.user?.id ?? null;
       setMe(userId);
       if (!userId) return;
-      const { data: notificationRows } = await supabase.from("notifications").select("id,title,body,created_at,read_at").order("created_at", { ascending: false }).limit(10);
-      setAlerts((notificationRows ?? []) as typeof alerts);
+      try {
+        const { data: notificationRows, error: notificationError } = await supabase
+          .from("notifications")
+          .select("id,title,body,created_at,read_at")
+          .order("created_at", { ascending: false })
+          .limit(10);
+        if (!notificationError) setAlerts((notificationRows ?? []) as typeof alerts);
+      } catch {
+        // A notification failure should not prevent item browsing.
+      }
+    }).catch(() => {
+      // If auth lookup is temporarily unavailable, keep the public shell usable.
+      setMe(null);
     });
   }, []);
 
