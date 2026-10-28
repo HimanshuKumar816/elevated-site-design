@@ -1,95 +1,200 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, KeyRound, LockKeyhole, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  KeyRound,
+  LockKeyhole,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+} from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
-import { signInWithUid } from "@/lib/auth.functions";
 import { isValidUid, normalizeUid } from "@/lib/uid";
+import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => {
-    const r = s["redirect"];
-    return { redirect: typeof r === "string" && r.startsWith("/") && !r.startsWith("//") ? r : "/browse" };
+  validateSearch: (search: Record<string, unknown>) => {
+    const redirect = search["redirect"];
+    return {
+      redirect:
+        typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//")
+          ? redirect
+          : "/browse",
+    };
   },
   head: () => ({
     meta: [
       { title: "Sign in — CampusFind" },
-      { name: "description", content: "Sign in to CampusFind with your CU university ID and password." },
+      {
+        name: "description",
+        content: "Sign in to CampusFind securely with your mobile number and a one-time code.",
+      },
       { property: "og:title", content: "Sign in — CampusFind" },
-      { property: "og:description", content: "Sign in with your CU university ID." },
+      {
+        property: "og:description",
+        content: "Use phone verification to access your campus lost-and-found account.",
+      },
     ],
   }),
   component: AuthPage,
 });
 
-const field = "mt-2 w-full rounded-xl border border-input bg-background px-4 py-3.5 text-sm transition placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15";
+const field =
+  "mt-2 w-full rounded-xl border border-input bg-background px-4 py-3.5 text-sm transition placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15";
+
+type AuthMode = "in" | "up";
+type AuthStep = "details" | "otp";
+type SignupDetails = { uid: string; fullName: string };
+
+function sendErrorMessage(message: string): string {
+  if (/rate limit|too many requests|retry after/i.test(message)) {
+    return "Too many code requests. Please wait a little before trying again.";
+  }
+  return "We couldn't send a code to that number. Check the number and try again. If this continues, phone/SMS authentication may need to be enabled in Supabase.";
+}
 
 function AuthPage() {
   const { redirect } = Route.useSearch();
   const navigate = useNavigate();
-  const signIn = useServerFn(signInWithUid);
-  const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
+  const [mode, setMode] = useState<AuthMode>("in");
+  const [step, setStep] = useState<AuthStep>("details");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [uid, setUid] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneForOtp, setPhoneForOtp] = useState("");
+  const [otp, setOtp] = useState("");
+  const [signupDetails, setSignupDetails] = useState<SignupDetails | null>(null);
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  function switchMode(nextMode: AuthMode) {
+    setMode(nextMode);
+    setStep("details");
     setError("");
+    setNotice("");
+    setOtp("");
+    setSignupDetails(null);
+    setFullName("");
+    setUid("");
+  }
+
+  async function requestOtp(phone: string, targetMode: AuthMode, details?: SignupDetails) {
     setBusy(true);
-    const f = new FormData(e.currentTarget);
-    const uid = normalizeUid(f.get("uid"));
-    const password = String(f.get("password"));
+    setError("");
+    setNotice("");
+
     try {
-      if (mode === "forgot") {
-        const email = String(f.get("email") ?? "").trim().toLowerCase();
-        if (!/^[^@\s]+@cuchd\.in$/.test(email)) {
-          return setError("Enter the CU email address associated with your account.");
-        }
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + "/reset-password",
-        });
-        if (resetError) return setError("We couldn't send the reset email. Please try again.");
-        setSent(true);
+      const options: {
+        shouldCreateUser: boolean;
+        data?: { uid: string; full_name: string };
+      } = { shouldCreateUser: targetMode === "up" };
+
+      if (targetMode === "up" && details) {
+        options.data = { uid: details.uid, full_name: details.fullName };
+      }
+
+      const { error: sendError } = await supabase.auth.signInWithOtp({ phone, options });
+      if (sendError) {
+        setError(sendErrorMessage(sendError.message));
         return;
       }
-      if (!isValidUid(uid)) {
-        return setError("Enter a valid university ID (5–20 letters and numbers only).");
-      }
-      if (mode === "in") {
-        const r = await signIn({ data: { uid, password } });
-        if (!r.ok) return setError(r.error);
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: r.access_token,
-          refresh_token: r.refresh_token,
-        });
-        if (sessionError) {
-          setError("Your credentials were accepted, but we couldn't start your session. Please try again.");
-          return;
-        }
-        navigate({ to: redirect, replace: true });
-      } else {
-        const email = String(f.get("email")).trim().toLowerCase();
-        if (!/^[^@\s]+@cuchd\.in$/.test(email)) {
-          return setError("Use your Chandigarh University email address ending in @cuchd.in.");
-        }
-        if (password.length < 8) return setError("Password must be at least 8 characters.");
-        if (password.length > 128) return setError("Password must be at most 128 characters.");
-        const fullName = String(f.get("full_name") ?? "").trim();
-        if (!fullName || fullName.length > 80) return setError("Enter your full name (up to 80 characters).");
-        const { error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: window.location.origin + "/auth", data: { uid, full_name: fullName } },
-        });
-        if (error) return setError("We couldn't create the account. Check that your university ID is unused and your CU email is correct, then try again.");
-        setSent(true);
-      }
+
+      setPhoneForOtp(phone);
+      setOtp("");
+      setStep("otp");
+      setNotice(`A six-digit verification code was requested for ${phone}.`);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Something went wrong while requesting a code. Please try again.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+
+    const phone = normalizePhoneNumber(phoneInput);
+    if (!phone) {
+      setError("Enter a valid mobile number. Indian numbers can be entered as 10 digits; other countries need a +country code.");
+      return;
+    }
+
+    if (mode === "up") {
+      const normalizedUid = normalizeUid(uid);
+      const name = fullName.trim();
+      if (!name || name.length > 80) {
+        setError("Enter your full name (up to 80 characters).");
+        return;
+      }
+      if (!isValidUid(normalizedUid)) {
+        setError("Enter a valid university ID (5–20 letters and numbers only).");
+        return;
+      }
+
+      const details = { uid: normalizedUid, fullName: name };
+      setSignupDetails(details);
+      await requestOtp(phone, mode, details);
+      return;
+    }
+
+    await requestOtp(phone, mode);
+  }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+
+    const token = otp.trim();
+    if (!isValidOtp(token)) {
+      setError("Enter the six-digit code from your SMS.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        phone: phoneForOtp,
+        token,
+        type: "sms",
+      });
+
+      if (verifyError || !data.session) {
+        setError("We couldn't verify that code. Check the digits or request a new code. For sign-up, your UID must also be unused.");
+        return;
+      }
+
+      if (mode === "up") {
+        const verifiedUid = normalizeUid(data.user?.user_metadata?.uid);
+        if (!signupDetails || verifiedUid !== signupDetails.uid) {
+          await supabase.auth.signOut();
+          setStep("details");
+          setPhoneInput(phoneForOtp);
+          setError("This phone number is already linked to another CampusFind account. Switch to Sign in or use another number.");
+          return;
+        }
+      }
+
+      navigate({ to: redirect, replace: true });
+    } catch {
+      setError("Something went wrong while verifying the code. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function changePhoneNumber() {
+    setStep("details");
+    setPhoneInput(phoneForOtp);
+    setOtp("");
+    setError("");
+    setNotice("");
   }
 
   return (
@@ -97,28 +202,227 @@ function AuthPage() {
       <section className="mx-auto grid max-w-7xl gap-7 px-5 py-8 sm:px-8 sm:py-12 lg:grid-cols-[1fr_0.9fr] lg:items-stretch lg:py-14">
         <aside className="relative flex min-h-[380px] flex-col justify-between overflow-hidden rounded-[2rem] bg-gradient-ink p-7 text-ink-foreground sm:p-10 lg:min-h-[650px] lg:p-12">
           <div className="pointer-events-none absolute -right-12 top-14 size-64 rounded-full bg-emerald-300/15 blur-3xl" />
-          <div className="relative"><span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-extrabold text-white/80"><ShieldCheck size={15} className="text-emerald-200" /> A safer campus starts here</span><h1 className="mt-8 max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">{mode === "in" ? "Welcome back to a more connected campus." : mode === "up" ? "Join your campus lost & found." : "Get back into your account."}</h1><p className="mt-5 max-w-lg leading-7 text-white/70">{mode === "forgot" ? "Use your Chandigarh University email to receive a secure password reset link." : "Sign in with your university ID to browse reports, publish an item, and manage match alerts in one place."}</p></div>
-          <div className="relative mt-10"><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-2xl border border-white/10 bg-white/5 p-4"><span className="grid size-10 place-items-center rounded-xl bg-emerald-300/15 text-emerald-200"><LockKeyhole size={20} /></span><p className="mt-4 text-sm font-extrabold text-white">Private by design</p><p className="mt-1 text-xs leading-5 text-white/60">Only share the details needed to find an item.</p></div><div className="rounded-2xl border border-white/10 bg-white/5 p-4"><span className="grid size-10 place-items-center rounded-xl bg-emerald-300/15 text-emerald-200"><Sparkles size={20} /></span><p className="mt-4 text-sm font-extrabold text-white">Made for students</p><p className="mt-1 text-xs leading-5 text-white/60">Keep your report and search journey in one place.</p></div></div><p className="mt-6 flex items-center gap-2 text-xs font-bold text-white/50"><CheckCircle2 size={15} className="text-emerald-200" /> Chandigarh University campus community</p></div>
+          <div className="relative">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-extrabold text-white/80">
+              <ShieldCheck size={15} className="text-emerald-200" /> A safer campus starts here
+            </span>
+            <h1 className="mt-8 max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
+              {mode === "in"
+                ? "Welcome back to a more connected campus."
+                : "Join your campus lost & found."}
+            </h1>
+            <p className="mt-5 max-w-lg leading-7 text-white/70">
+              Use your mobile number and a one-time code to access reports, publish an item, and
+              manage match alerts in one place. No CU email or password needed.
+            </p>
+          </div>
+          <div className="relative mt-10">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <span className="grid size-10 place-items-center rounded-xl bg-emerald-300/15 text-emerald-200">
+                  <LockKeyhole size={20} />
+                </span>
+                <p className="mt-4 text-sm font-extrabold text-white">Private by design</p>
+                <p className="mt-1 text-xs leading-5 text-white/60">
+                  Only share the details needed to find an item.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <span className="grid size-10 place-items-center rounded-xl bg-emerald-300/15 text-emerald-200">
+                  <Sparkles size={20} />
+                </span>
+                <p className="mt-4 text-sm font-extrabold text-white">Made for students</p>
+                <p className="mt-1 text-xs leading-5 text-white/60">
+                  Keep your report and search journey in one place.
+                </p>
+              </div>
+            </div>
+            <p className="mt-6 flex items-center gap-2 text-xs font-bold text-white/50">
+              <CheckCircle2 size={15} className="text-emerald-200" /> Chandigarh University campus community
+            </p>
+          </div>
         </aside>
 
         <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-5 shadow-xl shadow-primary/5 sm:p-8 lg:p-10">
-          {sent ? (
-            <div className="py-5 sm:py-8"><span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><Mail size={27} /></span><p className="mt-6 kicker text-emerald-800">Check your inbox</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">You're one step away.</h2><p className="mt-4 leading-7 text-muted-foreground">{mode === "forgot" ? "If an account exists for that CU email, a password reset link has been sent. Open it on this device to choose a new password." : "We sent a confirmation link to your CU email. Click it, then sign in with your university ID and password."}</p><button type="button" onClick={() => { setSent(false); setMode("in"); setError(""); }} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-white"><ArrowLeft size={16} /> Back to sign in</button></div>
+          {step === "otp" ? (
+            <div className="py-3 sm:py-5">
+              <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800">
+                <Smartphone size={27} />
+              </span>
+              <p className="mt-6 kicker text-emerald-800">Phone verification</p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+                Check your phone
+              </h2>
+              <p className="mt-4 leading-7 text-muted-foreground">
+                Enter the six-digit code sent to <strong className="text-foreground">{phoneForOtp}</strong>{" "}
+                to {mode === "in" ? "sign in" : "finish creating your account"}.
+              </p>
+              <form onSubmit={verifyCode} className="mt-6">
+                <label className="block text-sm font-extrabold text-foreground">
+                  Verification code
+                  <input
+                    required
+                    name="otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Enter 6-digit code"
+                    className={field}
+                  />
+                </label>
+                {notice && (
+                  <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">
+                    {notice}
+                  </p>
+                )}
+                {error && (
+                  <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm font-bold leading-6 text-destructive">
+                    {error}
+                  </p>
+                )}
+                <button
+                  disabled={busy}
+                  className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy ? "Verifying…" : mode === "in" ? "Verify & sign in" : "Verify & create account"}
+                  {!busy && <ArrowRight size={17} />}
+                </button>
+              </form>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={changePhoneNumber}
+                  className="inline-flex items-center gap-2 font-extrabold text-muted-foreground hover:text-foreground disabled:opacity-60"
+                >
+                  <ArrowLeft size={15} /> Change number
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void requestOtp(phoneForOtp, mode, signupDetails ?? undefined)}
+                  className="font-extrabold text-primary underline-offset-4 hover:underline disabled:opacity-60"
+                >
+                  Resend code
+                </button>
+              </div>
+              <div className="mt-6 flex items-start gap-3 rounded-xl bg-background p-4">
+                <KeyRound size={17} className="mt-0.5 shrink-0 text-emerald-800" />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Never share your verification code with anyone, including someone claiming to be
+                  from CampusFind.
+                </p>
+              </div>
+            </div>
           ) : (
             <>
-              <div><p className="kicker text-emerald-800">Student access</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Reset password"}</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">{mode === "forgot" ? "Enter the CU email linked to your account." : "Use your Chandigarh University UID and password to continue."}</p></div>
-              {mode !== "forgot" && <div className="mt-7 grid grid-cols-2 rounded-xl bg-secondary p-1">{([["in", "Sign in"], ["up", "Create account"]] as const).map(([m, label]) => <button type="button" key={m} onClick={() => { setMode(m); setError(""); setSent(false); }} aria-pressed={mode === m} className={`rounded-lg px-3 py-2.5 text-sm font-extrabold transition ${mode === m ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{label}</button>)}</div>}
-              <form onSubmit={submit} className="mt-6">
-                {mode === "up" && <label className="mb-4 block text-sm font-extrabold text-foreground">Full name<input required name="full_name" maxLength={80} autoComplete="name" placeholder="Your full name" className={field} /></label>}
-                {mode !== "forgot" && <label className="mb-4 block text-sm font-extrabold text-foreground">University ID (UID)<input required name="uid" placeholder="e.g. 26BCS11930" autoComplete="username" autoCapitalize="characters" className={`${field} uppercase`} /></label>}
-                {(mode === "up" || mode === "forgot") && <label className="mb-4 block text-sm font-extrabold text-foreground">CU email<input required type="email" name="email" autoComplete="email" placeholder="you@cuchd.in" className={field} /></label>}
-                {mode !== "forgot" && <label className="block text-sm font-extrabold text-foreground">Password<input required type="password" name="password" minLength={mode === "in" ? undefined : 8} maxLength={128} autoComplete={mode === "in" ? "current-password" : "new-password"} placeholder={mode === "in" ? "Enter your password" : "At least 8 characters"} className={field} /></label>}
-                {error && <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm font-bold leading-6 text-destructive">{error}</p>}
-                {mode === "in" && <button type="button" onClick={() => { setMode("forgot"); setError(""); }} className="mt-4 text-sm font-extrabold text-primary underline-offset-4 hover:underline">Forgot password?</button>}
-                {mode === "forgot" && <button type="button" onClick={() => { setMode("in"); setError(""); }} className="mt-4 inline-flex items-center gap-2 text-sm font-extrabold text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> Back to sign in</button>}
-                <button disabled={busy} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Please wait…" : mode === "in" ? "Sign in securely" : mode === "up" ? "Create account" : "Send reset link"}{!busy && <ArrowRight size={17} />}</button>
+              <div>
+                <p className="kicker text-emerald-800">Student access</p>
+                <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+                  {mode === "in" ? "Sign in with phone" : "Create account"}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {mode === "in"
+                    ? "Enter your mobile number and we'll send you a one-time code."
+                    : "Add your student details, then verify your mobile number to create the account."}
+                </p>
+              </div>
+
+              <div className="mt-7 grid grid-cols-2 rounded-xl bg-secondary p-1">
+                {([["in", "Sign in"], ["up", "Create account"]] as const).map(([nextMode, label]) => (
+                  <button
+                    type="button"
+                    key={nextMode}
+                    onClick={() => switchMode(nextMode)}
+                    aria-pressed={mode === nextMode}
+                    className={`rounded-lg px-3 py-2.5 text-sm font-extrabold transition ${mode === nextMode ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={submitDetails} className="mt-6">
+                {mode === "up" && (
+                  <>
+                    <label className="mb-4 block text-sm font-extrabold text-foreground">
+                      Full name
+                      <input
+                        required
+                        name="full_name"
+                        maxLength={80}
+                        autoComplete="name"
+                        value={fullName}
+                        onChange={(event) => setFullName(event.target.value)}
+                        placeholder="Your full name"
+                        className={field}
+                      />
+                    </label>
+                    <label className="mb-4 block text-sm font-extrabold text-foreground">
+                      University ID (UID)
+                      <input
+                        required
+                        name="uid"
+                        maxLength={20}
+                        autoComplete="username"
+                        autoCapitalize="characters"
+                        value={uid}
+                        onChange={(event) => setUid(event.target.value.toUpperCase())}
+                        placeholder="e.g. 26BCS11930"
+                        className={`${field} uppercase`}
+                      />
+                    </label>
+                  </>
+                )}
+
+                <label className="block text-sm font-extrabold text-foreground">
+                  Mobile number
+                  <input
+                    required
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    maxLength={24}
+                    value={phoneInput}
+                    onChange={(event) => setPhoneInput(event.target.value)}
+                    placeholder="98765 43210"
+                    className={field}
+                  />
+                </label>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Indian mobile numbers can be entered as 10 digits. For another country, include the
+                  +country code.
+                </p>
+
+                {error && (
+                  <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm font-bold leading-6 text-destructive">
+                    {error}
+                  </p>
+                )}
+                <button
+                  disabled={busy}
+                  className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy
+                    ? "Please wait…"
+                    : mode === "in"
+                      ? "Send sign-in code"
+                      : "Send verification code"}
+                  {!busy && <ArrowRight size={17} />}
+                </button>
               </form>
-              <div className="mt-6 flex items-start gap-3 rounded-xl bg-background p-4"><KeyRound size={17} className="mt-0.5 shrink-0 text-emerald-800" /><p className="text-xs leading-5 text-muted-foreground">Account access is for Chandigarh University students. Never share your password or publish private ownership details.</p></div>
+              <div className="mt-6 flex items-start gap-3 rounded-xl bg-background p-4">
+                <KeyRound size={17} className="mt-0.5 shrink-0 text-emerald-800" />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Phone OTP confirms access to a mobile number. Keep your UID accurate and never share
+                  verification codes.
+                </p>
+              </div>
             </>
           )}
         </div>
