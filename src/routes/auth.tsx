@@ -102,6 +102,7 @@ function AuthPage() {
     setSignupDetails(null);
     setFullName("");
     setUid("");
+    setPhoneInput("");
     setPhoneForOtp("");
   }
 
