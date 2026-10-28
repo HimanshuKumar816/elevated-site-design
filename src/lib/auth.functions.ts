@@ -4,7 +4,7 @@ import { isValidUid, normalizeUid } from "@/lib/uid";
 // UID-to-email lookup and password verification run inside the Supabase Edge Function.
 // The service-role credential never needs to be present in the local web-server environment.
 export const signInWithUid = createServerFn({ method: "POST" })
-  .inputValidator((input: { uid: string; password: string }) => {
+  .validator((input: { uid: string; password: string }) => {
     const uid = normalizeUid(input.uid);
     const password = String(input.password ?? "");
     if (!isValidUid(uid) || !password || password.length > 128) throw new Error("Invalid input");

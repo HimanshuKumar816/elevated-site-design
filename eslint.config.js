@@ -36,6 +36,21 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // These generated UI primitives intentionally export style helpers or hooks
+    // alongside components; the Fast Refresh rule is not applicable to them.
+    files: [
+      "src/components/ui/badge.tsx",
+      "src/components/ui/button.tsx",
+      "src/components/ui/form.tsx",
+      "src/components/ui/navigation-menu.tsx",
+      "src/components/ui/sidebar.tsx",
+      "src/components/ui/toggle.tsx",
+    ],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
   eslintPluginPrettier,
   {
     rules: {

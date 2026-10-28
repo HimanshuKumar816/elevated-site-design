@@ -3,7 +3,6 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import tsConfigPaths from "vite-tsconfig-paths";
 
 // Load local environment variables for server-side functions. Only the public
 // URL and publishable key are explicitly injected into the browser bundle.
@@ -16,8 +15,8 @@ export default defineConfig(({ mode }) => {
     env["VITE_SUPABASE_PUBLISHABLE_KEY"] || env["SUPABASE_PUBLISHABLE_KEY"] || "";
 
   return {
+    resolve: { tsconfigPaths: true },
     plugins: [
-      tsConfigPaths(),
       tailwindcss(),
       tanstackStart({ server: { entry: "server" } }),
       nitro({ preset: "render-com" }),
