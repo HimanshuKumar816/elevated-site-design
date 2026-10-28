@@ -171,7 +171,7 @@ function AuthPage() {
       }
 
       if (mode === "up") {
-        const verifiedUid = normalizeUid(data.user?.user_metadata?.uid);
+        const verifiedUid = normalizeUid(data.user?.user_metadata?.["uid"]);
         if (!signupDetails || verifiedUid !== signupDetails.uid) {
           await supabase.auth.signOut();
           setStep("details");
