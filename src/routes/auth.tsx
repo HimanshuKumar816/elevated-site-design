@@ -350,7 +350,7 @@ function AuthPage() {
                 {mode === "up" && (
                   <>
                     <label className="mb-4 block text-sm font-extrabold text-foreground">
-                      Full name
+                      Student name
                       <input
                         required
                         name="full_name"
@@ -363,7 +363,7 @@ function AuthPage() {
                       />
                     </label>
                     <label className="mb-4 block text-sm font-extrabold text-foreground">
-                      University ID (UID)
+                      Student UID
                       <input
                         required
                         name="uid"
@@ -380,7 +380,7 @@ function AuthPage() {
                 )}
 
                 <label className="block text-sm font-extrabold text-foreground">
-                  Mobile number
+                  Student phone number
                   <input
                     required
                     name="phone"
