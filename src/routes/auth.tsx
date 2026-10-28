@@ -13,6 +13,7 @@ import {
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
 import { checkUidAvailability } from "@/lib/auth.functions";
+import { normalizeUid } from "@/lib/uid";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 import { GENERIC_SIGNIN_ERROR, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword, validateSignup } from "@/lib/auth-validation";
 
