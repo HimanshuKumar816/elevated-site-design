@@ -50,10 +50,19 @@ type AuthStep = "details" | "otp";
 type SignupDetails = { uid: string; fullName: string };
 
 function sendErrorMessage(message: string): string {
+  if (/phone_provider_disabled|unsupported phone provider|phone provider.*disabled/i.test(message)) {
+    return "Phone verification isn't enabled for CampusFind yet. The administrator must enable Phone sign-in in Supabase Authentication → Providers and configure an SMS provider before codes can be sent.";
+  }
+  if (/sms.*provider|provider.*sms|failed to send sms|unable to send sms|error sending sms/i.test(message)) {
+    return "CampusFind couldn't deliver the SMS. The administrator should check the SMS provider credentials and delivery settings in Supabase.";
+  }
   if (/rate limit|too many requests|retry after/i.test(message)) {
     return "Too many code requests. Please wait a little before trying again.";
   }
-  return "We couldn't send a code to that number. Check the number and try again. If this continues, phone/SMS authentication may need to be enabled in Supabase.";
+  if (/invalid phone|phone.*invalid|not a valid phone/i.test(message)) {
+    return "Enter a valid mobile number. Use 10 digits for an Indian number, or include + and the country code for other numbers.";
+  }
+  return "We couldn't send a code right now. Please check the number and try again.";
 }
 
 function AuthPage() {
