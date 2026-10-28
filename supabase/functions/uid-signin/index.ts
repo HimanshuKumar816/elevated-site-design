@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
 
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
   if (!url || !serviceKey || !anonKey || !req.headers.get("apikey")) {
     return new Response(JSON.stringify({ ok: false, error: "Login is temporarily unavailable. Please try again later." }), { status: 500, headers: corsHeaders });
   }
