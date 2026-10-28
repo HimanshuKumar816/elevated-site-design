@@ -19,7 +19,7 @@ export const signInWithUid = createServerFn({ method: "POST" })
     }
 
     try {
-      const response = await fetch(`${url.replace(/\/+$/, "")}/functions/v1/uid-signin`, {
+      const response = await fetch(`${new URL(url).origin}/functions/v1/uid-signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,7 +66,7 @@ export const checkUidAvailability = createServerFn({ method: "POST" })
     }
 
     try {
-      const response = await fetch(`${url.replace(/\\/+$/, "")}/functions/v1/uid-signin`, {
+      const response = await fetch(`${new URL(url).origin}/functions/v1/uid-signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
