@@ -8,6 +8,7 @@ import { isValidIsoDate } from "@/lib/date";
 import { validateItemImage } from "@/lib/item-image";
 import { buildNotificationPreferencePayload, validateNotificationPreference } from "@/lib/notification-preferences";
 import { supabase } from "@/integrations/supabase/client";
+import { CampusMap, type CampusCoordinate } from "@/components/campus-map";
 
 export const Route = createFileRoute("/_authenticated/report")({
   head: () => ({
@@ -25,6 +26,7 @@ const field = "mt-2 w-full rounded-xl border border-input bg-background px-4 py-
 
 function Report() {
   const [type, setType] = useState<"Lost" | "Found">("Lost");
+  const [selectedPosition, setSelectedPosition] = useState<CampusCoordinate | null>(null);
   const [done, setDone] = useState(false);
   const [matches, setMatches] = useState<Array<{ item: Item; score: number }>>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -124,6 +126,11 @@ function Report() {
       setBusy(false);
       return;
     }
+    if (!selectedPosition) {
+      setError("Pin the exact spot on the Chandigarh University campus map before submitting.");
+      setBusy(false);
+      return;
+    }
     if (!isValidIsoDate(date)) {
       setError("Choose a valid date.");
       setBusy(false);
@@ -188,8 +195,26 @@ function Report() {
         setError("Could not save your report. Please check your connection and try again.");
         return;
       }
+      if (!insertedItem?.id) {
+        setError("The report was saved without a report ID. Please refresh and check the board before trying again.");
+        return;
+      }
+
+      const { error: locationInsertError } = await supabase.from("item_locations").insert({
+        item_id: insertedItem.id,
+        user_id: u.user.id,
+        latitude: selectedPosition.lat,
+        longitude: selectedPosition.lng,
+      });
+      if (locationInsertError) {
+        await supabase.from("items").delete().eq("id", insertedItem.id);
+        if (imagePath) await supabase.storage.from("item-images").remove([imagePath]);
+        setError("We couldn't save the campus pin, so your report was not submitted. Choose a point inside the campus map and try again.");
+        return;
+      }
+
       // SMS is sent only when provider secrets are configured and the student opted in.
-      if (insertedItem?.id) void supabase.functions.invoke("notify-item-matches", { body: { item_id: insertedItem.id } }).catch(() => undefined);
+      void supabase.functions.invoke("notify-item-matches", { body: { item_id: insertedItem.id } }).catch(() => undefined);
       setImageFile(null);
       setImagePreview("");
       try {
@@ -242,6 +267,16 @@ function Report() {
               <label className="block text-sm font-extrabold text-foreground">Category <span className="text-emerald-800">*</span><select required name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
               <label className="block text-sm font-extrabold text-foreground">Date <span className="text-emerald-800">*</span><input required type="date" name="date" className={field} /></label>
               <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Where was it lost or found? <span className="text-emerald-800">*</span><span className="relative block"><MapPin size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" /><input required name="location" maxLength={160} placeholder="e.g. Central Library, Block 4" className={`${field} pl-10`} /></span></label>
+              <div className="sm:col-span-2">
+                <p className="text-sm font-extrabold text-foreground">Pin the exact campus location <span className="text-emerald-800">*</span></p>
+                <p className="mt-1 mb-3 text-xs leading-5 text-muted-foreground">Click the location on the map. Exact coordinates are visible only to the report owner and authorised administrators.</p>
+                <CampusMap mode="picker" selectedPosition={selectedPosition} onPositionChange={setSelectedPosition} />
+                {selectedPosition ? (
+                  <p role="status" className="mt-2 text-xs font-bold text-emerald-800">Campus pin selected: {selectedPosition.lat.toFixed(6)}, {selectedPosition.lng.toFixed(6)}</p>
+                ) : (
+                  <p className="mt-2 text-xs font-semibold text-muted-foreground">No pin selected. Choose a point inside the campus map to submit.</p>
+                )}
+              </div>
               <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Public description <span className="font-semibold text-muted-foreground">(optional)</span><textarea name="note" rows={4} maxLength={500} placeholder="Color, brand, general appearance. Keep one proof-of-ownership detail private." className={`${field} resize-y leading-6`} /><span className="mt-1 block text-xs font-semibold text-muted-foreground">Up to 500 characters. Don't include sensitive or unique identifying information.</span></label>
             </div>
             <div className="mt-6 rounded-2xl border border-dashed border-border bg-background p-4 sm:p-5"><label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">JPG, PNG, or WebP · 5 MB max</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>{imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div>}</div>
