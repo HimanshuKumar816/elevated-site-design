@@ -62,23 +62,25 @@ Deno.serve(async (req: Request) => {
   const apiKey = req.headers.get("apikey");
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const publicKeys = [
-    Deno.env.get("SUPABASE_ANON_KEY"),
-    Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
-  ].filter((value): value is string => Boolean(value));
-
-  // The publishable/anon key is public configuration, but requiring the expected key
-  // makes the endpoint's contract explicit. Only the service role can insert records.
-  if (!url || !serviceKey || !apiKey || !publicKeys.includes(apiKey)) {
+  // A publishable/anon key is public configuration, not authentication. The function's
+  // trust boundary is input validation, origin policy, rate limiting and service-role-only DB writes.
+  if (!url || !serviceKey || !apiKey) {
     return json({ ok: false, error: "Contact service is temporarily unavailable." }, 503, origin);
   }
 
   const contentLength = Number(req.headers.get("content-length") ?? "0");
-  if (contentLength > 12_000) return json({ ok: false, error: "Message is too large." }, 413, origin);
+  if (Number.isFinite(contentLength) && contentLength > 12_000) {
+    return json({ ok: false, error: "Message is too large." }, 413, origin);
+  }
 
   let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 12_000) {
+      return json({ ok: false, error: "Message is too large." }, 413, origin);
+    }
+    body = JSON.parse(rawBody) as Record<string, unknown>;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Expected JSON object");
   } catch {
     return json({ ok: false, error: "Invalid request." }, 400, origin);
   }
