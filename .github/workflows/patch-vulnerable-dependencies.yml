@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       - name: Install locked dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
       - name: Apply only available non-vulnerable dependency updates
         run: |
           set +e
