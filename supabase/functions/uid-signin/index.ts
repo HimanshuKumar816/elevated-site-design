@@ -6,7 +6,10 @@ const allowedOrigins = new Set([
   "http://localhost:5173",
   "http://localhost:8080",
 ]);
-const attempts = new Map<string, { count: number; start: number }>();
+async function hashRateLimitKey(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 function corsHeaders(origin: string | null): Headers {
   const headers = new Headers({
@@ -24,24 +27,6 @@ function json(body: Record<string, unknown>, status = 200, origin: string | null
   return new Response(JSON.stringify(body), { status, headers: corsHeaders(origin) });
 }
 
-function tooManyAttempts(ip: string): boolean {
-  const now = Date.now();
-  const prior = attempts.get(ip);
-  if (!prior || now - prior.start > 60_000) attempts.set(ip, { count: 1, start: now });
-  else {
-    prior.count += 1;
-    if (prior.count > 12) return true;
-  }
-
-  // Keep this best-effort in-memory bucket bounded across warm function instances.
-  if (attempts.size > 5000) {
-    for (const [key, value] of attempts) {
-      if (now - value.start > 60_000) attempts.delete(key);
-      if (attempts.size <= 4000) break;
-    }
-  }
-  return false;
-}
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
@@ -49,14 +34,31 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
   if (req.method !== "POST") return json({ ok: false, error: "Request method not allowed." }, 405, origin);
 
-  const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (tooManyAttempts(ip)) return json({ ok: false, error: "Too many attempts. Please wait a minute and try again." }, 429, origin);
-
   const url = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
   const acceptableKeys = [Deno.env.get("SUPABASE_ANON_KEY"), Deno.env.get("SUPABASE_PUBLISHABLE_KEY")].filter(Boolean);
   if (!url || !serviceKey || !anonKey || !req.headers.get("apikey") || !acceptableKeys.includes(req.headers.get("apikey"))) {
+    return json({ ok: false, error: "Authentication service is temporarily unavailable. Please try again later." }, 503, origin);
+  }
+
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  try {
+    const keyHash = await hashRateLimitKey("uid-signin:" + ip);
+    const { data: allowed, error: rateLimitError } = await admin.rpc("consume_edge_rate_limit", {
+      p_key_hash: keyHash,
+      p_window_seconds: 60,
+      p_max_requests: 12,
+    });
+    if (rateLimitError) {
+      console.error("[UID auth] Rate-limit check failed", { code: rateLimitError.code });
+      return json({ ok: false, error: "Authentication service is temporarily unavailable. Please try again later." }, 503, origin);
+    }
+    if (allowed !== true) {
+      return json({ ok: false, error: "Too many attempts. Please wait a minute and try again." }, 429, origin);
+    }
+  } catch {
     return json({ ok: false, error: "Authentication service is temporarily unavailable. Please try again later." }, 503, origin);
   }
 
@@ -74,7 +76,6 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "Incorrect UID or password." }, 401, origin);
   }
 
-  const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   // This function is for the separate admin portal only. A known student's UID
   // must never turn this into an alternate password-login endpoint for student accounts.
   const { data: profile, error: profileError } = await admin
