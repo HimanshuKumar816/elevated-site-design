@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { ArrowUpRight, CheckCircle2, Mail, Send } from "lucide-react";
 import { Page } from "@/components/site";
 
