@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, ArrowUpRight, BadgeCheck, BellRing, Check, LockKeyhole, MapPin, PackageSearch, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
 import hero from "@/assets/hero.jpg";
@@ -23,6 +25,29 @@ const steps = [
 const assurances = ["One place for campus reports", "Private details stay private", "Verify before handing over"];
 
 function Home() {
+  const navigate = useNavigate();
+
+  // Signed-in users should land in their role-specific workspace, not the public landing page.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!active || !authData.user) return;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", authData.user.id)
+          .maybeSingle();
+        if (!active) return;
+        navigate({ to: profile?.role === "admin" ? "/admin" : "/browse", replace: true });
+      } catch {
+        // If auth is temporarily unavailable, keep the public landing page usable.
+      }
+    })();
+    return () => { active = false; };
+  }, [navigate]);
+
   return (
     <Page>
       <section className="relative isolate overflow-hidden">
@@ -119,11 +144,6 @@ function Home() {
             ))}
           </div>
         </div>
-      </section>
-
-      <section className="mx-auto grid max-w-7xl gap-10 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-[0.78fr_1.22fr] lg:items-center">
-        <div><p className="kicker text-emerald-800">Grounded in place</p><h2 className="mt-4 text-3xl font-extrabold leading-tight text-foreground sm:text-5xl">Built around Chandigarh University.</h2><p className="mt-5 leading-7 text-muted-foreground">Use the campus-area map to orient yourself. When making a report, include the nearest building or campus landmark to help others narrow down the search.</p><a href="https://www.openstreetmap.org/?mlat=30.7689&mlon=76.5750#map=16/30.7689/76.5750" target="_blank" rel="noreferrer" className="mt-7 inline-flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-3 text-sm font-extrabold text-foreground shadow-sm transition hover:border-primary/25 hover:bg-secondary">Open campus-area map <ArrowUpRight size={16} /></a><p className="mt-4 text-xs leading-5 text-muted-foreground">Map data © OpenStreetMap contributors. Confirm the exact building or gate when reporting.</p></div>
-        <div className="overflow-hidden rounded-[1.75rem] border border-border bg-white p-2 shadow-xl shadow-primary/5 sm:p-3"><iframe title="Map around Chandigarh University, Gharuan" src="https://www.openstreetmap.org/export/embed.html?bbox=76.555%2C30.755%2C76.595%2C30.782&layer=mapnik&marker=30.7689%2C76.5750" className="h-[320px] w-full rounded-[1.25rem] sm:h-[420px]" loading="lazy" referrerPolicy="no-referrer-when-downgrade" /></div>
       </section>
 
       <section className="px-5 pb-20 sm:px-8 sm:pb-28">

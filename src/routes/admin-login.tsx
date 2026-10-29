@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { signInWithUid } from "@/lib/auth.functions";
 import { normalizeUid } from "@/lib/uid";
 import { isAdminProfile, NO_ADMIN_ACCESS } from "@/lib/auth-validation";
-import { recordSuccessfulLogin } from "@/lib/login-events";
 
 export const Route = createFileRoute("/admin-login")({
   head: () => ({
@@ -73,7 +72,7 @@ function AdminLoginPage() {
         return;
       }
 
-      await recordSuccessfulLogin("password");
+      // Admin authentication is intentionally excluded from student login activity.
       navigate({ to: "/admin", replace: true });
     } catch {
       setError("Administrator sign-in is temporarily unavailable. Please try again.");

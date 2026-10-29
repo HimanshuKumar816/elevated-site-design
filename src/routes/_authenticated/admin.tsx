@@ -211,7 +211,7 @@ function AdminPage() {
         }
       }
 
-      setLoginEvents((events ?? []).map((event) => {
+      const activity = (events ?? []).map((event) => {
         const profile = profilesById.get(event.user_id);
         return {
           ...event,
@@ -219,7 +219,9 @@ function AdminPage() {
           uid: profile?.uid ?? null,
           role: profile?.role ?? null,
         };
-      }));
+      });
+      // Do not display administrator sign-ins, including any events recorded before this fix.
+      setLoginEvents(activity.filter((event) => event.role !== "admin"));
     } catch {
       setActivityError("We couldn't load recent sign-ins. Please retry.");
     } finally {
@@ -276,8 +278,8 @@ function AdminPage() {
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-xl">
+    <div className="page-enter min-h-screen bg-secondary/40">
+      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
           <Link to="/admin" className="flex min-w-0 items-center gap-3">
             <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink text-white shadow-sm">
@@ -323,19 +325,19 @@ function AdminPage() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {([["Total", counts.total], ["Lost", counts.lost], ["Found", counts.found]] as const).map(([label, value]) => (
-            <div key={label} className="rounded-2xl border border-border bg-card p-5">
+            <div key={label} className="interactive-card rounded-2xl border border-border bg-card p-5 shadow-soft">
               <p className="text-xs font-extrabold uppercase text-muted-foreground">{label}</p>
               <p className="mt-2 text-3xl font-extrabold">{value}</p>
             </div>
           ))}
         </div>
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Account activity</p>
               <h2 className="mt-2 text-2xl font-extrabold">Recent sign-ins</h2>
-              <p className="mt-1 text-sm text-muted-foreground">The latest 50 successful student and administrator sign-ins.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Recent successful student sign-ins. Administrator sign-ins are excluded.</p>
             </div>
             <button type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {activityLoading ? "Refreshing…" : "Refresh activity"}
@@ -398,7 +400,7 @@ function AdminPage() {
           ) : (
             <div className="grid gap-3 border-t border-border p-4 sm:p-5">
               {contactMessages.map((message) => (
-                <article key={message.id} className="rounded-xl border border-border bg-white p-4 sm:p-5">
+                <article key={message.id} className="interactive-card rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="font-extrabold text-foreground">{message.subject}</h3>
@@ -418,12 +420,12 @@ function AdminPage() {
             <div>
               <p className="kicker text-emerald-800">Location intelligence</p>
               <h2 className="mt-2 text-2xl font-extrabold">Chandigarh University campus map</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only the CU Mohali campus area is shown. Pins use private coordinates from student reports; exact coordinates are not exposed on the public item board.</p>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">This campus-only map is restricted to administrators. It displays private coordinates already saved for reports; public users see only the location description they submit.</p>
             </div>
             <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{campusMarkers.length} pinned reports</span>
           </div>
           <CampusMap mode="viewer" markers={campusMarkers} className="mx-4 mb-4" />
-          <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">Older reports submitted before map pins were introduced will not have a marker. New reports must include a campus pin.</p>
+          <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">Some reports may not have a pin. New public reports collect a written campus landmark instead of exposing a map; pin data appears here only when coordinates are available.</p>
         </section>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -471,7 +473,7 @@ function AdminPage() {
         ) : (
           <div className="mt-6 grid gap-4">
             {visible.map((report) => (
-              <article id={`report-${report.id}`} key={report.id} className="grid gap-4 rounded-2xl border border-border bg-card p-5 sm:grid-cols-[96px_1fr]">
+              <article id={`report-${report.id}`} key={report.id} className="interactive-card grid gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft sm:grid-cols-[96px_1fr]">
                 {report.image_url ? (
                   <img src={report.image_url} alt={report.name} loading="lazy" referrerPolicy="no-referrer" className="size-24 rounded-xl object-cover" />
                 ) : (
