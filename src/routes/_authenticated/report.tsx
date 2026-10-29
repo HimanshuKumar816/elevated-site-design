@@ -8,7 +8,8 @@ import { isValidIsoDate } from "@/lib/date";
 import { validateItemImage } from "@/lib/item-image";
 import { buildNotificationPreferencePayload, validateNotificationPreference } from "@/lib/notification-preferences";
 import { supabase } from "@/integrations/supabase/client";
-import { CampusMap, type CampusCoordinate } from "@/components/campus-map";
+import { CampusMap } from "@/components/campus-map";
+import type { CampusCoordinate } from "@/lib/campus-location";
 
 export const Route = createFileRoute("/_authenticated/report")({
   head: () => ({
