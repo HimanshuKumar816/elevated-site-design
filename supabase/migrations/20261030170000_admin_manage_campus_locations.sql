@@ -12,7 +12,7 @@ CREATE POLICY "Admins assign exact item locations"
     (SELECT private.is_admin())
     AND EXISTS (
       SELECT 1 FROM public.items i
-      WHERE i.id = item_id AND i.user_id = user_id
+      WHERE i.id = item_locations.item_id AND i.user_id = item_locations.user_id
     )
   );
 
@@ -25,7 +25,7 @@ CREATE POLICY "Admins update exact item locations"
     (SELECT private.is_admin())
     AND EXISTS (
       SELECT 1 FROM public.items i
-      WHERE i.id = item_id AND i.user_id = user_id
+      WHERE i.id = item_locations.item_id AND i.user_id = item_locations.user_id
     )
   );
 
