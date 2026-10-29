@@ -176,3 +176,44 @@
   .page-enter { animation: none; }
   .interactive-card:hover { transform: none; }
 }
+
+
+/* Guard against accidental horizontal scrolling on narrow screens. */
+@layer base {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  body {
+    min-width: 0;
+  }
+
+  img,
+  video,
+  canvas,
+  iframe,
+  svg {
+    max-width: 100%;
+  }
+
+  pre,
+  code,
+  p,
+  li,
+  a,
+  button {
+    overflow-wrap: anywhere;
+  }
+
+  /* Keep form controls inside their grid columns on small screens. */
+  input,
+  select,
+  textarea,
+  button {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
