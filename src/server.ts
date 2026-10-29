@@ -63,7 +63,7 @@ const PAGE_META: Record<string, { title: string; description: string; indexable:
   },
   "/report": {
     title: "Report a Lost or Found Item — CampusFind",
-    description: "Create a campus lost-and-found report and add a private campus location pin.",
+    description: "Create a campus lost-and-found report with a written building or landmark. Exact map pins are managed privately by administrators.",
     indexable: false,
   },
 };
@@ -227,8 +227,8 @@ function applySecurityHeaders(response: Response, nonce: string, url: URL): Resp
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'nonce-" + nonce + "' 'strict-dynamic' https://www.googletagmanager.com",
-      "style-src 'self' 'nonce-" + nonce + "' https://fonts.googleapis.com",
+      "script-src 'self' 'nonce-" + nonce + "' 'strict-dynamic' https://unpkg.com https://www.googletagmanager.com",
+      "style-src 'self' 'nonce-" + nonce + "' https://unpkg.com https://fonts.googleapis.com",
       "style-src-attr 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org",
       "font-src 'self' data: https://fonts.gstatic.com",

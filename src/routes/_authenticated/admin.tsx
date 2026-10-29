@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CampusMap } from "@/components/campus-map";
+import type { CampusCoordinate } from "@/lib/campus-location";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
 
@@ -80,6 +81,10 @@ function AdminPage() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
+  const [pinTarget, setPinTarget] = useState<Row | null>(null);
+  const [pinSaving, setPinSaving] = useState(false);
+  const [pinError, setPinError] = useState("");
+  const [pinSuccess, setPinSuccess] = useState("");
 
   async function signOut() {
     try {
@@ -89,6 +94,37 @@ function AdminPage() {
     }
     queryClient.clear();
     navigate({ to: "/admin-login", replace: true });
+  }
+
+  async function saveAdminPin(position: CampusCoordinate) {
+    if (!pinTarget || pinSaving) return;
+    setPinSaving(true);
+    setPinError("");
+    setPinSuccess("");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Your administrator session has expired.");
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+      if (profileError || profile?.role !== "admin") throw new Error("Administrator access required.");
+      const { error: saveError } = await supabase.from("item_locations").upsert({
+        item_id: pinTarget.id,
+        user_id: pinTarget.user_id,
+        latitude: position.lat,
+        longitude: position.lng,
+      }, { onConflict: "item_id" });
+      if (saveError) throw saveError;
+      setPinSuccess("Campus pin saved for “" + pinTarget.name + "”.");
+      setPinTarget(null);
+      await load();
+    } catch {
+      setPinError("We couldn't save that campus pin. Check administrator access and confirm the database migration is applied.");
+    } finally {
+      setPinSaving(false);
+    }
   }
 
   const load = useCallback(async () => {
@@ -415,17 +451,23 @@ function AdminPage() {
           )}
         </section>
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="flex flex-wrap items-end justify-between gap-3 p-5 sm:p-6">
+        <section id="campus-map" className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
-              <p className="kicker text-emerald-800">Location intelligence</p>
+              <p className="kicker text-emerald-800">Administrator-only location tools</p>
               <h2 className="mt-2 text-2xl font-extrabold">Chandigarh University campus map</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">This campus-only map is restricted to administrators. It displays private coordinates already saved for reports; public users see only the location description they submit.</p>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only administrators can view or assign exact campus pins. Students never see this map. Choose “Set campus pin” on a report, then click its location on this campus-only map.</p>
             </div>
             <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{campusMarkers.length} pinned reports</span>
           </div>
-          <CampusMap mode="viewer" markers={campusMarkers} className="mx-4 mb-4" />
-          <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">Some reports may not have a pin. New public reports collect a written campus landmark instead of exposing a map; pin data appears here only when coordinates are available.</p>
+          {pinTarget && <div className="mx-4 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-secondary/50 p-4">
+            <div><p className="text-sm font-extrabold">Pin location for: {pinTarget.name}</p><p className="mt-1 text-xs text-muted-foreground">Click the correct spot inside the campus boundary to save its private coordinates.</p></div>
+            <button type="button" onClick={() => { setPinTarget(null); setPinError(""); }} disabled={pinSaving} className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-bold disabled:opacity-60">Cancel</button>
+          </div>}
+          {pinError && <p role="alert" className="mx-4 mb-3 rounded-lg bg-destructive/5 p-3 text-sm font-semibold text-destructive">{pinError}</p>}
+          {pinSuccess && <p role="status" className="mx-4 mb-3 rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{pinSuccess}</p>}
+          <CampusMap mode={pinTarget ? "picker" : "viewer"} markers={campusMarkers} {...(pinTarget ? { onPositionChange: (position: CampusCoordinate) => { void saveAdminPin(position); } } : {})} className="mx-4 mb-4" />
+          <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">Pins are stored against the selected report and protected by database row-level security. New reports remain text-only until an administrator assigns a pin.</p>
         </section>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -494,6 +536,12 @@ function AdminPage() {
                   <p className="mt-2 break-all text-xs text-muted-foreground">
                     Submitted by {report.submitter_name ?? "Unknown"} ({report.submitter_uid ?? "—"}) · user_id {report.user_id}
                   </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => { setPinTarget(report); setPinError(""); setPinSuccess(""); document.getElementById("campus-map")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} disabled={pinSaving} className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary disabled:opacity-60">
+                      {report.latitude !== null && report.longitude !== null ? "Move campus pin" : "Set campus pin"}
+                    </button>
+                    {report.latitude !== null && report.longitude !== null && <span className="text-xs font-semibold text-emerald-800">Campus pin saved</span>}
+                  </div>
                 </div>
               </article>
             ))}
