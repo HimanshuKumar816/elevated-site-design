@@ -18,7 +18,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedBrowseRouteImport } from './routes/_authenticated/browse'
-import { Route as AuthenticatedHowItWorksRouteImport } from './routes/_authenticated/how-it-works'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as AuthenticatedReportRouteImport } from './routes/_authenticated/report'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiHealthLiveRouteImport } from './routes/api.health.live'
@@ -67,10 +67,10 @@ const AuthenticatedBrowseRoute = AuthenticatedBrowseRouteImport.update({
   path: '/browse',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedHowItWorksRoute = AuthenticatedHowItWorksRouteImport.update({
+const HowItWorksRoute = HowItWorksRouteImport.update({
   id: '/how-it-works',
   path: '/how-it-works',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedReportRoute = AuthenticatedReportRouteImport.update({
   id: '/report',
@@ -97,7 +97,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/browse': typeof AuthenticatedBrowseRoute
-  '/how-it-works': typeof AuthenticatedHowItWorksRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/report': typeof AuthenticatedReportRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
@@ -127,7 +127,6 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/browse': typeof AuthenticatedBrowseRoute
-  '/_authenticated/how-it-works': typeof AuthenticatedHowItWorksRoute
   '/_authenticated/report': typeof AuthenticatedReportRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
@@ -182,6 +181,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ContactRoute: typeof ContactRoute
   PrivacyRoute: typeof PrivacyRoute
+  HowItWorksRoute: typeof HowItWorksRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -254,12 +254,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBrowseRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/how-it-works': {
-      id: '/_authenticated/how-it-works'
+    '/how-it-works': {
+      id: '/how-it-works'
       path: '/how-it-works'
       fullPath: '/how-it-works'
-      preLoaderRoute: typeof AuthenticatedHowItWorksRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/report': {
       id: '/_authenticated/report'
@@ -288,14 +288,12 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedBrowseRoute: typeof AuthenticatedBrowseRoute
-  AuthenticatedHowItWorksRoute: typeof AuthenticatedHowItWorksRoute
   AuthenticatedReportRoute: typeof AuthenticatedReportRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedBrowseRoute: AuthenticatedBrowseRoute,
-  AuthenticatedHowItWorksRoute: AuthenticatedHowItWorksRoute,
   AuthenticatedReportRoute: AuthenticatedReportRoute,
 }
 
@@ -318,6 +316,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ContactRoute: ContactRoute,
   PrivacyRoute: PrivacyRoute,
+  HowItWorksRoute: HowItWorksRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   AdminLoginRoute: AdminLoginRoute,
