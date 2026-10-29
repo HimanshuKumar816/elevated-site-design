@@ -82,28 +82,27 @@ function escapeJsonForHtml(value: unknown): string {
 }
 
 function upsertMeta(html: string, attribute: "name" | "property", key: string, content: string): string {
-  const tag = `<meta ${attribute}="${escapeHtml(key)}" content="${escapeHtml(content)}">`;
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`<meta\\b(?=[^>]*\\b${attribute}=["']${escapedKey}["'])[^>]*\\/?>`, "gi");
+  const tag = '<meta ' + attribute + '="' + escapeHtml(key) + '" content="' + escapeHtml(content) + '">';
+  const pattern = new RegExp("<meta\\b(?=[^>]*\\b" + attribute + "=[\"']" + key + "[\"'])[^>]*\\/?>", "gi");
   let inserted = false;
   const replaced = html.replace(pattern, () => {
     if (inserted) return "";
     inserted = true;
     return tag;
   });
-  return inserted ? replaced : replaced.replace(/<\\/head>/i, `${tag}\\n</head>`);
+  return inserted ? replaced : replaced.replace(/<\/head>/i, tag + "\n</head>");
 }
 
 function upsertCanonical(html: string, href: string | null): string {
-  const pattern = /<link\\b(?=[^>]*\\brel=["']canonical["'])[^>]*\\/?>/gi;
+  const pattern = /<link\b(?=[^>]*\brel=["']canonical["'])[^>]*\/?>/gi;
   let inserted = false;
   const replaced = html.replace(pattern, () => {
     if (!href || inserted) return "";
     inserted = true;
-    return `<link rel="canonical" href="${escapeHtml(href)}">`;
+    return '<link rel="canonical" href="' + escapeHtml(href) + '">';
   });
   if (!href || inserted) return replaced;
-  return replaced.replace(/<\\/head>/i, `<link rel="canonical" href="${escapeHtml(href)}">\\n</head>`);
+  return replaced.replace(/<\/head>/i, '<link rel="canonical" href="' + escapeHtml(href) + '">\n</head>');
 }
 
 function newNonce(): string {
@@ -120,8 +119,6 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
-// h3 can swallow SSR failures into a normal 500 response. Replace that body with a
-// generic error page so internal stack traces and environment values never reach users.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
@@ -130,7 +127,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   const body = await response.clone().text();
   if (!isH3SwallowedErrorBody(body)) return response;
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  console.error(consumeLastCapturedError() ?? new Error("A server-rendering request failed."));
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -147,22 +144,22 @@ function isH3SwallowedErrorBody(body: string): boolean {
 }
 
 function injectSeo(html: string, url: URL, status: number): string {
-  const pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\\/+$/, "");
+  const pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
   const known = PAGE_META[pathname];
   const page = status === 404
     ? { title: "Page Not Found — CampusFind", description: "This CampusFind page could not be found. Return to the homepage to continue.", indexable: false }
     : known ?? { title: "CampusFind", description: "CampusFind campus lost and found.", indexable: false };
-  const canonical = page.indexable ? `${CANONICAL_ORIGIN}${pathname === "/" ? "/" : pathname}` : null;
-  const image = `${CANONICAL_ORIGIN}/og-campusfind.svg`;
+  const canonical = page.indexable ? CANONICAL_ORIGIN + (pathname === "/" ? "/" : pathname) : null;
+  const image = CANONICAL_ORIGIN + "/og-campusfind.svg";
 
-  html = html.replace(/<title\\b[^>]*>[\\s\\S]*?<\\/title>/i, `<title>${escapeHtml(page.title)}</title>`);
+  html = html.replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, "<title>" + escapeHtml(page.title) + "</title>");
   html = upsertMeta(html, "name", "description", page.description);
   html = upsertMeta(html, "property", "og:title", page.title);
   html = upsertMeta(html, "property", "og:description", page.description);
   html = upsertMeta(html, "property", "og:type", "website");
   html = upsertMeta(html, "property", "og:image", image);
   html = upsertMeta(html, "property", "og:image:alt", "CampusFind — Chandigarh University lost and found");
-  html = upsertMeta(html, "property", "og:url", canonical ?? `${CANONICAL_ORIGIN}${pathname}`);
+  html = upsertMeta(html, "property", "og:url", canonical ?? CANONICAL_ORIGIN + pathname);
   html = upsertMeta(html, "name", "twitter:card", "summary_large_image");
   html = upsertMeta(html, "name", "twitter:title", page.title);
   html = upsertMeta(html, "name", "twitter:description", page.description);
@@ -170,13 +167,14 @@ function injectSeo(html: string, url: URL, status: number): string {
   html = upsertMeta(html, "name", "robots", page.indexable ? "index, follow" : "noindex, nofollow");
   html = upsertCanonical(html, canonical);
 
-  if (page.indexable) {
+  const hasOrganizationSchema = html.includes('id="campusfind-organization-schema"');
+  if (page.indexable && !hasOrganizationSchema) {
     const organization = {
       "@context": "https://schema.org",
       "@type": "Organization",
       name: "CampusFind",
       url: CANONICAL_ORIGIN,
-      logo: `${CANONICAL_ORIGIN}/campusfind-favicon.svg`,
+      logo: CANONICAL_ORIGIN + "/campusfind-favicon.svg",
       description: "Campus lost-and-found service for Chandigarh University.",
     };
     const breadcrumbs = pathname === "/"
@@ -196,9 +194,9 @@ function injectSeo(html: string, url: URL, status: number): string {
       })),
     };
     const structuredData =
-      `<script id="campusfind-organization-schema" type="application/ld+json">${escapeJsonForHtml(organization)}</script>` +
-      `<script id="campusfind-breadcrumb-schema" type="application/ld+json">${escapeJsonForHtml(breadcrumbSchema)}</script>`;
-    html = html.replace(/<\\/head>/i, `${structuredData}\\n</head>`);
+      '<script id="campusfind-organization-schema" type="application/ld+json">' + escapeJsonForHtml(organization) + "</script>" +
+      '<script id="campusfind-breadcrumb-schema" type="application/ld+json">' + escapeJsonForHtml(breadcrumbSchema) + "</script>";
+    html = html.replace(/<\/head>/i, structuredData + "\n</head>");
   }
 
   const verification = process.env["VITE_GOOGLE_SITE_VERIFICATION"]?.trim();
@@ -208,17 +206,18 @@ function injectSeo(html: string, url: URL, status: number): string {
 
   const measurementId = process.env["VITE_GA_MEASUREMENT_ID"]?.trim();
   if (measurementId && /^G-[A-Z0-9]{5,20}$/.test(measurementId) && !html.includes("googletagmanager.com/gtag/js")) {
-    const analytics = `<script async src="https://www.googletagmanager.com/gtag/js?id=${measurementId}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${measurementId}');</script>`;
-    html = html.replace(/<\\/head>/i, `${analytics}\\n</head>`);
+    const analytics = '<script async src="https://www.googletagmanager.com/gtag/js?id=' + measurementId + '"></script>' +
+      "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','" + measurementId + "');</script>";
+    html = html.replace(/<\/head>/i, analytics + "\n</head>");
   }
   return html;
 }
 
 function tagWithNonce(html: string, tagName: "script" | "style", nonce: string): string {
-  const pattern = new RegExp(`<${tagName}\\b([^>]*)>`, "gi");
+  const pattern = new RegExp("<" + tagName + "\\b([^>]*)>", "gi");
   return html.replace(pattern, (_whole, rawAttributes: string) => {
-    const attributes = rawAttributes.replace(/\\snonce\\s*=\\s*(".*?"|'.*?'|[^\\s>]+)/gi, "");
-    return `<${tagName} nonce="${nonce}"${attributes}>`;
+    const attributes = rawAttributes.replace(/\snonce\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, "");
+    return "<" + tagName + ' nonce="' + nonce + '"' + attributes + ">";
   });
 }
 
@@ -228,8 +227,8 @@ function applySecurityHeaders(response: Response, nonce: string, url: URL): Resp
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com`,
-      `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
+      "script-src 'self' 'nonce-" + nonce + "' 'strict-dynamic' https://www.googletagmanager.com",
+      "style-src 'self' 'nonce-" + nonce + "' https://fonts.googleapis.com",
       "style-src-attr 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org",
       "font-src 'self' data: https://fonts.gstatic.com",
@@ -251,7 +250,7 @@ function applySecurityHeaders(response: Response, nonce: string, url: URL): Resp
   headers.set("X-DNS-Prefetch-Control", "off");
   headers.delete("X-Powered-By");
 
-  const pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\\/+$/, "");
+  const pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
   if (PRIVATE_PATHS.has(pathname) || pathname.startsWith("/api/")) {
     headers.set("Cache-Control", "no-store");
     headers.set("X-Robots-Tag", "noindex, nofollow");
@@ -275,16 +274,14 @@ async function hardenResponse(request: Request, response: Response): Promise<Res
   html = injectSeo(html, url, response.status);
   html = tagWithNonce(html, "script", nonce);
   html = tagWithNonce(html, "style", nonce);
+
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.delete("content-encoding");
   headers.delete("etag");
   headers.set("content-type", contentType || "text/html; charset=utf-8");
-  return applySecurityHeaders(
-    new Response(html, { status: response.status, statusText: response.statusText, headers }),
-    nonce,
-    url,
-  );
+  const result = new Response(html, { status: response.status, statusText: response.statusText, headers });
+  return applySecurityHeaders(result, nonce, url);
 }
 
 export default {
