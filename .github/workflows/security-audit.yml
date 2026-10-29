@@ -1,4 +1,4 @@
-name: Security audit (after dependency fixes)
+name: Security audit (final dependency check)
 
 on:
   workflow_dispatch:
