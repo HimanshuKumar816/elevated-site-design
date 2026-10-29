@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminLoginRouteImport } from './routes/admin-login'
@@ -24,6 +26,16 @@ import { Route as ApiHealthLiveRouteImport } from './routes/api.health.live'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -78,6 +90,8 @@ const ApiHealthLiveRoute = ApiHealthLiveRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/contact': typeof ContactRoute
+  '/privacy': typeof PrivacyRoute
   '/auth': typeof AuthRoute
   '/admin-login': typeof AdminLoginRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -118,6 +132,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/contact'
+    | '/privacy'
     | '/auth'
     | '/admin-login'
     | '/reset-password'
@@ -170,6 +186,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -276,6 +306,8 @@ const ApiHealthRouteWithChildren = ApiHealthRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContactRoute: ContactRoute,
+  PrivacyRoute: PrivacyRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   AdminLoginRoute: AdminLoginRoute,
