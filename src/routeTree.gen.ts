@@ -111,7 +111,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/browse': typeof AuthenticatedBrowseRoute
-  '/how-it-works': typeof AuthenticatedHowItWorksRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/report': typeof AuthenticatedReportRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
@@ -121,6 +121,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/admin-login': typeof AdminLoginRoute
@@ -171,7 +172,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/browse'
-    | '/_authenticated/how-it-works'
+    | '/how-it-works'
     | '/_authenticated/report'
     | '/api/health'
     | '/api/health/live'
