@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      item_locations: {
+        Row: {
+          created_at: string
+          item_id: string
+          latitude: number
+          longitude: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          item_id: string
+          latitude: number
+          longitude: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          item_id?: string
+          latitude?: number
+          longitude?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_locations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           category: string
@@ -61,6 +93,27 @@ export type Database = {
           },
         ]
       }
+      login_events: {
+        Row: {
+          id: string
+          logged_in_at: string
+          login_method: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_in_at?: string
+          login_method: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_in_at?: string
+          login_method?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           phone_number: string | null
@@ -80,7 +133,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -113,7 +174,29 @@ export type Database = {
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_matched_item_id_fkey"
+            columns: ["matched_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -127,12 +210,14 @@ export type Database = {
           created_at?: string
           full_name?: string
           id: string
+          role?: string
           uid: string
         }
         Update: {
           created_at?: string
           full_name?: string
           id?: string
+          role?: string
           uid?: string
         }
         Relationships: []
@@ -142,10 +227,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      health_check: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
