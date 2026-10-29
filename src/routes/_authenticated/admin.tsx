@@ -413,6 +413,7 @@ function AdminPage() {
           )}
         </section>
 
+        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-end justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Location intelligence</p>
