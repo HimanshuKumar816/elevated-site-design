@@ -211,7 +211,7 @@ function AdminPage() {
         }
       }
 
-      setLoginEvents((events ?? []).map((event) => {
+      const activity = (events ?? []).map((event) => {
         const profile = profilesById.get(event.user_id);
         return {
           ...event,
@@ -219,7 +219,9 @@ function AdminPage() {
           uid: profile?.uid ?? null,
           role: profile?.role ?? null,
         };
-      }));
+      });
+      // Do not display administrator sign-ins, including any events recorded before this fix.
+      setLoginEvents(activity.filter((event) => event.role !== "admin"));
     } catch {
       setActivityError("We couldn't load recent sign-ins. Please retry.");
     } finally {
@@ -335,7 +337,7 @@ function AdminPage() {
             <div>
               <p className="kicker text-emerald-800">Account activity</p>
               <h2 className="mt-2 text-2xl font-extrabold">Recent sign-ins</h2>
-              <p className="mt-1 text-sm text-muted-foreground">The latest 50 successful student and administrator sign-ins.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Recent successful student sign-ins. Administrator sign-ins are excluded.</p>
             </div>
             <button type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {activityLoading ? "Refreshing…" : "Refresh activity"}
