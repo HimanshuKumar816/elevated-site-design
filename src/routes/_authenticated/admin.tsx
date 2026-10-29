@@ -314,24 +314,24 @@ function AdminPage() {
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
 
   return (
-    <div className="page-enter min-h-screen bg-secondary/40">
-      <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 shadow-sm backdrop-blur-xl">
+    <div className="admin-shell page-enter min-h-screen">
+      <header className="admin-topbar sticky top-0 z-40 border-b backdrop-blur-xl">
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
           <Link to="/admin" className="flex min-w-0 items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink text-white shadow-sm">
+            <span className="admin-brand-icon grid size-11 shrink-0 place-items-center rounded-2xl shadow-sm">
               <ShieldCheck size={22} />
             </span>
             <span className="min-w-0">
-              <span className="block font-display text-lg font-extrabold leading-tight tracking-tight text-foreground">CampusFind</span>
-              <span className="mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">Administrator console</span>
+              <span className="admin-brand-title block font-display text-lg font-extrabold leading-tight tracking-tight">CampusFind</span>
+              <span className="admin-brand-subtitle mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.16em]">Administrator console</span>
             </span>
           </Link>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <span className="hidden rounded-full bg-secondary px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-secondary-foreground sm:inline-flex">Restricted access</span>
-            <Link to="/" className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:text-sm">
+            <span className="admin-access-pill hidden rounded-full px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] sm:inline-flex">Restricted access</span>
+            <Link to="/browse" className="admin-utility-link inline-flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition sm:text-sm">
               Student site <ArrowUpRight size={15} />
             </Link>
-            <button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-2.5 text-xs font-extrabold text-foreground transition hover:bg-secondary sm:px-4 sm:text-sm">
+            <button type="button" onClick={() => void signOut()} className="admin-signout inline-flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-extrabold transition sm:px-4 sm:text-sm">
               <LogOut size={15} /> Sign out
             </button>
           </div>
@@ -339,11 +339,11 @@ function AdminPage() {
       </header>
       <main id="main-content" className="min-w-0">
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="admin-dashboard-header flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="kicker text-emerald-800">Administrator</p>
-            <h1 className="mt-2 text-4xl font-extrabold tracking-tight">All reports</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Read-only view of all lost and found reports.</p>
+            <p className="kicker admin-kicker">Administrator workspace</p>
+            <h1 className="admin-dashboard-title mt-2 text-4xl font-extrabold tracking-tight">Control room</h1>
+            <p className="admin-dashboard-subtitle mt-2 text-sm leading-6">A private overview of campus reports, student activity, incoming messages and item locations.</p>
           </div>
           <button
             type="button"
@@ -353,7 +353,7 @@ function AdminPage() {
               void loadContactMessages();
             }}
             disabled={loading || activityLoading || contactLoading}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
+            className="admin-refresh-button inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -361,14 +361,14 @@ function AdminPage() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {([["Total", counts.total], ["Lost", counts.lost], ["Found", counts.found]] as const).map(([label, value]) => (
-            <div key={label} className="interactive-card rounded-2xl border border-border bg-card p-5 shadow-soft">
-              <p className="text-xs font-extrabold uppercase text-muted-foreground">{label}</p>
-              <p className="mt-2 text-3xl font-extrabold">{value}</p>
+            <div key={label} className="admin-stat-card interactive-card rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <p className="admin-stat-label text-xs font-extrabold uppercase">{label}</p>
+              <p className="admin-stat-value mt-2 text-3xl font-extrabold">{value}</p>
             </div>
           ))}
         </div>
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Account activity</p>
@@ -417,7 +417,7 @@ function AdminPage() {
           )}
         </section>
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Contact inbox</p>
@@ -451,7 +451,7 @@ function AdminPage() {
           )}
         </section>
 
-        <section id="campus-map" className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        <section id="campus-map" className="admin-panel admin-map-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Administrator-only location tools</p>

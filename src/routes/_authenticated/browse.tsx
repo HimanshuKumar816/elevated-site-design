@@ -135,8 +135,8 @@ function Browse() {
 
   return (
     <Page>
-      <section className="mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
-        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-ink px-6 py-9 text-ink-foreground sm:px-10 sm:py-12 lg:px-14 lg:py-14">
+      <section className="student-workspace mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
+        <div className="student-workspace-hero relative overflow-hidden rounded-[2rem] bg-gradient-ink px-6 py-9 text-ink-foreground sm:px-10 sm:py-12 lg:px-14 lg:py-14">
           <div className="pointer-events-none absolute -right-10 -top-24 size-72 rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl"><p className="kicker text-emerald-200">Campus report board</p><h1 className="mt-4 text-4xl font-extrabold leading-tight text-white sm:text-5xl">Lost something? Start here.</h1><p className="mt-4 max-w-xl leading-7 text-white/70">Search reports, narrow by category, and compare details. Keep one identifying detail private until you're ready to verify a claim.</p></div>
