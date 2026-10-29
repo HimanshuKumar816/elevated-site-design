@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { CampusMap } from "@/components/campus-map";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
 
@@ -41,7 +42,21 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-type Row = AdminReport & { image_url?: string | null };
+type Row = AdminReport & {
+  image_url?: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+type LoginActivity = {
+  id: string;
+  user_id: string;
+  login_method: string;
+  logged_in_at: string;
+  full_name: string | null;
+  uid: string | null;
+  role: string | null;
+};
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -50,6 +65,9 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<ReportFilter>({ query: "", type: "All", category: "All" });
+  const [loginEvents, setLoginEvents] = useState<LoginActivity[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState("");
 
   async function signOut() {
     try {
@@ -90,6 +108,14 @@ function AdminPage() {
         if (page.length < PAGE_SIZE) break;
       }
 
+      const { data: pinnedLocations, error: locationError } = await supabase
+        .from("item_locations")
+        .select("item_id,latitude,longitude");
+      if (locationError) throw locationError;
+      const locationByItem = new Map(
+        (pinnedLocations ?? []).map((pin) => [pin.item_id, { latitude: pin.latitude, longitude: pin.longitude }]),
+      );
+
       const userIds = [...new Set(items.map((item) => item.user_id))];
       const profiles = new Map<string, { uid: string; full_name: string }>();
       // Small batches keep URL/request sizes bounded even if the report list grows.
@@ -120,6 +146,7 @@ function AdminPage() {
               image_url = null;
             }
           }
+          const pin = locationByItem.get(item.id);
           return {
             ...item,
             note: item.note ?? null,
@@ -127,6 +154,8 @@ function AdminPage() {
             submitter_name: profile?.full_name ?? null,
             submitter_uid: profile?.uid ?? null,
             image_url,
+            latitude: pin?.latitude ?? null,
+            longitude: pin?.longitude ?? null,
           };
         }),
       );
@@ -142,9 +171,71 @@ function AdminPage() {
     void load();
   }, [load]);
 
+  const loadLoginActivity = useCallback(async () => {
+    setActivityLoading(true);
+    setActivityError("");
+    try {
+      const { data: events, error: eventsError } = await supabase
+        .from("login_events")
+        .select("id,user_id,login_method,logged_in_at")
+        .order("logged_in_at", { ascending: false })
+        .limit(50);
+      if (eventsError) throw eventsError;
+
+      const userIds = [...new Set((events ?? []).map((event) => event.user_id))];
+      const profilesById = new Map<string, { full_name: string; uid: string; role: string }>();
+      if (userIds.length) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id,uid,full_name,role")
+          .in("id", userIds);
+        if (profilesError) throw profilesError;
+        for (const profile of profiles ?? []) {
+          profilesById.set(profile.id, {
+            full_name: profile.full_name,
+            uid: profile.uid,
+            role: profile.role,
+          });
+        }
+      }
+
+      setLoginEvents((events ?? []).map((event) => {
+        const profile = profilesById.get(event.user_id);
+        return {
+          ...event,
+          full_name: profile?.full_name ?? null,
+          uid: profile?.uid ?? null,
+          role: profile?.role ?? null,
+        };
+      }));
+    } catch {
+      setActivityError("We couldn't load recent sign-ins. Please retry.");
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadLoginActivity();
+  }, [loadLoginActivity]);
+
   const counts = countReports(rows);
   const categories = useMemo(() => ["All", ...new Set(rows.map((report) => report.category))], [rows]);
   const visible = filterReports(rows, filter);
+  const campusMarkers = useMemo(() => rows.flatMap((report) => {
+    if (report.latitude === null || report.longitude === null) return [];
+    return [{
+      id: report.id,
+      lat: report.latitude,
+      lng: report.longitude,
+      title: report.name + " (" + report.type + ")",
+      detail: [
+        report.category,
+        report.location,
+        "Submitted by " + (report.submitter_name ?? "Unknown") + " (" + (report.submitter_uid ?? "—") + ")",
+      ].join(" · "),
+    }];
+  }), [rows]);
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
 
   return (
@@ -181,8 +272,11 @@ function AdminPage() {
           </div>
           <button
             type="button"
-            onClick={() => void load()}
-            disabled={loading}
+            onClick={() => {
+              void load();
+              void loadLoginActivity();
+            }}
+            disabled={loading || activityLoading}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -197,6 +291,68 @@ function AdminPage() {
             </div>
           ))}
         </div>
+
+        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div>
+              <p className="kicker text-emerald-800">Account activity</p>
+              <h2 className="mt-2 text-2xl font-extrabold">Recent sign-ins</h2>
+              <p className="mt-1 text-sm text-muted-foreground">The latest 50 successful student and administrator sign-ins.</p>
+            </div>
+            <button type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
+              {activityLoading ? "Refreshing…" : "Refresh activity"}
+            </button>
+          </div>
+          {activityError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{activityError}</p>}
+          {activityLoading ? (
+            <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading sign-in activity…</p>
+          ) : loginEvents.length === 0 ? (
+            <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No successful sign-ins have been recorded yet. New logins will appear here.</p>
+          ) : (
+            <div className="overflow-x-auto border-t border-border">
+              <table className="w-full min-w-[680px] text-left text-sm">
+                <thead className="bg-secondary/70 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-5 py-3 font-extrabold sm:px-6">Person</th>
+                    <th className="px-5 py-3 font-extrabold">Account type</th>
+                    <th className="px-5 py-3 font-extrabold">Method</th>
+                    <th className="px-5 py-3 font-extrabold">Signed in</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loginEvents.map((event) => (
+                    <tr key={event.id} className="border-t border-border align-top">
+                      <td className="px-5 py-4 sm:px-6">
+                        <p className="font-extrabold">{event.full_name ?? "Unknown account"}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">UID {event.uid ?? "—"}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={event.role === "admin" ? "rounded-full bg-ink px-2.5 py-1 text-xs font-bold text-white" : "rounded-full bg-secondary px-2.5 py-1 text-xs font-bold"}>
+                          {event.role === "admin" ? "Administrator" : "Student"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">{event.login_method === "otp" ? "SMS OTP" : event.login_method === "signup" ? "Account created" : event.role === "admin" ? "Admin password" : "Password"}</td>
+                      <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">{new Date(event.logged_in_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex flex-wrap items-end justify-between gap-3 p-5 sm:p-6">
+            <div>
+              <p className="kicker text-emerald-800">Location intelligence</p>
+              <h2 className="mt-2 text-2xl font-extrabold">Chandigarh University campus map</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only the CU Mohali campus area is shown. Pins use private coordinates from student reports; exact coordinates are not exposed on the public item board.</p>
+            </div>
+            <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{campusMarkers.length} pinned reports</span>
+          </div>
+          <CampusMap mode="viewer" markers={campusMarkers} className="mx-4 mb-4" />
+          <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">Older reports submitted before map pins were introduced will not have a marker. New reports must include a campus pin.</p>
+        </section>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <label className="relative min-w-56 flex-1">
