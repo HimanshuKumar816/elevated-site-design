@@ -34,6 +34,7 @@ jobs:
       - name: Scan full Git history with Gitleaks
         run: |
           docker run --rm \
+            -e GITLEAKS_CONFIG=/repo/.gitleaks.toml \
             -v "$PWD:/repo" \
             ghcr.io/gitleaks/gitleaks:v8.24.3 \
             git --redact --exit-code=1 --verbose /repo
