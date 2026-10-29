@@ -2,3 +2,6 @@ project_id = "upkyaupivigspwwunqpg"
 
 [functions.uid-signin]
 verify_jwt = false
+
+[functions.contact]
+verify_jwt = false
