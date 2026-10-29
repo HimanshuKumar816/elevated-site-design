@@ -228,12 +228,15 @@ function AdminPage() {
       id: report.id,
       lat: report.latitude,
       lng: report.longitude,
-      title: report.name + " (" + report.type + ")",
+      title: report.name,
       detail: [
-        report.category,
-        report.location,
+        "Status: " + report.type,
+        "Category: " + report.category,
+        "Location: " + report.location,
+        "Date: " + report.item_date,
         "Submitted by " + (report.submitter_name ?? "Unknown") + " (" + (report.submitter_uid ?? "—") + ")",
       ].join(" · "),
+      href: `#report-${report.id}`,
     }];
   }), [rows]);
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
@@ -399,7 +402,7 @@ function AdminPage() {
         ) : (
           <div className="mt-6 grid gap-4">
             {visible.map((report) => (
-              <article key={report.id} className="grid gap-4 rounded-2xl border border-border bg-card p-5 sm:grid-cols-[96px_1fr]">
+              <article id={`report-${report.id}`} key={report.id} className="grid gap-4 rounded-2xl border border-border bg-card p-5 sm:grid-cols-[96px_1fr]">
                 {report.image_url ? (
                   <img src={report.image_url} alt={report.name} loading="lazy" referrerPolicy="no-referrer" className="size-24 rounded-xl object-cover" />
                 ) : (

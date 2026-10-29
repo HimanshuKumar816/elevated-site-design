@@ -13,6 +13,8 @@ export type CampusMapMarker = {
   lng: number;
   title: string;
   detail?: string;
+  /** Internal admin-report anchor for the selected item. */
+  href?: string;
 };
 
 type MapMode = "picker" | "viewer";
@@ -103,7 +105,7 @@ function loadLeaflet(): Promise<LeafletApi> {
   return leafletPromise;
 }
 
-function popupContent(title: string, detail?: string): HTMLElement {
+function popupContent(title: string, detail?: string, href?: string): HTMLElement {
   const wrapper = document.createElement("div");
   const heading = document.createElement("strong");
   heading.textContent = title;
@@ -113,6 +115,18 @@ function popupContent(title: string, detail?: string): HTMLElement {
     paragraph.textContent = detail;
     paragraph.style.margin = "4px 0 0";
     wrapper.appendChild(paragraph);
+  }
+  if (href && /^#report-[0-9a-f-]+$/i.test(href)) {
+    const linkRow = document.createElement("p");
+    linkRow.style.margin = "8px 0 0";
+    const link = document.createElement("a");
+    link.href = href;
+    link.textContent = "View report";
+    link.style.color = "#047857";
+    link.style.fontWeight = "700";
+    link.style.textDecoration = "underline";
+    linkRow.appendChild(link);
+    wrapper.appendChild(linkRow);
   }
   return wrapper;
 }
@@ -204,7 +218,7 @@ export function CampusMap({
         const position = { lat: item.lat, lng: item.lng };
         if (!isInsideCampus(position)) continue;
         markerLayer.addLayer(
-          leaflet.marker([item.lat, item.lng]).bindPopup(popupContent(item.title, item.detail)),
+          leaflet.marker([item.lat, item.lng]).bindPopup(popupContent(item.title, item.detail, item.href)),
         );
       }
     }
