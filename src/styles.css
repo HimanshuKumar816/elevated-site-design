@@ -217,3 +217,168 @@
     max-width: 100%;
   }
 }
+
+
+/* Role-specific visual systems: a calm student workspace and a distinct premium admin control room. */
+.admin-shell {
+  --admin-ink: #101a2e;
+  --admin-ink-soft: #1b2b46;
+  --admin-teal: #57ddc0;
+  --admin-teal-deep: #147f78;
+  background:
+    radial-gradient(ellipse at 92% 0%, rgba(87, 221, 192, 0.08), transparent 28rem),
+    #f3f6fb;
+  color: #152137;
+}
+.admin-topbar {
+  background: linear-gradient(112deg, #0c1426 0%, #14243d 62%, #123b43 130%);
+  border-color: rgba(255,255,255,.1);
+  box-shadow: 0 12px 34px -24px rgba(8, 19, 39, .8);
+}
+.admin-brand-icon {
+  color: #0b1b2b;
+  background: linear-gradient(145deg, #8af0d8, #42cbb3);
+  box-shadow: 0 8px 22px rgba(67, 211, 184, .18);
+}
+.admin-brand-title { color: #f8fbff; }
+.admin-brand-subtitle { color: rgba(230, 240, 250, .57); }
+.admin-access-pill {
+  color: #9bf0dc;
+  background: rgba(87, 221, 192, .1);
+  border: 1px solid rgba(119, 238, 213, .2);
+}
+.admin-utility-link {
+  color: rgba(243, 248, 255, .78);
+}
+.admin-utility-link:hover {
+  color: #fff;
+  background: rgba(255,255,255,.09);
+}
+.admin-signout {
+  color: #f5f8fc;
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.16);
+}
+.admin-signout:hover { background: rgba(255,255,255,.14); }
+.admin-dashboard-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 184px;
+  padding: clamp(1.5rem, 3.2vw, 2.5rem);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 1.65rem;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(89, 226, 197, .19), transparent 18rem),
+    linear-gradient(116deg, #0c1528 0%, #172d4b 66%, #15545a 145%);
+  box-shadow: 0 25px 70px -44px rgba(8, 22, 44, .7);
+}
+.admin-dashboard-header::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 18rem;
+  height: 18rem;
+  right: -6rem;
+  bottom: -12rem;
+  border: 1px solid rgba(127, 238, 214, .19);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2rem rgba(127, 238, 214, .035), 0 0 0 4rem rgba(127, 238, 214, .025);
+}
+.admin-kicker { color: #82ead2 !important; }
+.admin-dashboard-title {
+  color: #fbfdff;
+  font-size: clamp(2.15rem, 4vw, 3.2rem);
+  letter-spacing: -.055em;
+}
+.admin-dashboard-subtitle { color: rgba(237, 244, 253, .7); max-width: 42rem; }
+.admin-refresh-button {
+  color: #092032;
+  background: linear-gradient(135deg, #9bf0dd, #52d6bd);
+  border-color: transparent;
+  box-shadow: 0 10px 28px -16px rgba(87, 221, 192, .65);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+.admin-refresh-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px -15px rgba(87, 221, 192, .65);
+  filter: saturate(1.08);
+}
+.admin-stat-card {
+  position: relative;
+  overflow: hidden;
+  border-color: #e3e9f2;
+  background: linear-gradient(145deg, #fff 0%, #fbfcff 100%);
+  box-shadow: 0 15px 35px -28px rgba(16, 32, 58, .35);
+}
+.admin-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #62dec3, #367fc2);
+  opacity: .9;
+}
+.admin-stat-label { color: #6b7890; letter-spacing: .13em; }
+.admin-stat-value { color: #15243d; font-variant-numeric: tabular-nums; }
+.admin-panel {
+  border-color: #e2e8f1 !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 18px 50px -38px rgba(15, 32, 58, .38);
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+.admin-panel > div:first-child { border-color: #e9eef5; }
+.admin-shell .admin-panel .kicker { color: #168477 !important; }
+.admin-shell .admin-panel h2 { color: #172640; letter-spacing: -.04em; }
+.admin-shell .admin-panel button:not(.admin-signout):not(.admin-refresh-button) {
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.admin-shell .admin-panel button:not(:disabled):hover {
+  border-color: #b8dcd5;
+}
+.admin-shell .admin-panel thead {
+  background: #f1f7f8;
+  color: #58687d;
+}
+.admin-shell .admin-panel tbody tr {
+  transition: background-color 150ms ease;
+}
+.admin-shell .admin-panel tbody tr:hover { background: #f7fbfc; }
+.admin-shell .admin-panel article {
+  border-color: #e4eaf2;
+  box-shadow: 0 10px 30px -25px rgba(16, 32, 58, .38);
+}
+.admin-map-panel {
+  background: linear-gradient(145deg, #fff 0%, #f8fbfc 100%) !important;
+}
+.admin-shell :focus-visible {
+  outline-color: #36bca4;
+}
+.student-workspace-hero {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(88, 225, 193, .22), transparent 19rem),
+    linear-gradient(116deg, #111b31 0%, #1a3151 66%, #17635f 140%);
+  box-shadow: 0 28px 80px -48px rgba(13, 28, 52, .72);
+}
+.student-workspace-hero::after {
+  content: "";
+  position: absolute;
+  right: -4rem;
+  bottom: -9rem;
+  width: 19rem;
+  height: 19rem;
+  border: 1px solid rgba(139, 244, 220, .16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2rem rgba(139, 244, 220, .035), 0 0 0 4rem rgba(139, 244, 220, .025);
+  pointer-events: none;
+}
+.student-workspace .surface-card {
+  border-color: #e4eaf2;
+  box-shadow: 0 16px 42px -34px rgba(17, 34, 60, .38);
+}
+.student-workspace .surface-card:hover {
+  border-color: rgba(32, 160, 143, .35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-refresh-button, .admin-panel, .student-workspace .surface-card { transition: none; }
+}
