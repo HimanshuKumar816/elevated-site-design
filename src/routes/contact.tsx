@@ -55,8 +55,8 @@ function ContactPage() {
       return;
     }
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"];
+    const publishableKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
     if (!supabaseUrl || !publishableKey) {
       setError("The contact form is temporarily unavailable. Please try again later.");
       return;
