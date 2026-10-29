@@ -291,6 +291,15 @@ export default {
       const destination = new URL(requestUrl.pathname + requestUrl.search, CANONICAL_ORIGIN);
       return hardenResponse(request, Response.redirect(destination.toString(), 301));
     }
+    if (
+      requestUrl.hostname.toLowerCase() === new URL(CANONICAL_ORIGIN).hostname &&
+      requestUrl.pathname.length > 1 &&
+      requestUrl.pathname.endsWith("/")
+    ) {
+      const normalizedPath = requestUrl.pathname.replace(/\/+$/, "") || "/";
+      const destination = new URL(normalizedPath + requestUrl.search, CANONICAL_ORIGIN);
+      return hardenResponse(request, Response.redirect(destination.toString(), 301));
+    }
 
     try {
       const handler = await getServerEntry();
