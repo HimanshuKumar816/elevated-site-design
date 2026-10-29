@@ -6,7 +6,10 @@ const allowedOrigins = new Set([
   "http://localhost:5173",
   "http://localhost:8080",
 ]);
-const attempts = new Map<string, { count: number; start: number }>();
+async function hashRateLimitKey(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 function corsHeaders(origin: string | null): Headers {
   const headers = new Headers({
@@ -30,24 +33,6 @@ function isOriginAllowed(origin: string | null): boolean {
   return !origin || allowedOrigins.has(origin);
 }
 
-function tooManyAttempts(ip: string): boolean {
-  const now = Date.now();
-  const prior = attempts.get(ip);
-  if (!prior || now - prior.start > 10 * 60_000) {
-    attempts.set(ip, { count: 1, start: now });
-  } else {
-    prior.count += 1;
-    if (prior.count > 5) return true;
-  }
-
-  if (attempts.size > 5000) {
-    for (const [key, value] of attempts) {
-      if (now - value.start > 10 * 60_000) attempts.delete(key);
-      if (attempts.size <= 4000) break;
-    }
-  }
-  return false;
-}
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
@@ -65,6 +50,28 @@ Deno.serve(async (req: Request) => {
   // A publishable/anon key is public configuration, not authentication. The function's
   // trust boundary is input validation, origin policy, rate limiting and service-role-only DB writes.
   if (!url || !serviceKey || !apiKey) {
+    return json({ ok: false, error: "Contact service is temporarily unavailable." }, 503, origin);
+  }
+
+  const admin = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  try {
+    const keyHash = await hashRateLimitKey("contact:" + ip);
+    const { data: allowed, error: rateLimitError } = await admin.rpc("consume_edge_rate_limit", {
+      p_key_hash: keyHash,
+      p_window_seconds: 600,
+      p_max_requests: 5,
+    });
+    if (rateLimitError) {
+      console.error("[Contact] Rate-limit check failed", { code: rateLimitError.code });
+      return json({ ok: false, error: "Contact service is temporarily unavailable." }, 503, origin);
+    }
+    if (allowed !== true) {
+      return json({ ok: false, error: "Too many submissions. Please try again later." }, 429, origin);
+    }
+  } catch {
     return json({ ok: false, error: "Contact service is temporarily unavailable." }, 503, origin);
   }
 
@@ -103,15 +110,6 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "Check the fields and try again." }, 400, origin);
   }
 
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const ip = req.headers.get("cf-connecting-ip") ?? forwarded ?? "unknown";
-  if (tooManyAttempts(ip)) {
-    return json({ ok: false, error: "Too many submissions. Please try again later." }, 429, origin);
-  }
-
-  const admin = createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   const { error } = await admin.from("contact_messages").insert({
     name,
     email,
