@@ -150,6 +150,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/contact'
+    | '/privacy'
     | '/auth'
     | '/admin-login'
     | '/reset-password'
@@ -162,6 +164,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/contact'
+    | '/privacy'
     | '/_authenticated'
     | '/auth'
     | '/admin-login'
