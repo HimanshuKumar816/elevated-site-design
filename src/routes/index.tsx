@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowRight, ArrowUpRight, BadgeCheck, BellRing, Check, LockKeyhole, MapPin, PackageSearch, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
 import hero from "@/assets/hero.jpg";
@@ -23,6 +25,29 @@ const steps = [
 const assurances = ["One place for campus reports", "Private details stay private", "Verify before handing over"];
 
 function Home() {
+  const navigate = useNavigate();
+
+  // Signed-in users should land in their role-specific workspace, not the public landing page.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!active || !authData.user) return;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", authData.user.id)
+          .maybeSingle();
+        if (!active) return;
+        navigate({ to: profile?.role === "admin" ? "/admin" : "/browse", replace: true });
+      } catch {
+        // If auth is temporarily unavailable, keep the public landing page usable.
+      }
+    })();
+    return () => { active = false; };
+  }, [navigate]);
+
   return (
     <Page>
       <section className="relative isolate overflow-hidden">
