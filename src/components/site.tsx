@@ -156,6 +156,8 @@ export function Footer() {
               <Link to="/browse" className="text-sm text-ink-foreground/80 transition hover:text-white">Browse reports</Link>
               <Link to="/report" className="text-sm text-ink-foreground/80 transition hover:text-white">Report an item</Link>
               <Link to="/how-it-works" className="text-sm text-ink-foreground/80 transition hover:text-white">How it works</Link>
+              <Link to="/contact" className="text-sm text-ink-foreground/80 transition hover:text-white">Contact</Link>
+              <Link to="/privacy" className="text-sm text-ink-foreground/80 transition hover:text-white">Privacy policy</Link>
             </div>
           </div>
           <div>

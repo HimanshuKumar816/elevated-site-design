@@ -48,6 +48,15 @@ type Row = AdminReport & {
   longitude: number | null;
 };
 
+type ContactMessage = {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  created_at: string;
+};
+
 type LoginActivity = {
   id: string;
   user_id: string;
@@ -68,6 +77,9 @@ function AdminPage() {
   const [loginEvents, setLoginEvents] = useState<LoginActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState("");
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [contactLoading, setContactLoading] = useState(true);
+  const [contactError, setContactError] = useState("");
 
   async function signOut() {
     try {
@@ -219,6 +231,28 @@ function AdminPage() {
     void loadLoginActivity();
   }, [loadLoginActivity]);
 
+  const loadContactMessages = useCallback(async () => {
+    setContactLoading(true);
+    setContactError("");
+    try {
+      const { data, error: messagesError } = await supabase
+        .from("contact_messages")
+        .select("id,name,email,subject,message,created_at")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (messagesError) throw messagesError;
+      setContactMessages((data ?? []) as ContactMessage[]);
+    } catch {
+      setContactError("We couldn't load contact messages. Please retry.");
+    } finally {
+      setContactLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadContactMessages();
+  }, [loadContactMessages]);
+
   const counts = countReports(rows);
   const categories = useMemo(() => ["All", ...new Set(rows.map((report) => report.category))], [rows]);
   const visible = filterReports(rows, filter);
@@ -278,8 +312,9 @@ function AdminPage() {
             onClick={() => {
               void load();
               void loadLoginActivity();
+              void loadContactMessages();
             }}
-            disabled={loading || activityLoading}
+            disabled={loading || activityLoading || contactLoading}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -340,6 +375,40 @@ function AdminPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div>
+              <p className="kicker text-emerald-800">Contact inbox</p>
+              <h2 className="mt-2 text-2xl font-extrabold">Messages from the website</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Only authenticated administrators can read these messages.</p>
+            </div>
+            <button type="button" onClick={() => void loadContactMessages()} disabled={contactLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
+              {contactLoading ? "Refreshing…" : "Refresh inbox"}
+            </button>
+          </div>
+          {contactError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{contactError}</p>}
+          {contactLoading ? (
+            <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading contact messages…</p>
+          ) : contactMessages.length === 0 ? (
+            <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No contact messages have been received yet.</p>
+          ) : (
+            <div className="grid gap-3 border-t border-border p-4 sm:p-5">
+              {contactMessages.map((message) => (
+                <article key={message.id} className="rounded-xl border border-border bg-white p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-extrabold text-foreground">{message.subject}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">From {message.name} · <a className="font-bold text-primary underline-offset-2 hover:underline" href={"mailto:" + message.email}>{message.email}</a></p>
+                    </div>
+                    <time className="text-xs text-muted-foreground" dateTime={message.created_at}>{new Date(message.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{message.message}</p>
+                </article>
+              ))}
             </div>
           )}
         </section>

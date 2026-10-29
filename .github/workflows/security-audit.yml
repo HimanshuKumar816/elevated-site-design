@@ -1,0 +1,40 @@
+name: Security audit (final dependency check)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, security/seo-hardening]
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    name: Audit locked Bun dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - name: Install exactly what is in bun.lock
+        run: bun install --frozen-lockfile
+      - name: Check known high and critical dependency vulnerabilities
+        run: bun audit --audit-level=high
+  secret-scan:
+    name: Scan current tree and full Git history for secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Scan full Git history with Gitleaks
+        run: |
+          docker run --rm \
+            -e GITLEAKS_CONFIG=/repo/.gitleaks.toml \
+            -v "$PWD:/repo" \
+            ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git --redact --exit-code=1 --verbose /repo
