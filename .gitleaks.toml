@@ -2,7 +2,7 @@ title = "CampusFind secret scanning"
 [extend]
 useDefault = true
 
-[[allowlists]]
+[allowlist]
 description = "Browser Supabase publishable/anon keys are public configuration, not server secrets. This narrowly matches only those variable names."
 regexTarget = "line"
 regexes = [
