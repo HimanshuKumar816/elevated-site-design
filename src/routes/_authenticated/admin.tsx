@@ -466,7 +466,7 @@ function AdminPage() {
           </div>}
           {pinError && <p role="alert" className="mx-4 mb-3 rounded-lg bg-destructive/5 p-3 text-sm font-semibold text-destructive">{pinError}</p>}
           {pinSuccess && <p role="status" className="mx-4 mb-3 rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{pinSuccess}</p>}
-          <CampusMap mode={pinTarget ? "picker" : "viewer"} markers={campusMarkers} onPositionChange={pinTarget ? (position) => void saveAdminPin(position) : undefined} className="mx-4 mb-4" />
+          <CampusMap mode={pinTarget ? "picker" : "viewer"} markers={campusMarkers} {...(pinTarget ? { onPositionChange: (position: CampusCoordinate) => { void saveAdminPin(position); } } : {})} className="mx-4 mb-4" />
           <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">Pins are stored against the selected report and protected by database row-level security. New reports remain text-only until an administrator assigns a pin.</p>
         </section>
 
