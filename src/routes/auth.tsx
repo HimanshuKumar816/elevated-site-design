@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
+import { recordSuccessfulLogin } from "@/lib/login-events";
 import { normalizeUid } from "@/lib/uid";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 import { GENERIC_SIGNIN_ERROR, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword, validateSignup } from "@/lib/auth-validation";
@@ -142,6 +143,7 @@ function AuthPage() {
         : GENERIC_SIGNIN_ERROR);
       return false;
     }
+    await recordSuccessfulLogin("password");
     return true;
   }
 
@@ -251,6 +253,7 @@ function AuthPage() {
         }
         setPassword("");
         setConfirmPassword("");
+        await recordSuccessfulLogin("signup");
         navigate({ to: redirect, replace: true });
         return;
       }
@@ -263,6 +266,7 @@ function AuthPage() {
         return;
       }
 
+      await recordSuccessfulLogin("otp");
       navigate({ to: redirect, replace: true });
     } catch {
       setError("Something went wrong while verifying the code. Please try again.");
