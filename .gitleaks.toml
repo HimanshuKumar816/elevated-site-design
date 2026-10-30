@@ -1,0 +1,10 @@
+title = "CampusFind secret scanning"
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Browser Supabase publishable/anon keys are public configuration, not server secrets. This narrowly matches only those variable names."
+regexTarget = "line"
+regexes = [
+  '''(?i)^\s*(?:VITE_)?SUPABASE_(?:PUBLISHABLE_KEY|ANON_KEY)\s*='''
+]
