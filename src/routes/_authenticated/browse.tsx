@@ -98,6 +98,7 @@ function Browse() {
       fetchSequenceRef.current = requestSequence;
       itemsLengthRef.current = 0;
       setLoading(true);
+      setLoadingMore(false);
       setError("");
     } else {
       setLoadingMore(true);
