@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://campusfind-uir0.onrender.com/sitemap.xml
