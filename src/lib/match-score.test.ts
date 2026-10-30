@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { findItemMatches, scoreItemMatch } from "@/lib/match-score";
 import type { Item } from "@/lib/items";
 
-const lost: Item = {
+type MatchCandidate = Pick<Item, "type" | "name" | "category" | "location" | "note" | "item_date"> &
+  Partial<Pick<Item, "brand" | "color" | "model">>;
+
+const lost: MatchCandidate = {
   type: "Lost" as const,
   name: "Black wireless earbuds",
   category: "Electronics",
