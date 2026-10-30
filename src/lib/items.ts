@@ -9,6 +9,10 @@ export type Item = {
   category: string;
   location: string;
   item_date: string;
+  item_time?: string;
+  brand?: string;
+  color?: string;
+  model?: string;
   note: string;
   image_path?: string | null;
   report_status?: ReportStatus;
