@@ -814,7 +814,7 @@ function AdminPage() {
           <h3 className="font-extrabold text-foreground">{item.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{item.category} · {item.location}</p>
           <p className="mt-1 text-xs text-muted-foreground">Item date {item.item_date}{item.item_time ? ` · ${item.item_time}` : ""}</p>
-          {(item.brand || item.color || item.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[item.brand, item.color, item.model].filter(Boolean).join(" · ")}</p>
+          {(item.brand || item.color || item.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[item.brand, item.color, item.model].filter(Boolean).join(" · ")}</p>}
         </div>
       </div>
       <div className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
