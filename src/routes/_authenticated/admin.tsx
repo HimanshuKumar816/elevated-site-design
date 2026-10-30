@@ -189,6 +189,11 @@ function AdminPage() {
         note: string;
         created_at: string;
         image_path: string | null;
+        report_status: string;
+        moderation_flag: string;
+        moderated_at: string | null;
+        moderated_by: string | null;
+        updated_at: string;
       }> = [];
       for (let offset = 0; ; offset += PAGE_SIZE) {
         const { data, error: itemsError } = await supabase
