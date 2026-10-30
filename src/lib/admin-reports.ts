@@ -8,6 +8,10 @@ export type AdminReport = {
   category: string;
   location: string;
   item_date: string;
+  item_time?: string;
+  brand?: string;
+  color?: string;
+  model?: string;
   note: string | null;
   created_at: string;
   image_path: string | null;
