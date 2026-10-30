@@ -5,7 +5,8 @@ import { Page } from "@/components/site";
 import { CATEGORIES, type Item } from "@/lib/items";
 import { findItemMatches } from "@/lib/match-score";
 import { isValidIsoDate } from "@/lib/date";
-import { validateItemImage } from "@/lib/item-image";
+import { compressItemImage, validateItemImage } from "@/lib/item-image";
+import { CAMPUS_LOCATIONS, buildCampusLocation, type CampusLocation } from "@/lib/campus-locations";
 import { buildNotificationPreferencePayload, validateNotificationPreference } from "@/lib/notification-preferences";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -103,7 +104,9 @@ function Report() {
     const form = new FormData(e.currentTarget);
     const name = String(form.get("name") ?? "").trim();
     const category = String(form.get("category") ?? "");
-    const location = String(form.get("location") ?? "").trim();
+    const locationZone = String(form.get("location_zone") ?? "") as CampusLocation;
+    const locationDetail = String(form.get("location_detail") ?? "").trim();
+    const location = CAMPUS_LOCATIONS.includes(locationZone) ? buildCampusLocation(locationZone, locationDetail) : "";
     const date = String(form.get("date") ?? "");
     const note = String(form.get("note") ?? "").trim();
     const submittedPhoneNumber = phoneNumber.trim();
@@ -119,8 +122,13 @@ function Report() {
       setBusy(false);
       return;
     }
+    if (!CAMPUS_LOCATIONS.includes(locationZone) || (locationZone === "Other campus location" && !locationDetail)) {
+      setError("Choose a campus area and add a landmark when selecting Other campus location.");
+      setBusy(false);
+      return;
+    }
     if (!location || location.length > 160) {
-      setError("Enter a location (up to 160 characters).");
+      setError("Keep the campus area and landmark within 160 characters.");
       setBusy(false);
       return;
     }
@@ -166,10 +174,16 @@ function Report() {
           setError(imageValidationError);
           return;
         }
-        const extension = imageFile.type === "image/jpeg" ? "jpg" : imageFile.type === "image/png" ? "png" : "webp";
+        const uploadFile = await compressItemImage(imageFile);
+        const uploadValidationError = validateItemImage(uploadFile);
+        if (uploadValidationError) {
+          setError(uploadValidationError);
+          return;
+        }
+        const extension = uploadFile.type === "image/jpeg" ? "jpg" : uploadFile.type === "image/png" ? "png" : "webp";
         imagePath = `${u.user.id}/${crypto.randomUUID()}.${extension}`;
-        const { error: uploadError } = await supabase.storage.from("item-images").upload(imagePath, imageFile, {
-          contentType: imageFile.type,
+        const { error: uploadError } = await supabase.storage.from("item-images").upload(imagePath, uploadFile, {
+          contentType: uploadFile.type,
           upsert: false,
         });
         if (uploadError) {
@@ -236,7 +250,11 @@ function Report() {
             {matches.length > 0 && <div className="mt-7 rounded-2xl border border-emerald-900/10 bg-emerald-50/60 p-5"><h3 className="text-lg font-extrabold">Possible matches</h3><ul className="mt-4 grid gap-3">{matches.map(({ item, score }) => <li key={item.id} className="rounded-xl border border-border bg-white p-4"><p className="font-extrabold text-foreground">{item.name}</p><p className="mt-1 text-sm text-muted-foreground">{item.type} · {item.category} · {item.location}</p><p className="mt-2 text-xs font-bold text-emerald-800">Similarity score: {score}% · Verify details before claiming</p></li>)}</ul></div>}
             {matches.length === 0 && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm leading-6 text-muted-foreground">No strong match yet. If a similar report is added later, CampusFind can create a notification.</p>}
             <p className="mt-4 text-xs leading-5 text-muted-foreground">SMS alerts require the project's SMS gateway to be configured. In-app match alerts are recorded in CampusFind.</p>
-            <div className="mt-8 flex flex-wrap gap-3"><Link to="/browse" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground">View the board <ArrowRight size={16} /></Link><button type="button" onClick={() => setDone(false)} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button></div>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground">Track my report <ArrowRight size={16} /></Link>
+              <Link to="/browse" className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">View the board</Link>
+              <button type="button" onClick={() => setDone(false)} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button>
+            </div>
           </div>
         ) : (
           <form onSubmit={submit} className="rounded-[2rem] border border-border bg-white p-5 shadow-xl shadow-primary/5 sm:p-8 lg:p-10">
@@ -246,10 +264,19 @@ function Report() {
               <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Item name <span className="text-emerald-800">*</span><input required name="name" maxLength={120} placeholder="e.g. Black leather wallet" className={field} /></label>
               <label className="block text-sm font-extrabold text-foreground">Category <span className="text-emerald-800">*</span><select required name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
               <label className="block text-sm font-extrabold text-foreground">Date <span className="text-emerald-800">*</span><input required type="date" name="date" className={field} /></label>
-              <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Where was it lost or found? <span className="text-emerald-800">*</span><span className="relative block"><MapPin size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" /><input required name="location" maxLength={160} placeholder="e.g. Central Library, Block 4" className={`${field} pl-10`} /></span><span className="mt-2 block text-xs font-medium text-muted-foreground">Use a campus building, gate, floor, or nearby landmark. The campus map is reserved for administrators.</span></label>
+              <div className="block text-sm font-extrabold text-foreground sm:col-span-2">
+                <label htmlFor="location-zone">Where was it lost or found? <span className="text-emerald-800">*</span></label>
+                <select id="location-zone" required name="location_zone" defaultValue="" className={field}>
+                  <option value="" disabled>Select a campus area</option>
+                  {CAMPUS_LOCATIONS.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                </select>
+                <label htmlFor="location-detail" className="mt-3 block text-xs font-bold text-muted-foreground">More detail (optional, such as floor, room, or nearby landmark)</label>
+                <input id="location-detail" name="location_detail" maxLength={80} placeholder="e.g. Ground floor, near the help desk" className={field} />
+                <span className="mt-2 block text-xs font-medium text-muted-foreground">Choose a campus area first. Add a floor or landmark to help narrow the search.</span>
+              </div>
               <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Public description <span className="font-semibold text-muted-foreground">(optional)</span><textarea name="note" rows={4} maxLength={500} placeholder="Color, brand, general appearance. Keep one proof-of-ownership detail private." className={`${field} resize-y leading-6`} /><span className="mt-1 block text-xs font-semibold text-muted-foreground">Up to 500 characters. Don't include sensitive or unique identifying information.</span></label>
             </div>
-            <div className="mt-6 rounded-2xl border border-dashed border-border bg-background p-4 sm:p-5"><label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">JPG, PNG, or WebP · 5 MB max</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>{imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div>}</div>
+            <div className="mt-6 rounded-2xl border border-dashed border-border bg-background p-4 sm:p-5"><label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">JPG, PNG, or WebP · 5 MB max · photos are resized and compressed before upload</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>{imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div>}</div>
             <div className="mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><BellRing size={18} /></span><div><p className="text-sm font-extrabold text-foreground">SMS match alerts <span className="font-semibold text-muted-foreground">(optional)</span></p><p className="mt-1 text-xs leading-5 text-muted-foreground">Your number is stored privately and only used for alerts when you explicitly consent.</p></div></div>{preferencesLoading && <p className="mt-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}{!preferencesLoading && !preferencesAvailable && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">SMS settings are temporarily unavailable. You can still submit this report; saved preferences haven't been changed.</p>}<label className="mt-4 block text-sm font-extrabold text-foreground">Mobile number<input name="phone_number" type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => { setPhoneNumber(e.target.value); setPreferencesDirty(true); }} disabled={preferencesLoading || !preferencesAvailable} placeholder="+919876543210" className={field} /></label><label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white p-3 text-sm"><input type="checkbox" name="sms_notifications_enabled" checked={smsEnabled} onChange={(e) => { const enabled = e.target.checked; setSmsEnabled(enabled); setPreferencesDirty(true); if (!enabled) setPhoneNumber(""); }} disabled={preferencesLoading || !preferencesAvailable} className="mt-1 size-4 accent-emerald-700" /><span><span className="block font-extrabold text-foreground">I consent to SMS alerts</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">You can opt out by unchecking this at any time.</span></span></label></div>
             {error && <p role="alert" className="mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold leading-6 text-destructive">{error}</p>}
             <button disabled={busy} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Saving your report…" : "Submit report"}{!busy && <ArrowRight size={17} />}</button>

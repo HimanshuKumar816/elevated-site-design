@@ -1,3 +1,5 @@
+import { matchesSearch } from "@/lib/search";
+
 export type AdminReport = {
   id: string;
   user_id: string;
@@ -16,20 +18,27 @@ export type AdminReport = {
 export type ReportFilter = { query: string; type: "All" | "Lost" | "Found"; category: string };
 
 export function filterReports<T extends AdminReport>(reports: T[], f: ReportFilter): T[] {
-  const q = f.query.trim().toLowerCase();
-  return reports.filter((r) => {
-    if (f.type !== "All" && r.type !== f.type) return false;
-    if (f.category !== "All" && r.category !== f.category) return false;
+  const q = f.query.trim();
+  return reports.filter((report) => {
+    if (f.type !== "All" && report.type !== f.type) return false;
+    if (f.category !== "All" && report.category !== f.category) return false;
     if (!q) return true;
-    return [r.name, r.category, r.location, r.note, r.submitter_name, r.submitter_uid, r.user_id]
-      .some((v) => (v ?? "").toLowerCase().includes(q));
+    const searchable = [
+      report.name,
+      report.category,
+      report.location,
+      report.note ?? "",
+      report.submitter_name ?? "",
+      report.submitter_uid ?? "",
+    ].join(" ");
+    return matchesSearch(q, searchable);
   });
 }
 
 export function countReports(reports: AdminReport[]) {
   return {
     total: reports.length,
-    lost: reports.filter((r) => r.type === "Lost").length,
-    found: reports.filter((r) => r.type === "Found").length,
+    lost: reports.filter((report) => report.type === "Lost").length,
+    found: reports.filter((report) => report.type === "Found").length,
   };
 }

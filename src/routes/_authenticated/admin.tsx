@@ -5,6 +5,7 @@ import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
+import type { ModerationFlag, ReportStatus } from "@/lib/items";
 
 const PAGE_SIZE = 500;
 const PROFILE_BATCH_SIZE = 100;
@@ -44,6 +45,10 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type Row = AdminReport & {
   image_url?: string | null;
   submitter_role: string | null;
+  report_status: ReportStatus;
+  moderation_flag: ModerationFlag;
+  moderated_at: string | null;
+  moderated_by: string | null;
 };
 
 type ContactMessage = {
@@ -83,8 +88,50 @@ type MatchItem = {
 type ItemMatch = {
   id: string;
   matched_at: string;
+  score: number | null;
+  matching_method: string;
+  match_reason: string | null;
+  review_status: string;
+  admin_note: string | null;
   lost: MatchItem;
   found: MatchItem;
+};
+
+type ClaimRecord = {
+  id: string;
+  item_id: string;
+  claimant_id: string;
+  proof: string;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  item_name: string;
+  item_location: string;
+  item_owner_name: string | null;
+  item_owner_uid: string | null;
+  claimant_name: string | null;
+  claimant_uid: string | null;
+};
+
+type AuditRecord = {
+  id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  actor_uid: string | null;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  details: unknown;
+  created_at: string;
+};
+
+type ModerationNote = {
+  id: string;
+  item_id: string;
+  actor_id: string;
+  note: string;
+  created_at: string;
 };
 
 function AdminPage() {
@@ -100,6 +147,18 @@ function AdminPage() {
   const [matches, setMatches] = useState<ItemMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesError, setMatchesError] = useState("");
+  const [claims, setClaims] = useState<ClaimRecord[]>([]);
+  const [claimsLoading, setClaimsLoading] = useState(true);
+  const [claimsError, setClaimsError] = useState("");
+  const [auditRows, setAuditRows] = useState<AuditRecord[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditError, setAuditError] = useState("");
+  const [moderationNotes, setModerationNotes] = useState<ModerationNote[]>([]);
+  const [moderationDrafts, setModerationDrafts] = useState<Record<string, string>>({});
+  const [claimDrafts, setClaimDrafts] = useState<Record<string, string>>({});
+  const [matchDrafts, setMatchDrafts] = useState<Record<string, string>>({});
+  const [reportActionError, setReportActionError] = useState("");
+  const [actionBusyId, setActionBusyId] = useState<string | null>(null);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
@@ -130,6 +189,11 @@ function AdminPage() {
         note: string;
         created_at: string;
         image_path: string | null;
+        report_status: string;
+        moderation_flag: string;
+        moderated_at: string | null;
+        moderated_by: string | null;
+        updated_at: string;
       }> = [];
       for (let offset = 0; ; offset += PAGE_SIZE) {
         const { data, error: itemsError } = await supabase
@@ -180,6 +244,10 @@ function AdminPage() {
             submitter_name: profile?.full_name ?? null,
             submitter_uid: profile?.uid ?? null,
             submitter_role: profile?.role ?? null,
+            report_status: (item.report_status ?? "new") as ReportStatus,
+            moderation_flag: (item.moderation_flag ?? "none") as ModerationFlag,
+            moderated_at: item.moderated_at ?? null,
+            moderated_by: item.moderated_by ?? null,
             image_url,
           };
         }),
@@ -250,55 +318,43 @@ function AdminPage() {
     setMatchesLoading(true);
     setMatchesError("");
     try {
-      // Match alerts are stored as two mirrored notifications (one per reporter).
-      // Deduplicate them into one Lost-versus-Found pair for the admin console.
-      const { data: notifications, error: notificationsError } = await supabase
-        .from("notifications")
-        .select("id,item_id,matched_item_id,created_at")
-        .not("matched_item_id", "is", null)
+      const { data: pairs, error: pairsError } = await supabase
+        .from("item_matches")
+        .select("id,lost_item_id,found_item_id,score,matching_method,match_reason,review_status,admin_note,created_at,reviewed_at")
+        .neq("review_status", "resolved")
         .order("created_at", { ascending: false })
-        .limit(200);
-      if (notificationsError) throw notificationsError;
-
-      const pairMap = new Map<string, { itemIds: [string, string]; matched_at: string }>();
-      for (const notification of notifications ?? []) {
-        if (!notification.item_id || !notification.matched_item_id) continue;
-        const sortedIds = [notification.item_id, notification.matched_item_id].sort() as [string, string];
-        const pairKey = sortedIds.join(":");
-        if (!pairMap.has(pairKey)) pairMap.set(pairKey, { itemIds: sortedIds, matched_at: notification.created_at });
-      }
-
-      const itemIds = [...new Set([...pairMap.values()].flatMap((pair) => pair.itemIds))];
-      if (itemIds.length === 0) {
+        .limit(100);
+      if (pairsError) throw pairsError;
+      if (!pairs?.length) {
         setMatches([]);
         return;
       }
 
+      const itemIds = [...new Set(pairs.flatMap((pair) => [pair.lost_item_id, pair.found_item_id]))];
       const { data: itemRows, error: itemsError } = await supabase
         .from("items")
         .select("id,user_id,type,name,category,location,item_date,note,created_at,image_path")
         .in("id", itemIds);
       if (itemsError) throw itemsError;
-
-      const userIds = [...new Set((itemRows ?? []).map((item) => item.user_id))];
+      const profilesIds = [...new Set((itemRows ?? []).map((item) => item.user_id))];
       const profilesById = new Map<string, { full_name: string; uid: string }>();
-      if (userIds.length > 0) {
+      if (profilesIds.length) {
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id,full_name,uid")
-          .in("id", userIds);
+          .in("id", profilesIds);
         if (profilesError) throw profilesError;
         for (const profile of profiles ?? []) profilesById.set(profile.id, { full_name: profile.full_name, uid: profile.uid });
       }
 
-      const enrichedItems = await Promise.all((itemRows ?? []).map(async (item) => {
+      const enriched = await Promise.all((itemRows ?? []).map(async (item) => {
         let image_url: string | null = null;
         if (item.image_path) {
           try {
-            const { data, error: imageError } = await supabase.storage
+            const { data, error: signedError } = await supabase.storage
               .from("item-images")
               .createSignedUrl(item.image_path, 60 * 60);
-            if (!imageError) image_url = data?.signedUrl ?? null;
+            if (!signedError) image_url = data?.signedUrl ?? null;
           } catch {
             image_url = null;
           }
@@ -313,21 +369,23 @@ function AdminPage() {
           submitter_uid: profile?.uid ?? null,
         } satisfies MatchItem;
       }));
-      const itemsById = new Map(enrichedItems.map((item) => [item.id, item]));
-
-      const result: ItemMatch[] = [];
-      for (const [pairKey, pair] of pairMap) {
-        const first = itemsById.get(pair.itemIds[0]);
-        const second = itemsById.get(pair.itemIds[1]);
-        if (!first || !second || first.type === second.type) continue;
-        result.push({
-          id: pairKey,
-          matched_at: pair.matched_at,
-          lost: first.type === "Lost" ? first : second,
-          found: first.type === "Found" ? first : second,
-        });
-      }
-      result.sort((a, b) => new Date(b.matched_at).getTime() - new Date(a.matched_at).getTime());
+      const itemsById = new Map(enriched.map((item) => [item.id, item]));
+      const result: ItemMatch[] = pairs.flatMap((pair) => {
+        const lost = itemsById.get(pair.lost_item_id);
+        const found = itemsById.get(pair.found_item_id);
+        if (!lost || !found) return [];
+        return [{
+          id: pair.id,
+          matched_at: pair.created_at,
+          score: pair.score,
+          matching_method: pair.matching_method,
+          match_reason: pair.match_reason,
+          review_status: pair.review_status,
+          admin_note: pair.admin_note,
+          lost,
+          found,
+        }];
+      });
       setMatches(result);
     } catch {
       setMatchesError("We couldn't load possible item matches. Please retry.");
@@ -336,9 +394,100 @@ function AdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    void loadMatches();
-  }, [loadMatches]);
+  useEffect(() => { void loadMatches(); }, [loadMatches]);
+
+  const loadClaims = useCallback(async () => {
+    setClaimsLoading(true);
+    setClaimsError("");
+    try {
+      const { data: claimRows, error: claimError } = await supabase
+        .from("item_claims")
+        .select("id,item_id,claimant_id,proof,status,admin_note,created_at,reviewed_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (claimError) throw claimError;
+      if (!claimRows?.length) {
+        setClaims([]);
+        return;
+      }
+      const itemIds = [...new Set(claimRows.map((claim) => claim.item_id))];
+      const userIds = [...new Set(claimRows.map((claim) => claim.claimant_id))];
+      const [itemsResult, claimantProfiles] = await Promise.all([
+        supabase.from("items").select("id,user_id,name,location").in("id", itemIds),
+        supabase.from("profiles").select("id,full_name,uid").in("id", userIds),
+      ]);
+      if (itemsResult.error) throw itemsResult.error;
+      if (claimantProfiles.error) throw claimantProfiles.error;
+      const itemsById = new Map((itemsResult.data ?? []).map((item) => [item.id, item]));
+      const owners = [...new Set((itemsResult.data ?? []).map((item) => item.user_id))];
+      const ownerProfilesResult = owners.length
+        ? await supabase.from("profiles").select("id,full_name,uid").in("id", owners)
+        : { data: [], error: null };
+      if (ownerProfilesResult.error) throw ownerProfilesResult.error;
+      const profilesById = new Map([...(claimantProfiles.data ?? []), ...(ownerProfilesResult.data ?? [])].map((profile) => [profile.id, profile]));
+      setClaims(claimRows.map((claim) => {
+        const item = itemsById.get(claim.item_id);
+        const claimant = profilesById.get(claim.claimant_id);
+        const owner = item ? profilesById.get(item.user_id) : null;
+        return {
+          ...claim,
+          item_name: item?.name ?? "Found item",
+          item_location: item?.location ?? "Details unavailable",
+          item_owner_name: owner?.full_name ?? null,
+          item_owner_uid: owner?.uid ?? null,
+          claimant_name: claimant?.full_name ?? null,
+          claimant_uid: claimant?.uid ?? null,
+        };
+      }) as ClaimRecord[]);
+    } catch {
+      setClaimsError("We couldn't load item claims. Please retry.");
+    } finally {
+      setClaimsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadClaims(); }, [loadClaims]);
+
+  const loadModerationNotes = useCallback(async () => {
+    const { data, error: notesError } = await supabase
+      .from("admin_item_moderation_notes")
+      .select("id,item_id,actor_id,note,created_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!notesError) setModerationNotes((data ?? []) as ModerationNote[]);
+  }, []);
+
+  useEffect(() => { void loadModerationNotes(); }, [loadModerationNotes]);
+
+  const loadAuditHistory = useCallback(async () => {
+    setAuditLoading(true);
+    setAuditError("");
+    try {
+      const { data, error: auditQueryError } = await supabase
+        .from("admin_audit_logs")
+        .select("id,actor_id,entity_type,entity_id,action,details,created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (auditQueryError) throw auditQueryError;
+      const actorIds = [...new Set((data ?? []).map((entry) => entry.actor_id).filter(Boolean))] as string[];
+      const { data: profiles, error: profilesError } = actorIds.length
+        ? await supabase.from("profiles").select("id,full_name,uid").in("id", actorIds)
+        : { data: [], error: null };
+      if (profilesError) throw profilesError;
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      setAuditRows((data ?? []).map((entry) => ({
+        ...entry,
+        actor_name: entry.actor_id ? profileById.get(entry.actor_id)?.full_name ?? null : null,
+        actor_uid: entry.actor_id ? profileById.get(entry.actor_id)?.uid ?? null : null,
+      })) as AuditRecord[]);
+    } catch {
+      setAuditError("We couldn't load the administrator audit history. Please retry.");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadAuditHistory(); }, [loadAuditHistory]);
 
   const loadContactMessages = useCallback(async () => {
     setContactLoading(true);
@@ -361,6 +510,116 @@ function AdminPage() {
   useEffect(() => {
     void loadContactMessages();
   }, [loadContactMessages]);
+
+  async function adminActorId() {
+    const { data: userData, error: authError } = await supabase.auth.getUser();
+    if (authError || !userData.user) throw new Error("Your administrator session has expired.");
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+    if (profileError || profile?.role !== "admin") throw new Error("Administrator access is required.");
+    return userData.user.id;
+  }
+
+  async function updateReportStatus(report: Row, status: ReportStatus) {
+    setReportActionError("");
+    setActionBusyId(report.id);
+    try {
+      const actorId = await adminActorId();
+      const { error: updateError } = await supabase.from("items").update({
+        report_status: status,
+        moderated_by: actorId,
+        moderated_at: new Date().toISOString(),
+      }).eq("id", report.id);
+      if (updateError) throw updateError;
+      setRows((current) => current.map((row) => row.id === report.id ? { ...row, report_status: status } : row));
+    } catch {
+      setReportActionError("We couldn't update this report status. Check administrator access and try again.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function updateReportModeration(report: Row, flag: ModerationFlag, saveNote = false) {
+    setReportActionError("");
+    const note = (moderationDrafts[report.id] ?? "").trim();
+    if (saveNote && note.length > 0 && (note.length < 3 || note.length > 1000)) {
+      setReportActionError("Moderation note must be 3–1,000 characters.");
+      return;
+    }
+    setActionBusyId(report.id);
+    try {
+      const actorId = await adminActorId();
+      const { error: updateError } = await supabase.from("items").update({
+        moderation_flag: flag,
+        moderated_by: actorId,
+        moderated_at: new Date().toISOString(),
+      }).eq("id", report.id);
+      if (updateError) throw updateError;
+
+      if (saveNote && note.length > 0) {
+        const { error: noteError } = await supabase.from("admin_item_moderation_notes").insert({
+          item_id: report.id,
+          actor_id: actorId,
+          note,
+        });
+        if (noteError) throw noteError;
+        setModerationDrafts((current) => ({ ...current, [report.id]: "" }));
+        await loadModerationNotes();
+      }
+      setRows((current) => current.map((row) => row.id === report.id ? { ...row, moderation_flag: flag, moderated_by: actorId, moderated_at: new Date().toISOString() } : row));
+    } catch {
+      setReportActionError("We couldn't save the moderation update. Please try again.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function reviewMatch(match: ItemMatch, status: "confirmed" | "rejected" | "resolved") {
+    setReportActionError("");
+    setActionBusyId(match.id);
+    try {
+      const actorId = await adminActorId();
+      const adminNote = (matchDrafts[match.id] ?? "").trim();
+      const { error: updateError } = await supabase.from("item_matches").update({
+        review_status: status,
+        admin_note: adminNote || null,
+        reviewed_by: actorId,
+        reviewed_at: new Date().toISOString(),
+      }).eq("id", match.id);
+      if (updateError) throw updateError;
+      setMatchDrafts((current) => ({ ...current, [match.id]: "" }));
+      await Promise.all([loadMatches(), load()]);
+    } catch {
+      setReportActionError("We couldn't save that match decision. A report may already be closed or moderated.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function reviewClaim(claim: ClaimRecord, status: "approved" | "rejected" | "completed") {
+    setReportActionError("");
+    setActionBusyId(claim.id);
+    try {
+      const actorId = await adminActorId();
+      const adminNote = (claimDrafts[claim.id] ?? "").trim();
+      const { error: updateError } = await supabase.from("item_claims").update({
+        status,
+        admin_note: adminNote || null,
+        reviewed_by: actorId,
+        reviewed_at: new Date().toISOString(),
+      }).eq("id", claim.id);
+      if (updateError) throw updateError;
+      setClaimDrafts((current) => ({ ...current, [claim.id]: "" }));
+      await Promise.all([loadClaims(), load(), loadMatches(), loadAuditHistory()]);
+    } catch {
+      setReportActionError("We couldn't save this claim decision. Please refresh and try again.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
 
   const counts = countReports(rows);
   const categories = useMemo(() => ["All", ...new Set(rows.map((report) => report.category))], [rows]);
@@ -388,6 +647,27 @@ function AdminPage() {
           <p><span className="font-extrabold text-foreground">Reported by:</span> {report.submitter_name ?? "Unknown"} · UID {report.submitter_uid ?? "—"}</p>
           <p><span className="font-extrabold text-foreground">Account:</span> {report.submitter_role === "admin" ? "Administrator" : report.submitter_role === "student" ? "Student" : "Unknown"}</p>
           <p className="break-all"><span className="font-extrabold text-foreground">Report reference:</span> {report.id}</p>
+        </div>
+        <div className="mt-4 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
+          <label className="block text-xs font-extrabold text-muted-foreground">REPORT STATUS
+            <select value={report.report_status} disabled={actionBusyId === report.id} onChange={(event) => void updateReportStatus(report, event.target.value as ReportStatus)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
+              <option value="new">New</option><option value="under_review">Under review</option><option value="matched">Matched</option><option value="claimed">Claimed</option><option value="returned">Returned</option><option value="closed">Closed</option>
+            </select>
+          </label>
+          <label className="block text-xs font-extrabold text-muted-foreground">MODERATION FLAG
+            <select value={report.moderation_flag} disabled={actionBusyId === report.id} onChange={(event) => void updateReportModeration(report, event.target.value as ModerationFlag)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
+              <option value="none">No flag</option><option value="duplicate">Duplicate</option><option value="suspicious">Suspicious</option><option value="hidden">Hide from students</option>
+            </select>
+          </label>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-extrabold text-muted-foreground">PRIVATE MODERATION NOTE
+              <textarea rows={2} maxLength={1000} value={moderationDrafts[report.id] ?? ""} onChange={(event) => setModerationDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Reason for moderation or follow-up note (admin only)" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+            </label>
+            <button type="button" disabled={actionBusyId === report.id || !(moderationDrafts[report.id] ?? "").trim()} onClick={() => void updateReportModeration(report, report.moderation_flag, true)} className="mt-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save private note"}</button>
+          </div>
+          {moderationNotes.filter((note) => note.item_id === report.id).slice(0, 2).map((note) => (
+            <p key={note.id} className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950"><span className="font-extrabold">Admin note · {new Date(note.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}:</span> {note.note}</p>
+          ))}
         </div>
       </div>
     </article>
@@ -449,7 +729,7 @@ function AdminPage() {
         <div>
           <p className="kicker text-emerald-800">Matching system</p>
           <h2 className="mt-2 text-2xl font-extrabold">Item matches found</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Possible matches between Lost and Found reports. These are system suggestions for administrator review, not confirmed handovers.</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Review system suggestions. Confirm or dismiss a pair; after a confirmed handover, mark it returned.</p>
         </div>
         <button type="button" onClick={() => void loadMatches()} disabled={matchesLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
           {matchesLoading ? "Refreshing…" : "Refresh matches"}
@@ -465,13 +745,33 @@ function AdminPage() {
           {matches.map((match) => (
             <article key={match.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-extrabold text-amber-900">Possible match</span>
-                <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Found {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
+                <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "bg-emerald-50 text-emerald-900" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-amber-50 text-amber-900"}`}>{match.review_status === "confirmed" ? "Confirmed match" : match.review_status === "rejected" ? "Dismissed" : "Pending review"}</span>
+                <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Detected {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
               </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">Score {match.score ?? "—"}/100</span>
+                <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">{match.matching_method === "ai" ? "AI-assisted" : match.matching_method}</span>
+              </div>
+              {match.match_reason && <p className="mt-3 rounded-lg bg-secondary/60 p-3 text-xs leading-5 text-muted-foreground">Why it matched: {match.match_reason}</p>}
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {renderMatchItem("Lost item", match.lost)}
                 {renderMatchItem("Found item", match.found)}
               </div>
+              {match.review_status !== "rejected" && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <label className="block text-xs font-extrabold text-muted-foreground">ADMIN REVIEW NOTE
+                    <textarea rows={2} maxLength={1000} value={matchDrafts[match.id] ?? match.admin_note ?? ""} onChange={(event) => setMatchDrafts((current) => ({ ...current, [match.id]: event.target.value }))} placeholder="Add a note for the audit trail or handover record" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+                  </label>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {match.review_status === "pending" && <>
+                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "confirmed")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Confirm match</button>
+                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject match</button>
+                    </>}
+                    {match.review_status === "confirmed" && <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "resolved")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Mark item returned</button>}
+                    {actionBusyId === match.id && <span className="self-center text-xs text-muted-foreground">Saving decision…</span>}
+                  </div>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -517,9 +817,12 @@ function AdminPage() {
               void load();
               void loadLoginActivity();
               void loadMatches();
+              void loadClaims();
+              void loadModerationNotes();
+              void loadAuditHistory();
               void loadContactMessages();
             }}
-            disabled={loading || activityLoading || matchesLoading || contactLoading}
+            disabled={loading || activityLoading || matchesLoading || claimsLoading || auditLoading || contactLoading}
             className="admin-refresh-button inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -549,6 +852,7 @@ function AdminPage() {
           </label>
         </div>
 
+        {reportActionError && <p role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">{reportActionError}</p>}
         {error && (
           <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">
             <p>{error}</p>
@@ -604,6 +908,64 @@ function AdminPage() {
         </section>
 
         {renderMatchesSection}
+
+        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div><p className="kicker text-emerald-800">Ownership verification</p><h2 className="mt-2 text-2xl font-extrabold">Item claims</h2><p className="mt-1 text-sm text-muted-foreground">Private ownership proof is visible to authorised administrators and the claimant only.</p></div>
+            <button type="button" onClick={() => void loadClaims()} disabled={claimsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{claimsLoading ? "Refreshing…" : "Refresh claims"}</button>
+          </div>
+          {claimsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{claimsError}</p>}
+          {claimsLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading claims…</p> : claims.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No item claims have been submitted.</p> : (
+            <div className="grid gap-3 border-t border-border p-4 sm:p-5">
+              {claims.map((claim) => (
+                <article key={claim.id} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div><h3 className="font-extrabold text-foreground">{claim.item_name}</h3><p className="mt-1 text-sm text-muted-foreground">{claim.item_location}</p><p className="mt-2 text-xs text-muted-foreground">Claimed by {claim.claimant_name ?? "Unknown"} · UID {claim.claimant_uid ?? "—"}</p><p className="mt-1 text-xs text-muted-foreground">Found report submitted by {claim.item_owner_name ?? "Unknown"} · UID {claim.item_owner_uid ?? "—"}</p></div>
+                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{claim.status.toUpperCase()}</span>
+                  </div>
+                  <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Private ownership proof</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p></div>
+                  {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">Previous review note: {claim.admin_note}</p>}
+                  {claim.status !== "rejected" && claim.status !== "completed" && (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <label className="block text-xs font-extrabold text-muted-foreground">DECISION NOTE
+                        <textarea rows={2} maxLength={1000} value={claimDrafts[claim.id] ?? ""} onChange={(event) => setClaimDrafts((current) => ({ ...current, [claim.id]: event.target.value }))} placeholder="Explain approval or rejection, or write a handover note" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+                      </label>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {claim.status === "pending" && <>
+                          <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "approved")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Approve claim</button>
+                          <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject claim</button>
+                        </>}
+                        {claim.status === "approved" && <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "completed")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Confirm returned to owner</button>}
+                      </div>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div><p className="kicker text-emerald-800">Moderation history</p><h2 className="mt-2 text-2xl font-extrabold">Administrator audit log</h2><p className="mt-1 text-sm text-muted-foreground">Records status changes, moderation decisions, match reviews and claim outcomes.</p></div>
+            <button type="button" onClick={() => void loadAuditHistory()} disabled={auditLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{auditLoading ? "Refreshing…" : "Refresh history"}</button>
+          </div>
+          {auditError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{auditError}</p>}
+          {auditLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading audit history…</p> : auditRows.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No administrator actions have been recorded yet.</p> : (
+            <div className="overflow-x-auto border-t border-border">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-secondary/70 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3 font-extrabold">Administrator</th><th className="px-5 py-3 font-extrabold">Action</th><th className="px-5 py-3 font-extrabold">Record</th><th className="px-5 py-3 font-extrabold">When</th><th className="px-5 py-3 font-extrabold">Details</th></tr></thead>
+                <tbody>{auditRows.map((entry) => <tr key={entry.id} className="border-t border-border align-top">
+                  <td className="px-5 py-3"><p className="font-bold">{entry.actor_name ?? "Former administrator"}</p><p className="text-xs text-muted-foreground">UID {entry.actor_uid ?? "—"}</p></td>
+                  <td className="px-5 py-3 font-bold">{entry.action.replaceAll("_", " ")}</td>
+                  <td className="px-5 py-3 text-xs text-muted-foreground">{entry.entity_type} · {entry.entity_id}</td>
+                  <td className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
+                  <td className="max-w-xs whitespace-pre-wrap break-words px-5 py-3 text-xs text-muted-foreground">{JSON.stringify(entry.details)}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">

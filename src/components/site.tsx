@@ -103,6 +103,7 @@ export function Header() {
             <>
               <span className="mx-2 h-6 w-px bg-border" />
               <span className="mr-2 max-w-28 truncate rounded-lg bg-secondary px-3 py-2 text-xs font-extrabold text-secondary-foreground" title={uid}>{uid}</span>
+              {!isAdmin && <Link to="/my-reports" className={navLink}>My reports</Link>}
               <Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">Report an item <ArrowUpRight size={16} /></Link>
               {isAdmin && <Link to="/admin" className={navLink}>Admin dashboard</Link>}
               <button type="button" onClick={signOut} className={navLink}>Sign out</button>
@@ -123,6 +124,7 @@ export function Header() {
             <Link to="/browse" onClick={() => setMenuOpen(false)} className={mobileLink}>Browse items <ArrowUpRight size={16} /></Link>
             {uid ? (
               <>
+                {!isAdmin && <Link to="/my-reports" onClick={() => setMenuOpen(false)} className={mobileLink}>My reports <ArrowUpRight size={16} /></Link>}
                 <Link to="/report" onClick={() => setMenuOpen(false)} className={mobileLink}>Report an item <ArrowUpRight size={16} /></Link>
                 {isAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className={mobileLink}>Admin dashboard <ArrowUpRight size={16} /></Link>}
                 <div className="my-1 flex items-center justify-between rounded-xl bg-secondary px-4 py-3 text-xs font-extrabold text-secondary-foreground"><span>Signed in as</span><span>{uid}</span></div>

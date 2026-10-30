@@ -114,7 +114,35 @@ Deno.serve(async (request) => {
   }
   if (matches.length === 0) return Response.json({ ok: true, sms_sent: 0, matches: 0, matching_method: matchingMethod }, { headers: corsHeaders });
 
-  // Add in-app alerts for AI matches not already created by the database's similarity trigger.
+  // Persist each candidate pair once so administrators can review, confirm, or dismiss it.
+  // An upsert refreshes the score/reason but omits review_status, preserving prior admin decisions.
+  for (const match of matches) {
+    const lostItem = item.type === "Lost" ? item as Item : match.item;
+    const foundItem = item.type === "Found" ? item as Item : match.item;
+    const reasonParts: string[] = [];
+    if (lostItem.category === foundItem.category) reasonParts.push(`same category: ${lostItem.category}`);
+    if (similarity(lostItem.name, foundItem.name) >= 0.2) reasonParts.push("similar item names");
+    if (similarity(lostItem.location, foundItem.location) >= 0.2) reasonParts.push("similar campus locations");
+    if (similarity(lostItem.note, foundItem.note) >= 0.2) reasonParts.push("overlapping descriptions");
+    const matchReason = matchingMethod === "ai"
+      ? "AI-assisted comparison of the available report descriptions and photos."
+      : reasonParts.length > 0
+        ? `Text matching found ${reasonParts.join(", ")}.`
+        : "Text similarity suggests this pair should be checked manually.";
+
+    const { error: matchSaveError } = await admin.from("item_matches").upsert({
+      lost_item_id: lostItem.id,
+      found_item_id: foundItem.id,
+      score: match.score,
+      matching_method: matchingMethod,
+      match_reason: matchReason,
+    }, { onConflict: "lost_item_id,found_item_id" });
+    if (matchSaveError) {
+      console.error("[item matches] Could not persist a candidate pair", { code: matchSaveError.code });
+    }
+  }
+
+  // Add in-app alerts for matches not already created by the database trigger.
   for (const match of matches) {
     for (const recipient of [
       { user_id: match.item.user_id, item_id: match.item.id, matched_item_id: item.id, body: `A new ${String(item.type).toLowerCase()} report may match your ${String(match.item.type).toLowerCase()} report: ${item.name}. Open CampusFind to compare details.` },

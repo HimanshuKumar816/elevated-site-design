@@ -1,9 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, ArrowUpRight, Bell, Check, MapPin, PackageSearch, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  ArrowUpDown,
+  ArrowUpRight,
+  Bell,
+  Check,
+  MapPin,
+  PackageSearch,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
-import { CATEGORIES, type Item } from "@/lib/items";
+import { CATEGORIES, type Item, type ReportStatus } from "@/lib/items";
+
+const PAGE_SIZE = 24;
 
 export const Route = createFileRoute("/_authenticated/browse")({
   head: () => ({
@@ -17,84 +31,138 @@ export const Route = createFileRoute("/_authenticated/browse")({
   component: Browse,
 });
 
+type BoardItem = Item & {
+  image_url?: string | null;
+  report_status?: ReportStatus;
+};
+type AlertRow = {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+};
+
+const statusLabels: Record<ReportStatus, string> = {
+  new: "Open report",
+  under_review: "Under review",
+  matched: "Match confirmed",
+  claimed: "Claim in progress",
+  returned: "Returned",
+  closed: "Closed",
+};
+
+function dateLabel(value: string) {
+  return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
+async function addSignedImages(rows: BoardItem[]): Promise<BoardItem[]> {
+  return Promise.all(rows.map(async (item) => {
+    if (!item.image_path) return item;
+    try {
+      const { data, error } = await supabase.storage
+        .from("item-images")
+        .createSignedUrl(item.image_path, 60 * 60);
+      return error || !data?.signedUrl ? item : { ...item, image_url: data.signedUrl };
+    } catch {
+      return item;
+    }
+  }));
+}
+
 function Browse() {
-  const [items, setItems] = useState<(Item & { image_url?: string })[] | null>(null);
+  const [items, setItems] = useState<BoardItem[]>([]);
+  const itemsLengthRef = useRef(0);
+  const fetchSequenceRef = useRef(0);
   const [me, setMe] = useState<string | null>(null);
   const [profile, setProfile] = useState<{ full_name: string; uid: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [type, setType] = useState<"All" | "Lost" | "Found">("All");
   const [cat, setCat] = useState("All");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
-  const [alerts, setAlerts] = useState<Array<{ id: string; title: string; body: string; created_at: string; read_at: string | null }>>([]);
+  const [alerts, setAlerts] = useState<AlertRow[]>([]);
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [claimTarget, setClaimTarget] = useState<BoardItem | null>(null);
+  const [claimProof, setClaimProof] = useState("");
+  const [claimError, setClaimError] = useState("");
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [claimSuccess, setClaimSuccess] = useState("");
 
-  async function load() {
-    setLoading(true);
-    setError("");
-    try {
-      const { data, error: queryError } = await supabase
-        .from("items")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (queryError) throw queryError;
-      const rows = (data ?? []) as Item[];
-      // Image storage is optional: one expired or inaccessible image URL must
-      // not make the entire lost-and-found board disappear.
-      const withImages = await Promise.all(rows.map(async (item) => {
-        if (!item.image_path) return item;
-        try {
-          const { data: signed, error: signedUrlError } = await supabase.storage
-            .from("item-images")
-            .createSignedUrl(item.image_path, 60 * 60);
-          return signedUrlError || !signed?.signedUrl
-            ? item
-            : { ...item, image_url: signed.signedUrl };
-        } catch {
-          return item;
-        }
-      }));
-      setItems(withImages);
-    } catch {
-      setItems(null);
-      setError("We couldn't load reports. Check your connection and try again.");
-    } finally {
-      setLoading(false);
+  const fetchPage = useCallback(async (reset: boolean) => {
+    const requestSequence = reset ? fetchSequenceRef.current + 1 : fetchSequenceRef.current;
+    if (reset) {
+      fetchSequenceRef.current = requestSequence;
+      itemsLengthRef.current = 0;
+      setLoading(true);
+      setLoadingMore(false);
+      setError("");
+    } else {
+      setLoadingMore(true);
     }
-  }
+    try {
+      const offset = reset ? 0 : itemsLengthRef.current;
+      const { data, error: queryError } = await supabase.rpc("search_items", {
+        p_query: q.trim() || null,
+        p_type: type,
+        p_category: cat,
+        p_sort: sortBy,
+        p_offset: offset,
+        p_limit: PAGE_SIZE + 1,
+      });
+      if (queryError) throw queryError;
+      const returned = (data ?? []) as BoardItem[];
+      const nextHasMore = returned.length > PAGE_SIZE;
+      const page = await addSignedImages(returned.slice(0, PAGE_SIZE));
+      if (requestSequence !== fetchSequenceRef.current) return;
+      setHasMore(nextHasMore);
+      itemsLengthRef.current = reset ? page.length : itemsLengthRef.current + page.length;
+      setItems((current) => reset ? page : [...current, ...page]);
+    } catch {
+      if (requestSequence === fetchSequenceRef.current) {
+        setError("We couldn't load reports. Please check your connection and try again.");
+        if (reset) setItems([]);
+      }
+    } finally {
+      if (requestSequence === fetchSequenceRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  }, [q, type, cat, sortBy]);
+
   useEffect(() => {
-    load();
-    supabase.auth.getUser().then(async ({ data }) => {
-      const userId = data.user?.id ?? null;
-      setMe(userId);
-      if (!userId) return;
+    const handle = window.setTimeout(() => { void fetchPage(true); }, 250);
+    return () => window.clearTimeout(handle);
+  }, [fetchPage]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadAccountDetails() {
       try {
-        const { data: profileRow, error: profileError } = await supabase
-          .from("profiles")
-          .select("full_name,uid")
-          .eq("id", userId)
-          .maybeSingle();
-        if (!profileError && profileRow) {
-          setProfile({ full_name: profileRow.full_name, uid: profileRow.uid });
+        const { data, error: authError } = await supabase.auth.getUser();
+        if (authError || !data.user) return;
+        const userId = data.user.id;
+        if (active) setMe(userId);
+
+        const [profileResult, alertResult] = await Promise.all([
+          supabase.from("profiles").select("full_name,uid").eq("id", userId).maybeSingle(),
+          supabase.from("notifications").select("id,title,body,created_at,read_at")
+            .eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+        ]);
+        if (active && !profileResult.error && profileResult.data) {
+          setProfile({ full_name: profileResult.data.full_name, uid: profileResult.data.uid });
         }
+        if (active && !alertResult.error) setAlerts((alertResult.data ?? []) as AlertRow[]);
       } catch {
-        // Profile details are optional UI data; auth and browsing remain available.
+        // An account panel or notification failure does not block public browsing.
       }
-      try {
-        const { data: notificationRows, error: notificationError } = await supabase
-          .from("notifications")
-          .select("id,title,body,created_at,read_at")
-          .order("created_at", { ascending: false })
-          .limit(10);
-        if (!notificationError) setAlerts((notificationRows ?? []) as typeof alerts);
-      } catch {
-        // A notification failure should not prevent item browsing.
-      }
-    }).catch(() => {
-      // If auth lookup is temporarily unavailable, keep the public shell usable.
-      setMe(null);
-    });
+    }
+    void loadAccountDetails();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -110,41 +178,75 @@ function Browse() {
   }, []);
 
   async function markRead(id: string) {
-    const { error: updateError } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
-    if (!updateError) setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, read_at: new Date().toISOString() } : alert));
+    const readAt = new Date().toISOString();
+    const { error: updateError } = await supabase.from("notifications")
+      .update({ read_at: readAt }).eq("id", id).is("read_at", null);
+    if (!updateError) setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, read_at: readAt } : alert));
   }
 
-  async function remove(id: string) {
-    setRemovingId(id);
-    setError("");
+  async function markAllRead() {
+    const unread = alerts.filter((alert) => !alert.read_at).map((alert) => alert.id);
+    if (!unread.length || alertBusy) return;
+    setAlertBusy(true);
+    const readAt = new Date().toISOString();
+    const { error: updateError } = await supabase.from("notifications")
+      .update({ read_at: readAt }).in("id", unread).is("read_at", null);
+    if (!updateError) setAlerts((current) => current.map((alert) => alert.read_at ? alert : { ...alert, read_at: readAt }));
+    setAlertBusy(false);
+  }
+
+  function openClaim(item: BoardItem) {
+    setClaimTarget(item);
+    setClaimProof("");
+    setClaimError("");
+    setClaimSuccess("");
+  }
+
+  async function submitClaim(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!claimTarget || claimBusy) return;
+    const proof = claimProof.trim();
+    if (proof.length < 20 || proof.length > 1500) {
+      setClaimError("Please provide 20–1,500 characters explaining how you can prove ownership.");
+      return;
+    }
+    setClaimBusy(true);
+    setClaimError("");
     try {
-      const { error: deleteError } = await supabase.from("items").delete().eq("id", id);
-      if (deleteError) throw deleteError;
-      await load();
-    } catch {
-      setError("We couldn't remove that report. Please try again.");
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Please sign in again.");
+      const { error: insertError } = await supabase.from("item_claims").insert({
+        item_id: claimTarget.id,
+        claimant_id: authData.user.id,
+        proof,
+      });
+      if (insertError) {
+        if (insertError.code === "23505") {
+          throw new Error("You already have a pending claim for this item.");
+        }
+        throw insertError;
+      }
+      setClaimSuccess("Your private claim was sent to the CampusFind administrators for review.");
+      setClaimTarget(null);
+      setClaimProof("");
+    } catch (cause) {
+      setClaimError(cause instanceof Error && cause.message.includes("pending claim")
+        ? cause.message
+        : "We couldn't submit the claim. Please check the details and try again.");
     } finally {
-      setRemovingId(null);
+      setClaimBusy(false);
     }
   }
 
-  const shown = useMemo(() => {
-    const filtered = (items ?? []).filter(
-      (item) =>
-        (type === "All" || item.type === type) &&
-        (cat === "All" || item.category === cat) &&
-        `${item.name} ${item.location} ${item.note}`.toLowerCase().includes(q.toLowerCase()),
-    );
+  const unreadCount = alerts.filter((alert) => !alert.read_at).length;
+  const lostCount = items.filter((item) => item.type === "Lost").length;
+  const foundCount = items.filter((item) => item.type === "Found").length;
+  const pill = (active: boolean) =>
+    `rounded-xl border px-3 py-2 text-sm font-extrabold transition ${active
+      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+      : "border-border bg-white text-muted-foreground hover:bg-secondary"}`;
 
-    return filtered.sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      const dateA = new Date(a.item_date).getTime();
-      const dateB = new Date(b.item_date).getTime();
-      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
-    });
-  }, [items, q, type, cat, sortBy]);
-
-  const pill = (on: boolean) => `rounded-full px-4 py-2 text-sm transition-colors ${on ? "bg-primary text-primary-foreground" : "bg-card border border-border hover:bg-secondary"}`;
+  const shown = useMemo(() => items, [items]);
 
   return (
     <Page>
@@ -159,51 +261,199 @@ function Browse() {
               <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Student UID</p>
               <p className="mt-1 font-mono text-sm font-extrabold text-foreground">{profile.uid}</p>
             </div>
+            <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
+              My reports <ArrowUpRight size={14} />
+            </Link>
           </div>
         )}
+
         <div className="student-workspace-hero relative overflow-hidden rounded-[2rem] bg-gradient-ink px-6 py-9 text-ink-foreground sm:px-10 sm:py-12 lg:px-14 lg:py-14">
           <div className="pointer-events-none absolute -right-10 -top-24 size-72 rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-2xl"><p className="kicker text-emerald-200">Campus report board</p><h1 className="mt-4 text-4xl font-extrabold leading-tight text-white sm:text-5xl">Lost something? Start here.</h1><p className="mt-4 max-w-xl leading-7 text-white/70">Search reports, narrow by category, and compare details. Keep one identifying detail private until you're ready to verify a claim.</p></div>
-            <Link to="/report" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-5 py-3 text-sm font-extrabold text-primary transition hover:bg-emerald-200">Add a report <ArrowUpRight size={17} /></Link>
+            <div className="max-w-2xl">
+              <p className="kicker text-emerald-200">Campus report board</p>
+              <h1 className="mt-4 text-4xl font-extrabold leading-tight text-white sm:text-5xl">Lost something? Start here.</h1>
+              <p className="mt-4 max-w-xl leading-7 text-white/70">Search campus reports with common item names and spelling variations. Keep one identifying detail private until ownership is verified.</p>
+            </div>
+            <Link to="/report" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-5 py-3 text-sm font-extrabold text-primary transition hover:bg-emerald-200">
+              Add a report <ArrowUpRight size={17} />
+            </Link>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="surface-card flex items-center gap-3 rounded-2xl p-4"><span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary"><PackageSearch size={20} /></span><div><p className="text-2xl font-extrabold tracking-tight">{items?.length ?? "—"}</p><p className="text-xs font-bold text-muted-foreground">Reports on the board</p></div></div>
-          <div className="surface-card flex items-center gap-3 rounded-2xl p-4"><span className="grid size-10 place-items-center rounded-xl bg-amber-50 text-amber-800"><Search size={20} /></span><div><p className="text-2xl font-extrabold tracking-tight">{items?.filter((item) => item.type === "Lost").length ?? "—"}</p><p className="text-xs font-bold text-muted-foreground">Lost reports</p></div></div>
-          <div className="surface-card flex items-center gap-3 rounded-2xl p-4"><span className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-800"><Check size={20} /></span><div><p className="text-2xl font-extrabold tracking-tight">{items?.filter((item) => item.type === "Found").length ?? "—"}</p><p className="text-xs font-bold text-muted-foreground">Found reports</p></div></div>
+          <div className="surface-card flex items-center gap-3 rounded-2xl p-4">
+            <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary"><PackageSearch size={20} /></span>
+            <div><p className="text-2xl font-extrabold tracking-tight">{items.length}</p><p className="text-xs font-bold text-muted-foreground">Reports loaded</p></div>
+          </div>
+          <div className="surface-card flex items-center gap-3 rounded-2xl p-4">
+            <span className="grid size-10 place-items-center rounded-xl bg-amber-50 text-amber-800"><Search size={20} /></span>
+            <div><p className="text-2xl font-extrabold tracking-tight">{lostCount}</p><p className="text-xs font-bold text-muted-foreground">Lost reports loaded</p></div>
+          </div>
+          <div className="surface-card flex items-center gap-3 rounded-2xl p-4">
+            <span className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-800"><Check size={20} /></span>
+            <div><p className="text-2xl font-extrabold tracking-tight">{foundCount}</p><p className="text-xs font-bold text-muted-foreground">Found reports loaded</p></div>
+          </div>
         </div>
 
-        {alerts.length > 0 && <section aria-label="Match notifications" className="mt-8 rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-white text-emerald-800 shadow-sm"><Bell size={19} /></span><div><h2 className="text-lg font-extrabold tracking-tight">Your match alerts</h2><p className="mt-1 text-sm text-muted-foreground">Updates about reports that may match yours.</p></div></div><span className="rounded-full bg-emerald-900 px-3 py-1.5 text-xs font-extrabold text-white">{alerts.filter((alert) => !alert.read_at).length} unread</span></div><ul className="mt-4 grid gap-3 md:grid-cols-2">{alerts.map((alert) => <li key={alert.id} className={`rounded-xl border border-emerald-900/10 bg-white p-4 ${alert.read_at ? "opacity-70" : ""}`}><div className="flex items-start gap-3"><span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-primary"><Bell size={15} /></span><div className="min-w-0 flex-1"><p className="font-extrabold text-foreground">{alert.title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{alert.body}</p><p className="mt-2 text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString()}</p></div>{!alert.read_at && <button type="button" onClick={() => markRead(alert.id)} aria-label={`Mark alert as read: ${alert.title}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-emerald-800 transition hover:bg-emerald-50"><Check size={16} /></button>}</div></li>)}</ul></section>}
+        {claimSuccess && (
+          <div role="status" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">
+            <span>{claimSuccess}</span>
+            <Link to="/my-reports" className="underline underline-offset-4">Track your claim</Link>
+          </div>
+        )}
+
+        {alerts.length > 0 && (
+          <section aria-label="Match notifications" className="mt-8 rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-xl bg-white text-emerald-800 shadow-sm"><Bell size={19} /></span>
+                <div><h2 className="text-lg font-extrabold tracking-tight">Your match alerts</h2><p className="mt-1 text-sm text-muted-foreground">Updates about reports that may match yours.</p></div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-emerald-900 px-3 py-1.5 text-xs font-extrabold text-white">{unreadCount} unread</span>
+                {unreadCount > 0 && <button type="button" disabled={alertBusy} onClick={() => void markAllRead()} className="rounded-lg border border-emerald-900/20 bg-white px-3 py-2 text-xs font-extrabold text-emerald-900 hover:bg-emerald-50 disabled:opacity-60">{alertBusy ? "Updating…" : "Mark all read"}</button>}
+              </div>
+            </div>
+            <ul className="mt-4 grid gap-3 md:grid-cols-2">
+              {alerts.map((alert) => (
+                <li key={alert.id} className={`rounded-xl border border-emerald-900/10 bg-white p-4 ${alert.read_at ? "opacity-70" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-primary"><Bell size={15} /></span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-extrabold text-foreground">{alert.title}</p>
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-extrabold">{alert.read_at ? "Read" : "Unread"}</span>
+                      </div>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">{alert.body}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                    </div>
+                    {!alert.read_at && <button type="button" onClick={() => void markRead(alert.id)} aria-label={`Mark alert as read: ${alert.title}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-emerald-800 transition hover:bg-emerald-50"><Check size={16} /></button>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <div className="mt-8 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
           <label htmlFor="item-search" className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Search reports</label>
-          <div className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-ring/10"><Search size={19} className="shrink-0 text-muted-foreground" /><input id="item-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Try “wallet”, “library”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus:ring-0" />{!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-white px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}{q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}</div>
+          <div className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-ring/10">
+            <Search size={19} className="shrink-0 text-muted-foreground" />
+            <input id="item-search" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Try “purse”, “mobile”, “libary”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus:ring-0" />
+            {!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-white px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}
+            {q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}
+          </div>
           <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-[1.2fr_1fr_1fr] md:items-end">
             <div>
-              <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Item status</span>
-              <div className="flex flex-wrap items-center gap-2">{(["All", "Lost", "Found"] as const).map((t) => <button type="button" key={t} onClick={() => setType(t)} aria-pressed={type === t} className={`rounded-xl border px-3 py-2 text-sm font-extrabold transition ${type === t ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-white text-muted-foreground hover:bg-secondary"}`}>{t === "All" ? "All reports" : t + " items"}</button>)}</div>
+              <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Item type</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {(["All", "Lost", "Found"] as const).map((value) => (
+                  <button type="button" key={value} onClick={() => setType(value)} aria-pressed={type === value} className={pill(type === value)}>{value === "All" ? "All reports" : value + " items"}</button>
+                ))}
+              </div>
             </div>
             <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Category
-              <select aria-label="Filter by category" value={cat} onChange={(e) => setCat(e.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10"><option value="All">All categories</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
+              <select aria-label="Filter by category" value={cat} onChange={(event) => setCat(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10">
+                <option value="All">All categories</option>{CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+              </select>
             </label>
             <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><span className="inline-flex items-center gap-2"><ArrowUpDown size={14} /> Sort by</span>
-              <select aria-label="Sort reports" value={sortBy} onChange={(e) => setSortBy(e.target.value as "newest" | "oldest" | "name")} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10"><option value="newest">Newest item date</option><option value="oldest">Oldest item date</option><option value="name">Name A–Z</option></select>
+              <select aria-label="Sort reports" value={sortBy} onChange={(event) => setSortBy(event.target.value as "newest" | "oldest" | "name")} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10">
+                <option value="newest">Newest item date</option><option value="oldest">Oldest item date</option><option value="name">Name A–Z</option>
+              </select>
             </label>
           </div>
         </div>
 
-        {error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><button type="button" onClick={load} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-extrabold transition hover:bg-destructive/10"><RefreshCw size={15} /> Try again</button></div>}
+        {error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><button type="button" onClick={() => void fetchPage(true)} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-extrabold transition hover:bg-destructive/10"><RefreshCw size={15} /> Try again</button></div>}
 
-        <div className="mt-8 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2><p className="mt-1 text-sm text-muted-foreground">{loading ? "Loading the latest reports…" : `Showing ${shown.length} of ${items?.length ?? 0} reports`}</p></div><div className="flex items-center gap-2">{(q || type !== "All" || cat !== "All") && <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); }} className="rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>}{items && <p className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-secondary-foreground"><span className="size-2 rounded-full bg-emerald-500" /> Board loaded</p>}</div></div>
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
+          <div><h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2><p className="mt-1 text-sm text-muted-foreground">{loading ? "Searching the campus board…" : `Showing ${shown.length} loaded results`}</p></div>
+          <div className="flex items-center gap-2">
+            {(q || type !== "All" || cat !== "All") && <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); }} className="rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>}
+            {!loading && <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-secondary-foreground"><span className="inline-block size-2 rounded-full bg-emerald-500 mr-2" /> Search ready</span>}
+          </div>
+        </div>
 
         {loading && <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="animate-pulse rounded-2xl border border-border bg-white p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
 
-        {!loading && items && shown.length > 0 && <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{shown.map((i) => <article key={i.id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5"><div className="relative aspect-[16/10] overflow-hidden bg-secondary">{i.image_url ? <img src={i.image_url} alt={i.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_top_right,oklch(0.87_0.11_157_/_0.45),transparent_38%),linear-gradient(140deg,oklch(0.96_0.01_245),oklch(0.92_0.025_245))] text-primary/70"><PackageSearch size={38} strokeWidth={1.5} /><span className="text-[10px] font-extrabold uppercase tracking-[0.2em]">Campus report</span></div>}<span className={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] shadow-sm ${i.type === "Found" ? "bg-emerald-300 text-emerald-950" : "bg-white text-primary"}`}>{i.type}</span><span className="absolute bottom-3 right-3 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-foreground shadow-sm">{i.category}</span></div><div className="flex flex-1 flex-col p-5 sm:p-6"><div className="flex items-start justify-between gap-3"><h3 className="line-clamp-2 text-xl font-extrabold leading-snug tracking-tight text-foreground">{i.name}</h3><span className="mt-1 shrink-0 rounded-lg bg-secondary px-2 py-1 text-[10px] font-extrabold text-muted-foreground">{new Date(i.item_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span></div><p className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground"><MapPin size={15} className="shrink-0 text-emerald-800" /><span className="truncate">{i.location}</span></p>{i.note && <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{i.note}</p>}<div className="mt-auto pt-5"><div className="flex items-center justify-between border-t border-border pt-4"><span className="text-xs font-bold text-muted-foreground">{i.type === "Found" ? "Reported as found" : "Reported as lost"}</span>{i.user_id === me && <button type="button" disabled={removingId === i.id} onClick={() => remove(i.id)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground transition hover:bg-destructive/5 hover:text-destructive disabled:opacity-50"><Trash2 size={14} /> {removingId === i.id ? "Removing…" : "Remove"}</button>}</div><p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-700" /> Compare details and verify ownership before arranging a handoff.</p></div></div></article>)}</div>}
+        {!loading && shown.length > 0 && (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {shown.map((item) => {
+              const reportStatus = item.report_status ?? "new";
+              const canClaim = item.type === "Found" && item.user_id !== me && ["new", "under_review", "matched"].includes(reportStatus) && (item.moderation_flag ?? "none") !== "hidden";
+              return (
+                <article key={item.id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
+                  <div className="relative aspect-[16/10] overflow-hidden bg-secondary">
+                    {item.image_url ? <img src={item.image_url} alt={item.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-primary/70"><PackageSearch size={38} strokeWidth={1.5} /><span className="text-[10px] font-extrabold uppercase tracking-[0.2em]">Campus report</span></div>}
+                    <span className={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] shadow-sm ${item.type === "Found" ? "bg-emerald-300 text-emerald-950" : "bg-white text-primary"}`}>{item.type}</span>
+                    <span className="absolute bottom-3 right-3 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-foreground shadow-sm">{item.category}</span>
+                  </div>
+                  <div className="flex flex-1 flex-col p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="line-clamp-2 text-xl font-extrabold leading-snug tracking-tight text-foreground">{item.name}</h3>
+                      <span className="mt-1 shrink-0 rounded-lg bg-secondary px-2 py-1 text-[10px] font-extrabold text-muted-foreground">{dateLabel(item.item_date)}</span>
+                    </div>
+                    <p className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground"><MapPin size={15} className="shrink-0 text-emerald-800" /><span className="truncate">{item.location}</span></p>
+                    {item.note && <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.note}</p>}
+                    <div className="mt-auto pt-5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+                        <span className="text-xs font-bold text-muted-foreground">{statusLabels[reportStatus]}</span>
+                        {canClaim && <button type="button" onClick={() => openClaim(item)} className="rounded-xl bg-primary px-3 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">This is mine — claim item</button>}
+                        {item.user_id === me && <Link to="/my-reports" className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Track report <ArrowUpRight size={13} /></Link>}
+                      </div>
+                      <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-700" /> Ownership claims are reviewed privately by a CampusFind administrator.</p>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
 
-        {!loading && items && shown.length === 0 && <div className="mt-5 rounded-3xl border border-dashed border-border bg-white px-6 py-14 text-center sm:py-20"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-secondary text-primary"><PackageSearch size={27} /></span><h3 className="mt-5 text-xl font-extrabold tracking-tight">{items.length === 0 ? "Start the board with a report" : "No reports match those filters"}</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{items.length === 0 ? "There are no reports yet. Add the first report and give another student a place to start looking." : "Try another search term, clear the filters, or browse a different category."}</p><div className="mt-5 flex flex-wrap justify-center gap-3">{items.length === 0 ? <Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground">Create a report <ArrowUpRight size={16} /></Link> : <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); }} className="rounded-xl border border-border px-4 py-3 text-sm font-extrabold hover:bg-secondary">Clear filters</button>}</div></div>}
+        {!loading && shown.length === 0 && !error && (
+          <div className="mt-5 rounded-3xl border border-dashed border-border bg-white px-6 py-14 text-center sm:py-20">
+            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-secondary text-primary"><PackageSearch size={27} /></span>
+            <h3 className="mt-5 text-xl font-extrabold tracking-tight">{q || type !== "All" || cat !== "All" ? "No reports match that search" : "Start the board with a report"}</h3>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Try a synonym, check the spelling, clear filters, or create a new report.</p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground">Create a report <ArrowUpRight size={16} /></Link>
+              <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); }} className="rounded-xl border border-border px-4 py-3 text-sm font-extrabold hover:bg-secondary">Clear filters</button>
+            </div>
+          </div>
+        )}
+
+        {!loading && hasMore && (
+          <div className="mt-8 text-center">
+            <button type="button" onClick={() => void fetchPage(false)} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-5 py-3 text-sm font-extrabold text-foreground shadow-sm hover:bg-secondary disabled:opacity-60">
+              <RefreshCw size={15} className={loadingMore ? "animate-spin" : ""} /> {loadingMore ? "Loading more…" : "Load more reports"}
+            </button>
+          </div>
+        )}
       </section>
+
+      {claimTarget && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/65 p-4" role="presentation">
+          <section role="dialog" aria-modal="true" aria-labelledby="claim-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7">
+            <div className="flex items-start justify-between gap-3">
+              <div><p className="kicker text-emerald-800">Private ownership claim</p><h2 id="claim-title" className="mt-2 text-2xl font-extrabold">Claim {claimTarget.name}</h2><p className="mt-2 text-sm text-muted-foreground">{claimTarget.location} · {claimTarget.category}</p></div>
+              <button type="button" onClick={() => { setClaimTarget(null); setClaimError(""); }} className="grid size-9 place-items-center rounded-lg hover:bg-secondary" aria-label="Close claim form"><X size={18} /></button>
+            </div>
+            <p className="mt-5 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">Describe a detail that proves the item belongs to you. Do not publish this proof on the report board. Only you and authorised administrators can read it.</p>
+            <form onSubmit={submitClaim} className="mt-5">
+              <label htmlFor="claim-proof" className="block text-sm font-extrabold text-foreground">Private proof of ownership</label>
+              <textarea id="claim-proof" required minLength={20} maxLength={1500} rows={5} value={claimProof} onChange={(event) => setClaimProof(event.target.value)} placeholder="Describe a unique detail, contents, mark, serial details, or other evidence only the owner would know." className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm leading-6 outline-none focus:border-primary" />
+              <p className="mt-1 text-xs text-muted-foreground">{claimProof.trim().length}/1,500 characters · minimum 20</p>
+              {claimError && <p role="alert" className="mt-3 rounded-xl bg-destructive/5 p-3 text-sm font-bold text-destructive">{claimError}</p>}
+              <div className="mt-5 flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={() => setClaimTarget(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-extrabold hover:bg-secondary">Cancel</button>
+                <button type="submit" disabled={claimBusy} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground disabled:opacity-60">{claimBusy ? "Submitting…" : "Send private claim"}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </Page>
   );
 }

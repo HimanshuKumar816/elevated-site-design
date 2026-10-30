@@ -20,6 +20,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedBrowseRouteImport } from './routes/_authenticated/browse'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as AuthenticatedReportRouteImport } from './routes/_authenticated/report'
+import { Route as AuthenticatedMyReportsRouteImport } from './routes/_authenticated/my-reports'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiHealthLiveRouteImport } from './routes/api.health.live'
 
@@ -77,6 +78,11 @@ const AuthenticatedReportRoute = AuthenticatedReportRouteImport.update({
   path: '/report',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMyReportsRoute = AuthenticatedMyReportsRouteImport.update({
+  id: '/my-reports',
+  path: '/my-reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/browse': typeof AuthenticatedBrowseRoute
   '/how-it-works': typeof HowItWorksRoute
   '/report': typeof AuthenticatedReportRoute
+  '/my-reports': typeof AuthenticatedMyReportsRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
 }
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/browse': typeof AuthenticatedBrowseRoute
   '/how-it-works': typeof HowItWorksRoute
   '/report': typeof AuthenticatedReportRoute
+  '/my-reports': typeof AuthenticatedMyReportsRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
 }
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/browse': typeof AuthenticatedBrowseRoute
   '/_authenticated/report': typeof AuthenticatedReportRoute
+  '/_authenticated/my-reports': typeof AuthenticatedMyReportsRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
 }
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/how-it-works'
     | '/report'
+    | '/my-reports'
     | '/api/health'
     | '/api/health/live'
   fileRoutesByTo: FileRoutesByTo
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/how-it-works'
     | '/report'
+    | '/my-reports'
     | '/api/health'
     | '/api/health/live'
   id:
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/_authenticated/browse'
     | '/how-it-works'
     | '/_authenticated/report'
+    | '/_authenticated/my-reports'
     | '/api/health'
     | '/api/health/live'
   fileRoutesById: FileRoutesById
@@ -269,6 +281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/my-reports': {
+      id: '/_authenticated/my-reports'
+      path: '/my-reports'
+      fullPath: '/my-reports'
+      preLoaderRoute: typeof AuthenticatedMyReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -290,12 +309,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedBrowseRoute: typeof AuthenticatedBrowseRoute
   AuthenticatedReportRoute: typeof AuthenticatedReportRoute
+  AuthenticatedMyReportsRoute: typeof AuthenticatedMyReportsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedBrowseRoute: AuthenticatedBrowseRoute,
   AuthenticatedReportRoute: AuthenticatedReportRoute,
+  AuthenticatedMyReportsRoute: AuthenticatedMyReportsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
