@@ -14,6 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: {
+          id: string
+          actor_id: string | null
+          entity_type: string
+          entity_id: string
+          action: string
+          details: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          actor_id?: string | null
+          entity_type: string
+          entity_id: string
+          action: string
+          details?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          actor_id?: string | null
+          entity_type?: string
+          entity_id?: string
+          action?: string
+          details?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      admin_item_moderation_notes: {
+        Row: {
+          id: string
+          item_id: string
+          actor_id: string
+          note: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          actor_id: string
+          note: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          actor_id?: string
+          note?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      item_claims: {
+        Row: {
+          id: string
+          item_id: string
+          claimant_id: string
+          proof: string
+          status: string
+          admin_note: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          claimant_id: string
+          proof: string
+          status?: string
+          admin_note?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          claimant_id?: string
+          proof?: string
+          status?: string
+          admin_note?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      item_matches: {
+        Row: {
+          id: string
+          lost_item_id: string
+          found_item_id: string
+          score: number | null
+          matching_method: string
+          review_status: string
+          admin_note: string | null
+          match_reason: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          lost_item_id: string
+          found_item_id: string
+          score?: number | null
+          matching_method?: string
+          review_status?: string
+          admin_note?: string | null
+          match_reason?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          lost_item_id?: string
+          found_item_id?: string
+          score?: number | null
+          matching_method?: string
+          review_status?: string
+          admin_note?: string | null
+          match_reason?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       contact_messages: {
         Row: {
           id: string
@@ -85,6 +220,11 @@ export type Database = {
           note: string
           type: string
           user_id: string
+          report_status: string
+          moderation_flag: string
+          moderated_by: string | null
+          moderated_at: string | null
+          updated_at: string
         }
         Insert: {
           category: string
@@ -97,6 +237,11 @@ export type Database = {
           note?: string
           type: string
           user_id: string
+          report_status?: string
+          moderation_flag?: string
+          moderated_by?: string | null
+          moderated_at?: string | null
+          updated_at?: string
         }
         Update: {
           category?: string
@@ -109,6 +254,11 @@ export type Database = {
           note?: string
           type?: string
           user_id?: string
+          report_status?: string
+          moderation_flag?: string
+          moderated_by?: string | null
+          moderated_at?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -255,6 +405,17 @@ export type Database = {
     }
     Functions: {
       health_check: { Args: never; Returns: boolean }
+      search_items: {
+        Args: {
+          p_query?: string | null
+          p_type?: string
+          p_category?: string
+          p_sort?: string
+          p_offset?: number
+          p_limit?: number
+        }
+        Returns: Database["public"]["Tables"]["items"]["Row"][]
+      }
     }
     Enums: {
       [_ in never]: never
