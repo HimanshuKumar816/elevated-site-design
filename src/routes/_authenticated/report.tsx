@@ -266,7 +266,8 @@ function Report() {
               <label className="block text-sm font-extrabold text-foreground">Date <span className="text-emerald-800">*</span><input required type="date" name="date" className={field} /></label>
               <div className="block text-sm font-extrabold text-foreground sm:col-span-2">
                 <label htmlFor="location-zone">Where was it lost or found? <span className="text-emerald-800">*</span></label>
-                <select id="location-zone" required name="location_zone" defaultValue="Central Library" className={field}>
+                <select id="location-zone" required name="location_zone" defaultValue="" className={field}>
+                  <option value="" disabled>Select a campus area</option>
                   {CAMPUS_LOCATIONS.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
                 </select>
                 <label htmlFor="location-detail" className="mt-3 block text-xs font-bold text-muted-foreground">More detail (optional, such as floor, room, or nearby landmark)</label>
