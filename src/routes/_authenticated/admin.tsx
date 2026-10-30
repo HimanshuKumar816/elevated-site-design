@@ -537,8 +537,13 @@ function AdminPage() {
     }
   }
 
-  async function updateReportModeration(report: Row, flag: ModerationFlag) {
+  async function updateReportModeration(report: Row, flag: ModerationFlag, saveNote = false) {
     setReportActionError("");
+    const note = (moderationDrafts[report.id] ?? "").trim();
+    if (saveNote && note.length > 0 && (note.length < 3 || note.length > 1000)) {
+      setReportActionError("Moderation note must be 3–1,000 characters.");
+      return;
+    }
     setActionBusyId(report.id);
     try {
       const actorId = await adminActorId();
@@ -549,9 +554,7 @@ function AdminPage() {
       }).eq("id", report.id);
       if (updateError) throw updateError;
 
-      const note = (moderationDrafts[report.id] ?? "").trim();
-      if (note.length > 0) {
-        if (note.length < 3 || note.length > 1000) throw new Error("Moderation note must be 3–1,000 characters.");
+      if (saveNote && note.length > 0) {
         const { error: noteError } = await supabase.from("admin_item_moderation_notes").insert({
           item_id: report.id,
           actor_id: actorId,
@@ -562,10 +565,8 @@ function AdminPage() {
         await loadModerationNotes();
       }
       setRows((current) => current.map((row) => row.id === report.id ? { ...row, moderation_flag: flag, moderated_by: actorId, moderated_at: new Date().toISOString() } : row));
-    } catch (cause) {
-      setReportActionError(cause instanceof Error && cause.message.includes("Moderation note")
-        ? cause.message
-        : "We couldn't save the moderation update. Please try again.");
+    } catch {
+      setReportActionError("We couldn't save the moderation update. Please try again.");
     } finally {
       setActionBusyId(null);
     }
@@ -657,7 +658,7 @@ function AdminPage() {
             <label className="block text-xs font-extrabold text-muted-foreground">PRIVATE MODERATION NOTE
               <textarea rows={2} maxLength={1000} value={moderationDrafts[report.id] ?? ""} onChange={(event) => setModerationDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Reason for moderation or follow-up note (admin only)" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
             </label>
-            <button type="button" disabled={actionBusyId === report.id || !(moderationDrafts[report.id] ?? "").trim()} onClick={() => void updateReportModeration(report, report.moderation_flag)} className="mt-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save private note"}</button>
+            <button type="button" disabled={actionBusyId === report.id || !(moderationDrafts[report.id] ?? "").trim()} onClick={() => void updateReportModeration(report, report.moderation_flag, true)} className="mt-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save private note"}</button>
           </div>
           {moderationNotes.filter((note) => note.item_id === report.id).slice(0, 2).map((note) => (
             <p key={note.id} className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950"><span className="font-extrabold">Admin note · {new Date(note.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}:</span> {note.note}</p>
