@@ -36,16 +36,16 @@ function editDistance(a: string, b: string): number {
 
   const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
   for (let row = 1; row <= a.length; row += 1) {
-    let diagonal = previous[0];
+    let diagonal = previous[0]!;
     previous[0] = row;
     for (let column = 1; column <= b.length; column += 1) {
-      const above = previous[column];
-      const substitution = diagonal + (a[row - 1] === b[column - 1] ? 0 : 1);
-      previous[column] = Math.min(previous[column] + 1, previous[column - 1] + 1, substitution);
+      const above = previous[column]!;
+      const substitution = diagonal + (a[row - 1]! === b[column - 1]! ? 0 : 1);
+      previous[column] = Math.min(previous[column]! + 1, previous[column - 1]! + 1, substitution);
       diagonal = above;
     }
   }
-  return previous[b.length];
+  return previous[b.length]!;
 }
 
 function closeEnough(query: string, candidate: string): boolean {
