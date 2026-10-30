@@ -14,6 +14,15 @@ export async function recordSuccessfulLogin(loginMethod: LoginMethod): Promise<b
       return false;
     }
 
+    // Only student logins belong in this activity log. This also prevents an
+    // administrator who uses the regular UID form from being recorded.
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    if (profileError || profile?.role !== "student") return false;
+
     const { error: insertError } = await supabase.from("login_events").insert({
       user_id: data.user.id,
       login_method: loginMethod,
