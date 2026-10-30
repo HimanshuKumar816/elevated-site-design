@@ -116,16 +116,16 @@ function Browse() {
     try {
       const offset = reset ? 0 : itemsLengthRef.current;
       const { data, error: queryError } = await supabase.rpc("search_items_v2", {
-        p_query: q.trim() || null,
+        p_query: q.trim() || undefined,
         p_type: type,
         p_category: cat,
         p_sort: sortBy,
         p_offset: offset,
         p_limit: PAGE_SIZE + 1,
-        p_location: locationFilter === "All" ? null : locationFilter,
+        p_location: locationFilter === "All" ? undefined : locationFilter,
         p_status: statusFilter,
-        p_date_from: dateFrom || null,
-        p_date_to: dateTo || null,
+        p_date_from: dateFrom || undefined,
+        p_date_to: dateTo || undefined,
         p_saved_only: savedOnly,
       });
       if (queryError) throw queryError;
