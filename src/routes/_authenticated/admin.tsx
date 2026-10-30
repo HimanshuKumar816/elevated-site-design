@@ -156,6 +156,9 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<ReportFilter>({ query: "", type: "All", category: "All" });
+  const [reportStatusFilter, setReportStatusFilter] = useState("All");
+  const [lostReportPage, setLostReportPage] = useState(1);
+  const [foundReportPage, setFoundReportPage] = useState(1);
   const [loginEvents, setLoginEvents] = useState<LoginActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState("");
@@ -283,6 +286,11 @@ function AdminPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setLostReportPage(1);
+    setFoundReportPage(1);
+  }, [filter, reportStatusFilter]);
 
   const loadLoginActivity = useCallback(async () => {
     setActivityLoading(true);
@@ -684,8 +692,8 @@ function AdminPage() {
   const categories = useMemo(() => ["All", ...new Set(rows.map((report) => report.category))], [rows]);
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
 
-  const visibleLost = filterReports(rows.filter((report) => report.type === "Lost"), { ...filter, type: "All" });
-  const visibleFound = filterReports(rows.filter((report) => report.type === "Found"), { ...filter, type: "All" });
+  const visibleLost = filterReports(rows.filter((report) => report.type === "Lost" && (reportStatusFilter === "All" || report.report_status === reportStatusFilter)), { ...filter, type: "All" });
+  const visibleFound = filterReports(rows.filter((report) => report.type === "Found" && (reportStatusFilter === "All" || report.report_status === reportStatusFilter)), { ...filter, type: "All" });
   const pendingClaimsCount = claims.filter((claim) => claim.status === "pending").length;
   const pendingMatchesCount = matches.filter((match) => match.review_status === "pending").length;
   const pendingReportsCount = rows.filter((report) => ["new", "under_review"].includes(report.report_status)).length;
@@ -750,7 +758,13 @@ function AdminPage() {
     </article>
   );
 
-  const renderReportSection = (title: string, reports: Row[], emptyText: string) => (
+  const renderReportSection = (title: string, reports: Row[], emptyText: string) => {
+    const isLost = title === "Lost reports";
+    const currentPage = isLost ? lostReportPage : foundReportPage;
+    const pageCount = Math.max(1, Math.ceil(reports.length / 25));
+    const pageReports = reports.slice((currentPage - 1) * 25, currentPage * 25);
+    const setPage = isLost ? setLostReportPage : setFoundReportPage;
+    return (
     <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
         <div>
@@ -767,10 +781,20 @@ function AdminPage() {
         </p>
       )}
       {!error && reports.length > 0 && (
-        <div className="grid gap-4 border-t border-border p-4 sm:p-5">{reports.map(renderReportCard)}</div>
+        <div className="grid gap-4 border-t border-border p-4 sm:p-5">{pageReports.map(renderReportCard)}</div>
+      )}
+      {!loading && reports.length > 25 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6">
+          <p className="text-xs font-semibold text-muted-foreground">Page {currentPage} of {pageCount} · {reports.length} matching reports</p>
+          <div className="flex gap-2">
+            <button type="button" disabled={currentPage <= 1} onClick={() => setPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button>
+            <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage((page) => Math.min(pageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button>
+          </div>
+        </div>
       )}
     </section>
-  );
+    );
+  };
 
   const renderMatchItem = (label: "Lost item" | "Found item", item: MatchItem) => (
     <div className="rounded-xl border border-border bg-background p-4">
@@ -948,6 +972,12 @@ function AdminPage() {
             <span className="sr-only">Category</span>
             <select value={filter.category} onChange={(event) => setFilter((current) => ({ ...current, category: event.target.value }))} className={input}>
               {categories.map((category) => <option key={category}>{category}</option>)}
+            </select>
+          </label>
+          <label>
+            <span className="sr-only">Report status</span>
+            <select value={reportStatusFilter} onChange={(event) => setReportStatusFilter(event.target.value)} className={input}>
+              <option value="All">All statuses</option><option value="new">New</option><option value="under_review">Under review</option><option value="matched">Matched</option><option value="claimed">Claimed</option><option value="returned">Returned</option><option value="closed">Closed</option>
             </select>
           </label>
         </div>
