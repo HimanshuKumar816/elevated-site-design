@@ -475,6 +475,8 @@ function Browse() {
                       <span className="mt-1 shrink-0 rounded-lg bg-secondary px-2 py-1 text-[10px] font-extrabold text-muted-foreground">{dateLabel(item.item_date)}</span>
                     </div>
                     <p className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground"><MapPin size={15} className="shrink-0 text-emerald-800" /><span className="truncate">{item.location}</span></p>
+                    {(item.brand || item.color || item.model) && <p className="mt-2 text-xs font-semibold text-muted-foreground">{[item.brand, item.color, item.model].filter(Boolean).join(" · ")}</p>}
+                    {item.item_time && <p className="mt-1 text-xs text-muted-foreground">Approx. time: {item.item_time}</p>}
                     {item.note && <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.note}</p>}
                     <div className="mt-auto pt-5">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
