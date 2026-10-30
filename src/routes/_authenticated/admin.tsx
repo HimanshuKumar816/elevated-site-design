@@ -702,7 +702,7 @@ function AdminPage() {
   const topLocations = useMemo(() => {
     const countsByLocation = new Map<string, number>();
     for (const report of rows) {
-      const zone = report.location.split(" — ")[0].trim() || "Other campus location";
+      const zone = (report.location ?? "").split(" — ")[0].trim() || "Other campus location";
       countsByLocation.set(zone, (countsByLocation.get(zone) ?? 0) + 1);
     }
     return [...countsByLocation.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
