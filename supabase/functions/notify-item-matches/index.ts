@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Item = { id: string; user_id: string; type: "Lost" | "Found"; name: string; category: string; location: string; note: string; image_path?: string | null };
+type Item = { id: string; user_id: string; type: "Lost" | "Found"; name: string; category: string; location: string; note: string; item_date?: string; brand?: string; color?: string; model?: string; image_path?: string | null };
 
 function similarity(a: string, b: string) {
   const words = (value: string) => new Set(value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((word) => word.length > 1));
@@ -21,8 +21,12 @@ function matchScore(a: Item, b: Item) {
   if (a.type === b.type) return 0;
   return Math.min(100,
     (a.category === b.category ? 35 : 0) +
-    Math.round(similarity(a.name, b.name) * 50) +
-    (similarity(a.location, b.location) >= 0.2 ? 15 : 0) +
+    Math.round(similarity(a.name, b.name) * 42) +
+    (a.brand && b.brand && a.brand.toLowerCase() === b.brand.toLowerCase() ? 7 : 0) +
+    (a.color && b.color && a.color.toLowerCase() === b.color.toLowerCase() ? 8 : 0) +
+    (a.model && b.model && a.model.toLowerCase() === b.model.toLowerCase() ? 8 : 0) +
+    (a.item_date && b.item_date && Math.abs(Date.parse(a.item_date) - Date.parse(b.item_date)) <= 86400000 ? 6 : 0) +
+    (similarity(a.location, b.location) >= 0.2 ? 12 : 0) +
     (similarity(a.note, b.note) >= 0.2 ? 5 : 0),
   );
 }
@@ -53,10 +57,10 @@ Deno.serve(async (request) => {
   if (!itemId) return Response.json({ error: "Item ID required" }, { status: 400, headers: corsHeaders });
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-  const { data: item, error: itemError } = await admin.from("items").select("id,user_id,type,name,category,location,note,image_path").eq("id", itemId).single();
+  const { data: item, error: itemError } = await admin.from("items").select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path").eq("id", itemId).single();
   if (itemError || !item || item.user_id !== authData.user.id) return Response.json({ error: "Report not found" }, { status: 404, headers: corsHeaders });
 
-  const { data: candidates } = await admin.from("items").select("id,user_id,type,name,category,location,note,image_path").neq("user_id", item.user_id).eq("type", item.type === "Lost" ? "Found" : "Lost").limit(150);
+  const { data: candidates } = await admin.from("items").select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path").neq("user_id", item.user_id).eq("type", item.type === "Lost" ? "Found" : "Lost").limit(150);
   const candidateItems = (candidates ?? []) as Item[];
   let matches = candidateItems.map((candidate) => ({ item: candidate, score: matchScore(item as Item, candidate) })).filter((entry) => entry.score >= 45).sort((a, b) => b.score - a.score).slice(0, 5);
   let matchingMethod = "text-similarity";
@@ -67,8 +71,8 @@ Deno.serve(async (request) => {
       const aiContent: Array<Record<string, unknown>> = [{
         type: "text",
         text: JSON.stringify({
-          report: { type: item.type, name: item.name, category: item.category, location: item.location, note: item.note },
-          candidates: visualCandidates.map((candidate) => ({ id: candidate.id, type: candidate.type, name: candidate.name, category: candidate.category, location: candidate.location, note: candidate.note })),
+          report: { type: item.type, name: item.name, category: item.category, location: item.location, item_date: item.item_date, brand: item.brand, color: item.color, model: item.model, note: item.note },
+          candidates: visualCandidates.map((candidate) => ({ id: candidate.id, type: candidate.type, name: candidate.name, category: candidate.category, location: candidate.location, item_date: candidate.item_date, brand: candidate.brand, color: candidate.color, model: candidate.model, note: candidate.note })),
           instruction: "Images, when supplied after this text, appear first for the new report and then in candidate order. Use image evidence as well as descriptions. Missing images are not evidence against a match.",
         }),
       }];
@@ -124,6 +128,9 @@ Deno.serve(async (request) => {
     if (similarity(lostItem.name, foundItem.name) >= 0.2) reasonParts.push("similar item names");
     if (similarity(lostItem.location, foundItem.location) >= 0.2) reasonParts.push("similar campus locations");
     if (similarity(lostItem.note, foundItem.note) >= 0.2) reasonParts.push("overlapping descriptions");
+    if (lostItem.brand && foundItem.brand && lostItem.brand.toLowerCase() === foundItem.brand.toLowerCase()) reasonParts.push("same brand");
+    if (lostItem.color && foundItem.color && lostItem.color.toLowerCase() === foundItem.color.toLowerCase()) reasonParts.push("same colour");
+    if (lostItem.model && foundItem.model && lostItem.model.toLowerCase() === foundItem.model.toLowerCase()) reasonParts.push("same model");
     const matchReason = matchingMethod === "ai"
       ? "AI-assisted comparison of the available report descriptions and photos."
       : reasonParts.length > 0

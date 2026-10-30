@@ -109,6 +109,10 @@ function Report() {
     const location = CAMPUS_LOCATIONS.includes(locationZone) ? buildCampusLocation(locationZone, locationDetail) : "";
     const date = String(form.get("date") ?? "");
     const note = String(form.get("note") ?? "").trim();
+    const brand = String(form.get("brand") ?? "").trim();
+    const color = String(form.get("color") ?? "").trim();
+    const model = String(form.get("model") ?? "").trim();
+    const itemTime = String(form.get("item_time") ?? "");
     const submittedPhoneNumber = phoneNumber.trim();
     const submittedSmsEnabled = smsEnabled;
 
@@ -145,8 +149,13 @@ function Report() {
         return;
       }
     }
-    if (note.length > 500) {
-      setError("Description must be 500 characters or fewer.");
+    if (note.length > 500 || brand.length > 80 || color.length > 50 || model.length > 80) {
+      setError("Keep the description within 500 characters, brand/model within 80, and colour within 50.");
+      setBusy(false);
+      return;
+    }
+    if (itemTime && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(itemTime)) {
+      setError("Choose a valid approximate time or leave it blank.");
       setBusy(false);
       return;
     }
@@ -194,7 +203,8 @@ function Report() {
       }
 
       const { data: insertedItem, error: insertError } = await supabase.from("items").insert({
-        user_id: u.user.id, type, name, category, location, item_date: date, note,
+        user_id: u.user.id, type, name, category, location, item_date: date, item_time: itemTime,
+        brand, color, model, note,
         ...(imagePath ? { image_path: imagePath } : {}),
       }).select("id").single();
       if (insertError) {
@@ -213,7 +223,7 @@ function Report() {
       setImagePreview("");
       try {
         const { data: rows } = await supabase.from("items").select("*").eq("type", type === "Lost" ? "Found" : "Lost").neq("user_id", u.user.id).limit(100);
-        const freshItem: Item = { id: "new-report", user_id: u.user.id, type, name, category, location, item_date: date, note };
+        const freshItem: Item = { id: "new-report", user_id: u.user.id, type, name, category, location, item_date: date, item_time: itemTime, brand, color, model, note };
         setMatches(findItemMatches(freshItem, (rows ?? []) as Item[]));
       } catch {
         setMatches([]);
@@ -264,6 +274,10 @@ function Report() {
               <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Item name <span className="text-emerald-800">*</span><input required name="name" maxLength={120} placeholder="e.g. Black leather wallet" className={field} /></label>
               <label className="block text-sm font-extrabold text-foreground">Category <span className="text-emerald-800">*</span><select required name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
               <label className="block text-sm font-extrabold text-foreground">Date <span className="text-emerald-800">*</span><input required type="date" name="date" className={field} /></label>
+              <label className="block text-sm font-extrabold text-foreground">Approximate time <span className="font-semibold text-muted-foreground">(optional)</span><input type="time" name="item_time" className={field} /></label>
+              <label className="block text-sm font-extrabold text-foreground">Brand <span className="font-semibold text-muted-foreground">(optional)</span><input name="brand" maxLength={80} placeholder="e.g. Samsung" className={field} /></label>
+              <label className="block text-sm font-extrabold text-foreground">Colour <span className="font-semibold text-muted-foreground">(optional)</span><input name="color" maxLength={50} placeholder="e.g. Navy blue" className={field} /></label>
+              <label className="block text-sm font-extrabold text-foreground">Model <span className="font-semibold text-muted-foreground">(optional)</span><input name="model" maxLength={80} placeholder="e.g. Galaxy Buds FE" className={field} /></label>
               <div className="block text-sm font-extrabold text-foreground sm:col-span-2">
                 <label htmlFor="location-zone">Where was it lost or found? <span className="text-emerald-800">*</span></label>
                 <select id="location-zone" required name="location_zone" defaultValue="" className={field}>

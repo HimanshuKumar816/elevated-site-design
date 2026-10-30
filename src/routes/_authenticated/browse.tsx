@@ -4,6 +4,8 @@ import {
   ArrowUpDown,
   ArrowUpRight,
   Bell,
+  Bookmark,
+  BookmarkCheck,
   Check,
   MapPin,
   PackageSearch,
@@ -16,6 +18,7 @@ import {
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, type Item, type ReportStatus } from "@/lib/items";
+import { CAMPUS_LOCATIONS } from "@/lib/campus-locations";
 
 const PAGE_SIZE = 24;
 
@@ -75,7 +78,14 @@ function Browse() {
   const itemsLengthRef = useRef(0);
   const fetchSequenceRef = useRef(0);
   const [me, setMe] = useState<string | null>(null);
-  const [profile, setProfile] = useState<{ full_name: string; uid: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; uid: string; verification_status: string } | null>(null);
+  const [savedItemIds, setSavedItemIds] = useState<string[]>([]);
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [locationFilter, setLocationFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [savedMessage, setSavedMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -105,13 +115,18 @@ function Browse() {
     }
     try {
       const offset = reset ? 0 : itemsLengthRef.current;
-      const { data, error: queryError } = await supabase.rpc("search_items", {
-        p_query: q.trim() || null,
+      const { data, error: queryError } = await supabase.rpc("search_items_v2", {
+        ...(q.trim() ? { p_query: q.trim() } : {}),
         p_type: type,
         p_category: cat,
         p_sort: sortBy,
         p_offset: offset,
         p_limit: PAGE_SIZE + 1,
+        ...(locationFilter !== "All" ? { p_location: locationFilter } : {}),
+        p_status: statusFilter,
+        ...(dateFrom ? { p_date_from: dateFrom } : {}),
+        ...(dateTo ? { p_date_to: dateTo } : {}),
+        p_saved_only: savedOnly,
       });
       if (queryError) throw queryError;
       const returned = (data ?? []) as BoardItem[];
@@ -132,7 +147,7 @@ function Browse() {
         setLoadingMore(false);
       }
     }
-  }, [q, type, cat, sortBy]);
+  }, [q, type, cat, sortBy, locationFilter, statusFilter, dateFrom, dateTo, savedOnly]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => { void fetchPage(true); }, 250);
@@ -149,14 +164,21 @@ function Browse() {
         if (active) setMe(userId);
 
         const [profileResult, alertResult] = await Promise.all([
-          supabase.from("profiles").select("full_name,uid").eq("id", userId).maybeSingle(),
+          supabase.from("profiles").select("full_name,uid,verification_status").eq("id", userId).maybeSingle(),
           supabase.from("notifications").select("id,title,body,created_at,read_at")
             .eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
         ]);
         if (active && !profileResult.error && profileResult.data) {
-          setProfile({ full_name: profileResult.data.full_name, uid: profileResult.data.uid });
+          setProfile({
+            full_name: profileResult.data.full_name,
+            uid: profileResult.data.uid,
+            verification_status: profileResult.data.verification_status ?? "unverified",
+          });
         }
         if (active && !alertResult.error) setAlerts((alertResult.data ?? []) as AlertRow[]);
+        const { data: savedRows, error: savedError } = await supabase
+          .from("saved_items").select("item_id").eq("user_id", userId);
+        if (active && !savedError) setSavedItemIds((savedRows ?? []).map((row) => row.item_id));
       } catch {
         // An account panel or notification failure does not block public browsing.
       }
@@ -176,6 +198,31 @@ function Browse() {
     window.addEventListener("keydown", focusSearch);
     return () => window.removeEventListener("keydown", focusSearch);
   }, []);
+
+  async function toggleSavedItem(item: BoardItem) {
+    setSavedMessage("");
+    const isSaved = savedItemIds.includes(item.id);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Please sign in again.");
+      if (isSaved) {
+        const { error } = await supabase.from("saved_items")
+          .delete().eq("user_id", authData.user.id).eq("item_id", item.id);
+        if (error) throw error;
+        setSavedItemIds((current) => current.filter((id) => id !== item.id));
+        setSavedMessage("Removed from saved items.");
+        if (savedOnly) void fetchPage(true);
+      } else {
+        const { error } = await supabase.from("saved_items")
+          .insert({ user_id: authData.user.id, item_id: item.id });
+        if (error && error.code !== "23505") throw error;
+        setSavedItemIds((current) => current.includes(item.id) ? current : [...current, item.id]);
+        setSavedMessage("Saved to your list.");
+      }
+    } catch {
+      setSavedMessage("We couldn't update saved items. Please try again.");
+    }
+  }
 
   async function markRead(id: string) {
     const readAt = new Date().toISOString();
@@ -260,6 +307,11 @@ function Browse() {
             <div className="rounded-xl bg-secondary px-4 py-2">
               <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Student UID</p>
               <p className="mt-1 font-mono text-sm font-extrabold text-foreground">{profile.uid}</p>
+              {profile.verification_status === "verified" ? (
+                <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-800"><ShieldCheck size={13} /> Verified CU student</p>
+              ) : (
+                <p className="mt-1 text-[11px] font-semibold text-muted-foreground">Identity verification not completed</p>
+              )}
             </div>
             <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
               My reports <ArrowUpRight size={14} />
@@ -336,6 +388,8 @@ function Browse() {
           </section>
         )}
 
+        {savedMessage && <p role="status" className="mt-4 rounded-xl border border-border bg-white px-4 py-3 text-sm font-semibold text-muted-foreground">{savedMessage}</p>}
+
         <div className="mt-8 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
           <label htmlFor="item-search" className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Search reports</label>
           <div className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-ring/10">
@@ -344,7 +398,7 @@ function Browse() {
             {!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-white px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}
             {q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}
           </div>
-          <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-[1.2fr_1fr_1fr] md:items-end">
+          <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2 xl:grid-cols-4 md:items-end">
             <div>
               <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Item type</span>
               <div className="flex flex-wrap items-center gap-2">
@@ -364,6 +418,31 @@ function Browse() {
               </select>
             </label>
           </div>
+          <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Campus area
+              <select aria-label="Filter by campus area" value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground">
+                <option value="All">All campus areas</option>{CAMPUS_LOCATIONS.map((location) => <option key={location}>{location}</option>)}
+              </select>
+            </label>
+            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Report status
+              <select aria-label="Filter by report status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground">
+                <option value="All">All statuses</option>
+                <option value="new">New</option><option value="under_review">Under review</option><option value="matched">Matched</option><option value="claimed">Claim in progress</option><option value="returned">Returned</option><option value="closed">Closed</option>
+              </select>
+            </label>
+            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">From date
+              <input aria-label="Filter reports from date" type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => setDateFrom(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold normal-case tracking-normal text-foreground" />
+            </label>
+            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">To date
+              <input aria-label="Filter reports to date" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold normal-case tracking-normal text-foreground" />
+            </label>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={pill(savedOnly)}>
+              {savedOnly ? "Showing saved items" : "Show saved items only"} · {savedItemIds.length}
+            </button>
+            <span className="text-xs text-muted-foreground">Saved items are private to your account.</span>
+          </div>
         </div>
 
         {error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><button type="button" onClick={() => void fetchPage(true)} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-extrabold transition hover:bg-destructive/10"><RefreshCw size={15} /> Try again</button></div>}
@@ -371,7 +450,7 @@ function Browse() {
         <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
           <div><h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2><p className="mt-1 text-sm text-muted-foreground">{loading ? "Searching the campus board…" : `Showing ${shown.length} loaded results`}</p></div>
           <div className="flex items-center gap-2">
-            {(q || type !== "All" || cat !== "All") && <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); }} className="rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>}
+            {(q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly) && <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); setLocationFilter("All"); setStatusFilter("All"); setDateFrom(""); setDateTo(""); setSavedOnly(false); }} className="rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>}
             {!loading && <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-secondary-foreground"><span className="inline-block size-2 rounded-full bg-emerald-500 mr-2" /> Search ready</span>}
           </div>
         </div>
@@ -396,10 +475,16 @@ function Browse() {
                       <span className="mt-1 shrink-0 rounded-lg bg-secondary px-2 py-1 text-[10px] font-extrabold text-muted-foreground">{dateLabel(item.item_date)}</span>
                     </div>
                     <p className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground"><MapPin size={15} className="shrink-0 text-emerald-800" /><span className="truncate">{item.location}</span></p>
+                    {(item.brand || item.color || item.model) && <p className="mt-2 text-xs font-semibold text-muted-foreground">{[item.brand, item.color, item.model].filter(Boolean).join(" · ")}</p>}
+                    {item.item_time && <p className="mt-1 text-xs text-muted-foreground">Approx. time: {item.item_time}</p>}
                     {item.note && <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.note}</p>}
                     <div className="mt-auto pt-5">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
                         <span className="text-xs font-bold text-muted-foreground">{statusLabels[reportStatus]}</span>
+                        <button type="button" aria-pressed={savedItemIds.includes(item.id)} aria-label={savedItemIds.includes(item.id) ? "Remove saved item" : "Save item"} onClick={() => void toggleSavedItem(item)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
+                          {savedItemIds.includes(item.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                          {savedItemIds.includes(item.id) ? "Saved" : "Save"}
+                        </button>
                         {canClaim && <button type="button" onClick={() => openClaim(item)} className="rounded-xl bg-primary px-3 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">This is mine — claim item</button>}
                         {item.user_id === me && <Link to="/my-reports" className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Track report <ArrowUpRight size={13} /></Link>}
                       </div>

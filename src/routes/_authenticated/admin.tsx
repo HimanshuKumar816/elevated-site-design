@@ -70,6 +70,16 @@ type LoginActivity = {
   role: string | null;
 };
 
+type StudentRecord = {
+  id: string;
+  uid: string;
+  full_name: string;
+  role: string;
+  verification_status: "unverified" | "verified";
+  verified_at: string | null;
+  created_at: string;
+};
+
 type MatchItem = {
   id: string;
   user_id: string;
@@ -78,6 +88,10 @@ type MatchItem = {
   category: string;
   location: string;
   item_date: string;
+  item_time?: string;
+  brand?: string;
+  color?: string;
+  model?: string;
   note: string | null;
   created_at: string;
   image_url: string | null;
@@ -110,6 +124,7 @@ type ClaimRecord = {
   item_location: string;
   item_owner_name: string | null;
   item_owner_uid: string | null;
+  item_category: string | null;
   claimant_name: string | null;
   claimant_uid: string | null;
 };
@@ -141,6 +156,9 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<ReportFilter>({ query: "", type: "All", category: "All" });
+  const [reportStatusFilter, setReportStatusFilter] = useState("All");
+  const [lostReportPage, setLostReportPage] = useState(1);
+  const [foundReportPage, setFoundReportPage] = useState(1);
   const [loginEvents, setLoginEvents] = useState<LoginActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState("");
@@ -162,6 +180,11 @@ function AdminPage() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [studentsError, setStudentsError] = useState("");
+  const [studentQuery, setStudentQuery] = useState("");
+  const [verificationBusyId, setVerificationBusyId] = useState<string | null>(null);
 
   async function signOut() {
     try {
@@ -264,6 +287,11 @@ function AdminPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setLostReportPage(1);
+    setFoundReportPage(1);
+  }, [filter, reportStatusFilter]);
+
   const loadLoginActivity = useCallback(async () => {
     setActivityLoading(true);
     setActivityError("");
@@ -333,7 +361,7 @@ function AdminPage() {
       const itemIds = [...new Set(pairs.flatMap((pair) => [pair.lost_item_id, pair.found_item_id]))];
       const { data: itemRows, error: itemsError } = await supabase
         .from("items")
-        .select("id,user_id,type,name,category,location,item_date,note,created_at,image_path")
+        .select("id,user_id,type,name,category,location,item_date,item_time,brand,color,model,note,created_at,image_path")
         .in("id", itemIds);
       if (itemsError) throw itemsError;
       const profilesIds = [...new Set((itemRows ?? []).map((item) => item.user_id))];
@@ -402,7 +430,7 @@ function AdminPage() {
     try {
       const { data: claimRows, error: claimError } = await supabase
         .from("item_claims")
-        .select("id,item_id,claimant_id,proof,status,admin_note,created_at,reviewed_at")
+        .select("id,item_id,claimant_id,proof,status,admin_note,created_at,reviewed_at,item_name_snapshot,item_location_snapshot,item_category_snapshot")
         .order("created_at", { ascending: false })
         .limit(100);
       if (claimError) throw claimError;
@@ -413,7 +441,7 @@ function AdminPage() {
       const itemIds = [...new Set(claimRows.map((claim) => claim.item_id))];
       const userIds = [...new Set(claimRows.map((claim) => claim.claimant_id))];
       const [itemsResult, claimantProfiles] = await Promise.all([
-        supabase.from("items").select("id,user_id,name,location").in("id", itemIds),
+        supabase.from("items").select("id,user_id,name,location,category").in("id", itemIds),
         supabase.from("profiles").select("id,full_name,uid").in("id", userIds),
       ]);
       if (itemsResult.error) throw itemsResult.error;
@@ -431,8 +459,9 @@ function AdminPage() {
         const owner = item ? profilesById.get(item.user_id) : null;
         return {
           ...claim,
-          item_name: item?.name ?? "Found item",
-          item_location: item?.location ?? "Details unavailable",
+          item_name: claim.item_name_snapshot ?? item?.name ?? "Found item",
+          item_location: claim.item_location_snapshot ?? item?.location ?? "Details unavailable",
+          item_category: claim.item_category_snapshot ?? item?.category ?? null,
           item_owner_name: owner?.full_name ?? null,
           item_owner_uid: owner?.uid ?? null,
           claimant_name: claimant?.full_name ?? null,
@@ -447,6 +476,27 @@ function AdminPage() {
   }, []);
 
   useEffect(() => { void loadClaims(); }, [loadClaims]);
+
+  const loadStudents = useCallback(async () => {
+    setStudentsLoading(true);
+    setStudentsError("");
+    try {
+      const { data, error: queryError } = await supabase
+        .from("profiles")
+        .select("id,uid,full_name,role,verification_status,verified_at,created_at")
+        .eq("role", "student")
+        .order("created_at", { ascending: false })
+        .limit(250);
+      if (queryError) throw queryError;
+      setStudents((data ?? []) as StudentRecord[]);
+    } catch {
+      setStudentsError("We couldn't load student verification records. Please retry.");
+    } finally {
+      setStudentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadStudents(); }, [loadStudents]);
 
   const loadModerationNotes = useCallback(async () => {
     const { data, error: notesError } = await supabase
@@ -599,6 +649,23 @@ function AdminPage() {
     }
   }
 
+  async function updateStudentVerification(student: StudentRecord, verified: boolean) {
+    setStudentsError("");
+    setVerificationBusyId(student.id);
+    try {
+      const { error: updateError } = await supabase.rpc("admin_set_student_verification", {
+        p_user_id: student.id,
+        p_verified: verified,
+      });
+      if (updateError) throw updateError;
+      await Promise.all([loadStudents(), loadAuditHistory()]);
+    } catch {
+      setStudentsError("We couldn't update this verification status. Please confirm administrator access and try again.");
+    } finally {
+      setVerificationBusyId(null);
+    }
+  }
+
   async function reviewClaim(claim: ClaimRecord, status: "approved" | "rejected" | "completed") {
     setReportActionError("");
     setActionBusyId(claim.id);
@@ -625,8 +692,25 @@ function AdminPage() {
   const categories = useMemo(() => ["All", ...new Set(rows.map((report) => report.category))], [rows]);
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
 
-  const visibleLost = filterReports(rows.filter((report) => report.type === "Lost"), { ...filter, type: "All" });
-  const visibleFound = filterReports(rows.filter((report) => report.type === "Found"), { ...filter, type: "All" });
+  const visibleLost = filterReports(rows.filter((report) => report.type === "Lost" && (reportStatusFilter === "All" || report.report_status === reportStatusFilter)), { ...filter, type: "All" });
+  const visibleFound = filterReports(rows.filter((report) => report.type === "Found" && (reportStatusFilter === "All" || report.report_status === reportStatusFilter)), { ...filter, type: "All" });
+  const pendingClaimsCount = claims.filter((claim) => claim.status === "pending").length;
+  const pendingMatchesCount = matches.filter((match) => match.review_status === "pending").length;
+  const pendingReportsCount = rows.filter((report) => ["new", "under_review"].includes(report.report_status)).length;
+  const returnedReportsCount = rows.filter((report) => report.report_status === "returned").length;
+  const recoveryRate = rows.length ? Math.round((returnedReportsCount / rows.length) * 100) : 0;
+  const topLocations = useMemo(() => {
+    const countsByLocation = new Map<string, number>();
+    for (const report of rows) {
+      const zone = ((report.location ?? "").split(" — ")[0] ?? "").trim() || "Other campus location";
+      countsByLocation.set(zone, (countsByLocation.get(zone) ?? 0) + 1);
+    }
+    return [...countsByLocation.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [rows]);
+  const visibleStudents = useMemo(() => {
+    const query = studentQuery.trim().toLowerCase();
+    return students.filter((student) => !query || student.full_name.toLowerCase().includes(query) || student.uid.toLowerCase().includes(query));
+  }, [students, studentQuery]);
 
   const renderReportCard = (report: Row) => (
     <article id={`report-${report.id}`} key={report.id} className="interactive-card grid gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft sm:grid-cols-[96px_1fr]">
@@ -641,7 +725,8 @@ function AdminPage() {
           <h3 className="text-lg font-extrabold">{report.name}</h3>
           <span className="text-sm text-muted-foreground">· {report.category}</span>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">{report.location} · item date {report.item_date} · reported {new Date(report.created_at).toLocaleString()}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{report.location} · item date {report.item_date}{report.item_time ? ` · ${report.item_time}` : ""} · reported {new Date(report.created_at).toLocaleString()}</p>
+        {(report.brand || report.color || report.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[report.brand, report.color, report.model].filter(Boolean).join(" · ")}</p>}
         {report.note && <p className="mt-2 text-sm">{report.note}</p>}
         <div className="mt-3 rounded-xl bg-secondary/60 p-3 text-xs leading-6 text-muted-foreground">
           <p><span className="font-extrabold text-foreground">Reported by:</span> {report.submitter_name ?? "Unknown"} · UID {report.submitter_uid ?? "—"}</p>
@@ -673,7 +758,13 @@ function AdminPage() {
     </article>
   );
 
-  const renderReportSection = (title: string, reports: Row[], emptyText: string) => (
+  const renderReportSection = (title: string, reports: Row[], emptyText: string) => {
+    const isLost = title === "Lost reports";
+    const currentPage = isLost ? lostReportPage : foundReportPage;
+    const pageCount = Math.max(1, Math.ceil(reports.length / 25));
+    const pageReports = reports.slice((currentPage - 1) * 25, currentPage * 25);
+    const setPage = isLost ? setLostReportPage : setFoundReportPage;
+    return (
     <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
         <div>
@@ -690,10 +781,20 @@ function AdminPage() {
         </p>
       )}
       {!error && reports.length > 0 && (
-        <div className="grid gap-4 border-t border-border p-4 sm:p-5">{reports.map(renderReportCard)}</div>
+        <div className="grid gap-4 border-t border-border p-4 sm:p-5">{pageReports.map(renderReportCard)}</div>
+      )}
+      {!loading && reports.length > 25 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6">
+          <p className="text-xs font-semibold text-muted-foreground">Page {currentPage} of {pageCount} · {reports.length} matching reports</p>
+          <div className="flex gap-2">
+            <button type="button" disabled={currentPage <= 1} onClick={() => setPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button>
+            <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage((page) => Math.min(pageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button>
+          </div>
+        </div>
       )}
     </section>
-  );
+    );
+  };
 
   const renderMatchItem = (label: "Lost item" | "Found item", item: MatchItem) => (
     <div className="rounded-xl border border-border bg-background p-4">
@@ -712,7 +813,8 @@ function AdminPage() {
         <div className="min-w-0">
           <h3 className="font-extrabold text-foreground">{item.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{item.category} · {item.location}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Item date {item.item_date}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Item date {item.item_date}{item.item_time ? ` · ${item.item_time}` : ""}</p>
+          {(item.brand || item.color || item.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[item.brand, item.color, item.model].filter(Boolean).join(" · ")}</p>}
         </div>
       </div>
       <div className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
@@ -821,8 +923,9 @@ function AdminPage() {
               void loadModerationNotes();
               void loadAuditHistory();
               void loadContactMessages();
+              void loadStudents();
             }}
-            disabled={loading || activityLoading || matchesLoading || claimsLoading || auditLoading || contactLoading}
+            disabled={loading || activityLoading || matchesLoading || claimsLoading || auditLoading || contactLoading || studentsLoading}
             className="admin-refresh-button inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -838,6 +941,27 @@ function AdminPage() {
           ))}
         </div>
 
+        <section className="admin-panel mt-6 rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><p className="kicker text-emerald-800">Campus insights</p><h2 className="mt-2 text-2xl font-extrabold">Recovery and activity overview</h2><p className="mt-1 text-sm text-muted-foreground">Calculated from the reports, matches and claims currently loaded from the database.</p></div>
+            <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{recoveryRate}% reports returned</span>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              ["Awaiting review", pendingReportsCount],
+              ["Pending matches", pendingMatchesCount],
+              ["Pending claims", pendingClaimsCount],
+              ["Returned reports", returnedReportsCount],
+            ].map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-background p-4"><p className="text-xs font-bold text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-extrabold">{value}</p></div>)}
+          </div>
+          <div className="mt-5">
+            <h3 className="text-sm font-extrabold">Most reported campus areas</h3>
+            {topLocations.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No location data yet.</p> : <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {topLocations.map(([location, count]) => <div key={location} className="rounded-xl bg-background p-3"><div className="flex items-center justify-between gap-3 text-sm"><span className="font-bold">{location}</span><span className="text-xs text-muted-foreground">{count} reports</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-emerald-700" style={{ width: `${Math.round((count / Math.max(1, topLocations[0]?.[1] ?? 1)) * 100)}%` }} /></div></div>)}
+            </div>}
+          </div>
+        </section>
+
         <div className="mt-6 flex flex-wrap gap-3">
           <label className="relative min-w-56 flex-1">
             <span className="sr-only">Search reports</span>
@@ -850,7 +974,34 @@ function AdminPage() {
               {categories.map((category) => <option key={category}>{category}</option>)}
             </select>
           </label>
+          <label>
+            <span className="sr-only">Report status</span>
+            <select value={reportStatusFilter} onChange={(event) => setReportStatusFilter(event.target.value)} className={input}>
+              <option value="All">All statuses</option><option value="new">New</option><option value="under_review">Under review</option><option value="matched">Matched</option><option value="claimed">Claimed</option><option value="returned">Returned</option><option value="closed">Closed</option>
+            </select>
+          </label>
         </div>
+
+        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div><p className="kicker text-emerald-800">Student identity controls</p><h2 className="mt-2 text-2xl font-extrabold">Student verification</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only mark a student verified after checking their UID and identity against an authorised Chandigarh University roster or physical student ID. This manual status is not an automatic CU directory check.</p></div>
+            <button type="button" onClick={() => void loadStudents()} disabled={studentsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{studentsLoading ? "Refreshing…" : "Refresh students"}</button>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 border-t border-border p-4 sm:p-5">
+            <label className="min-w-56 flex-1"><span className="sr-only">Search students by name or UID</span><input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Search student name or UID…" className={`${input} w-full`} /></label>
+            <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{students.filter((student) => student.verification_status === "verified").length} verified · {students.filter((student) => student.verification_status !== "verified").length} awaiting</span>
+          </div>
+          {studentsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{studentsError}</p>}
+          {studentsLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading student records…</p> : visibleStudents.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No student records match this search.</p> : (
+            <div className="grid gap-3 border-t border-border p-4 sm:p-5">
+              {visibleStudents.slice(0, 100).map((student) => <article key={student.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
+                <div><p className="font-extrabold">{student.full_name || "Unnamed student"}</p><p className="mt-1 text-xs text-muted-foreground">UID {student.uid}</p><p className="mt-1 text-xs text-muted-foreground">{student.verification_status === "verified" ? `Verified ${student.verified_at ? new Date(student.verified_at).toLocaleDateString("en-IN") : ""}` : "Identity not yet verified"}</p></div>
+                {student.verification_status === "verified" ? <button type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, false)} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Revoke verification"}</button> : <button type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, true)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Mark verified"}</button>}
+              </article>)}
+              {visibleStudents.length > 100 && <p className="text-xs text-muted-foreground">Showing the first 100 matches. Refine the search to find another student.</p>}
+            </div>
+          )}
+        </section>
 
         {reportActionError && <p role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">{reportActionError}</p>}
         {error && (
