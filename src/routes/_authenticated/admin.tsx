@@ -717,7 +717,8 @@ function AdminPage() {
           <h3 className="text-lg font-extrabold">{report.name}</h3>
           <span className="text-sm text-muted-foreground">· {report.category}</span>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">{report.location} · item date {report.item_date} · reported {new Date(report.created_at).toLocaleString()}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{report.location} · item date {report.item_date}{report.item_time ? ` · ${report.item_time}` : ""} · reported {new Date(report.created_at).toLocaleString()}</p>
+        {(report.brand || report.color || report.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[report.brand, report.color, report.model].filter(Boolean).join(" · ")}</p>}
         {report.note && <p className="mt-2 text-sm">{report.note}</p>}
         <div className="mt-3 rounded-xl bg-secondary/60 p-3 text-xs leading-6 text-muted-foreground">
           <p><span className="font-extrabold text-foreground">Reported by:</span> {report.submitter_name ?? "Unknown"} · UID {report.submitter_uid ?? "—"}</p>
@@ -788,7 +789,8 @@ function AdminPage() {
         <div className="min-w-0">
           <h3 className="font-extrabold text-foreground">{item.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{item.category} · {item.location}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Item date {item.item_date}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Item date {item.item_date}{item.item_time ? ` · ${item.item_time}` : ""}</p>
+          {(item.brand || item.color || item.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[item.brand, item.color, item.model].filter(Boolean).join(" · ")}</p>
         </div>
       </div>
       <div className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
