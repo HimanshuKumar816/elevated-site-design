@@ -23,10 +23,14 @@ describe("item matching", () => {
     const weakerMatch = {
       ...lost,
       type: "Found" as const,
-      item_date: "2026-10-10",
-      brand: "",
-      color: "",
-      model: "",
+      name: "Student notebook",
+      category: "Books",
+      location: "Parking Area",
+      note: "No description available",
+      item_date: "2026-09-01",
+      brand: "Sony",
+      color: "Red",
+      model: "Different device",
     };
 
     expect(scoreItemMatch(lost, detailedMatch)).toBeGreaterThan(scoreItemMatch(lost, weakerMatch));
