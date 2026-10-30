@@ -42,6 +42,7 @@ type OwnClaim = {
   reviewed_at: string | null;
   item_name: string;
   item_location: string;
+  item_category: string | null;
 };
 
 const statusLabels: Record<ReportStatus, string> = {
@@ -86,7 +87,7 @@ function MyReportsPage() {
           .order("created_at", { ascending: false }),
         supabase
           .from("item_claims")
-          .select("id,item_id,proof,status,admin_note,created_at,reviewed_at")
+          .select("id,item_id,proof,status,admin_note,created_at,reviewed_at,item_name_snapshot,item_location_snapshot,item_category_snapshot")
           .eq("claimant_id", userId)
           .order("created_at", { ascending: false }),
       ]);
@@ -108,8 +109,9 @@ function MyReportsPage() {
       setReports((reportsResult.data ?? []) as OwnReport[]);
       setClaims(claimRows.map((claim) => ({
         ...claim,
-        item_name: itemById.get(claim.item_id)?.name ?? "Found item",
-        item_location: itemById.get(claim.item_id)?.location ?? "Details unavailable",
+        item_name: claim.item_name_snapshot ?? itemById.get(claim.item_id)?.name ?? "Found item",
+        item_location: claim.item_location_snapshot ?? itemById.get(claim.item_id)?.location ?? "Details unavailable",
+        item_category: claim.item_category_snapshot ?? null,
       })) as OwnClaim[]);
     } catch {
       setError("We couldn't load your reports. Please refresh and try again.");
@@ -220,7 +222,7 @@ function MyReportsPage() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="font-extrabold text-foreground">{claim.item_name}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{claim.item_location}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{claim.item_location}{claim.item_category ? ` · ${claim.item_category}` : ""}</p>
                       <p className="mt-2 text-xs text-muted-foreground">Submitted {dateLabel(claim.created_at)}</p>
                     </div>
                     <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{claimLabels[claim.status]}</span>
