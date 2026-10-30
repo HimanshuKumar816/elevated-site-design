@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/browse")({
 function Browse() {
   const [items, setItems] = useState<(Item & { image_url?: string })[] | null>(null);
   const [me, setMe] = useState<string | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; uid: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -68,6 +69,18 @@ function Browse() {
       const userId = data.user?.id ?? null;
       setMe(userId);
       if (!userId) return;
+      try {
+        const { data: profileRow, error: profileError } = await supabase
+          .from("profiles")
+          .select("full_name,uid")
+          .eq("id", userId)
+          .maybeSingle();
+        if (!profileError && profileRow) {
+          setProfile({ full_name: profileRow.full_name, uid: profileRow.uid });
+        }
+      } catch {
+        // Profile details are optional UI data; auth and browsing remain available.
+      }
       try {
         const { data: notificationRows, error: notificationError } = await supabase
           .from("notifications")
@@ -136,6 +149,18 @@ function Browse() {
   return (
     <Page>
       <section className="student-workspace mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
+        {profile && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-white px-5 py-4 shadow-sm">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Signed in as</p>
+              <p className="mt-1 text-lg font-extrabold text-foreground">{profile.full_name}</p>
+            </div>
+            <div className="rounded-xl bg-secondary px-4 py-2">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Student UID</p>
+              <p className="mt-1 font-mono text-sm font-extrabold text-foreground">{profile.uid}</p>
+            </div>
+          </div>
+        )}
         <div className="student-workspace-hero relative overflow-hidden rounded-[2rem] bg-gradient-ink px-6 py-9 text-ink-foreground sm:px-10 sm:py-12 lg:px-14 lg:py-14">
           <div className="pointer-events-none absolute -right-10 -top-24 size-72 rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
