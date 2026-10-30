@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   ArrowUpDown,
   ArrowUpRight,
@@ -72,6 +72,8 @@ async function addSignedImages(rows: BoardItem[]): Promise<BoardItem[]> {
 
 function Browse() {
   const [items, setItems] = useState<BoardItem[]>([]);
+  const itemsLengthRef = useRef(0);
+  const fetchSequenceRef = useRef(0);
   const [me, setMe] = useState<string | null>(null);
   const [profile, setProfile] = useState<{ full_name: string; uid: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,14 +93,17 @@ function Browse() {
   const [claimSuccess, setClaimSuccess] = useState("");
 
   const fetchPage = useCallback(async (reset: boolean) => {
+    const requestSequence = reset ? fetchSequenceRef.current + 1 : fetchSequenceRef.current;
     if (reset) {
+      fetchSequenceRef.current = requestSequence;
+      itemsLengthRef.current = 0;
       setLoading(true);
       setError("");
     } else {
       setLoadingMore(true);
     }
     try {
-      const offset = reset ? 0 : items.length;
+      const offset = reset ? 0 : itemsLengthRef.current;
       const { data, error: queryError } = await supabase.rpc("search_items", {
         p_query: q.trim() || null,
         p_type: type,
@@ -111,16 +116,22 @@ function Browse() {
       const returned = (data ?? []) as BoardItem[];
       const nextHasMore = returned.length > PAGE_SIZE;
       const page = await addSignedImages(returned.slice(0, PAGE_SIZE));
+      if (requestSequence !== fetchSequenceRef.current) return;
       setHasMore(nextHasMore);
+      itemsLengthRef.current = reset ? page.length : itemsLengthRef.current + page.length;
       setItems((current) => reset ? page : [...current, ...page]);
     } catch {
-      setError("We couldn't load reports. Please check your connection and try again.");
-      if (reset) setItems([]);
+      if (requestSequence === fetchSequenceRef.current) {
+        setError("We couldn't load reports. Please check your connection and try again.");
+        if (reset) setItems([]);
+      }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (requestSequence === fetchSequenceRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  }, [q, type, cat, sortBy, items.length]);
+  }, [q, type, cat, sortBy]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => { void fetchPage(true); }, 250);
