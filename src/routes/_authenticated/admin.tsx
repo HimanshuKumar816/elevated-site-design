@@ -535,6 +535,31 @@ function AdminPage() {
           ))}
         </div>
 
+        <div className="mt-6 flex flex-wrap gap-3">
+          <label className="relative min-w-56 flex-1">
+            <span className="sr-only">Search reports</span>
+            <Search size={16} className="absolute left-3 top-3 text-muted-foreground" />
+            <input value={filter.query} onChange={(event) => setFilter((current) => ({ ...current, query: event.target.value }))} placeholder="Search item, location, student, UID…" className={`${input} w-full pl-9`} />
+          </label>
+          <label>
+            <span className="sr-only">Category</span>
+            <select value={filter.category} onChange={(event) => setFilter((current) => ({ ...current, category: event.target.value }))} className={input}>
+              {categories.map((category) => <option key={category}>{category}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {error && (
+          <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">
+            <p>{error}</p>
+            <button type="button" onClick={() => void load()} className="mt-2 underline underline-offset-4">Try again</button>
+          </div>
+        )}
+
+        {renderReportSection("Lost reports", visibleLost, "No lost-item reports match these filters.")}
+        {renderReportSection("Found reports", visibleFound, "No found-item reports match these filters.")}
+
+
         <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
@@ -614,30 +639,6 @@ function AdminPage() {
           )}
         </section>
 
-
-        <div className="mt-6 flex flex-wrap gap-3">
-          <label className="relative min-w-56 flex-1">
-            <span className="sr-only">Search reports</span>
-            <Search size={16} className="absolute left-3 top-3 text-muted-foreground" />
-            <input value={filter.query} onChange={(event) => setFilter((current) => ({ ...current, query: event.target.value }))} placeholder="Search item, location, student, UID…" className={`${input} w-full pl-9`} />
-          </label>
-          <label>
-            <span className="sr-only">Category</span>
-            <select value={filter.category} onChange={(event) => setFilter((current) => ({ ...current, category: event.target.value }))} className={input}>
-              {categories.map((category) => <option key={category}>{category}</option>)}
-            </select>
-          </label>
-        </div>
-
-        {error && (
-          <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">
-            <p>{error}</p>
-            <button type="button" onClick={() => void load()} className="mt-2 underline underline-offset-4">Try again</button>
-          </div>
-        )}
-
-        {renderReportSection("Lost reports", visibleLost, "No lost-item reports match these filters.")}
-        {renderReportSection("Found reports", visibleFound, "No found-item reports match these filters.")}
 
       </section>
       </main>
