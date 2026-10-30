@@ -3,8 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { CampusMap } from "@/components/campus-map";
-import type { CampusCoordinate } from "@/lib/campus-location";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
 
@@ -45,8 +43,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type Row = AdminReport & {
   image_url?: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  submitter_role: string | null;
 };
 
 type ContactMessage = {
@@ -81,10 +78,6 @@ function AdminPage() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
-  const [pinTarget, setPinTarget] = useState<Row | null>(null);
-  const [pinSaving, setPinSaving] = useState(false);
-  const [pinError, setPinError] = useState("");
-  const [pinSuccess, setPinSuccess] = useState("");
 
   async function signOut() {
     try {
@@ -94,37 +87,6 @@ function AdminPage() {
     }
     queryClient.clear();
     navigate({ to: "/admin-login", replace: true });
-  }
-
-  async function saveAdminPin(position: CampusCoordinate) {
-    if (!pinTarget || pinSaving) return;
-    setPinSaving(true);
-    setPinError("");
-    setPinSuccess("");
-    try {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError || !authData.user) throw new Error("Your administrator session has expired.");
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", authData.user.id)
-        .maybeSingle();
-      if (profileError || profile?.role !== "admin") throw new Error("Administrator access required.");
-      const { error: saveError } = await supabase.from("item_locations").upsert({
-        item_id: pinTarget.id,
-        user_id: pinTarget.user_id,
-        latitude: position.lat,
-        longitude: position.lng,
-      }, { onConflict: "item_id" });
-      if (saveError) throw saveError;
-      setPinSuccess("Campus pin saved for “" + pinTarget.name + "”.");
-      setPinTarget(null);
-      await load();
-    } catch {
-      setPinError("We couldn't save that campus pin. Check administrator access and confirm the database migration is applied.");
-    } finally {
-      setPinSaving(false);
-    }
   }
 
   const load = useCallback(async () => {
@@ -156,26 +118,18 @@ function AdminPage() {
         if (page.length < PAGE_SIZE) break;
       }
 
-      const { data: pinnedLocations, error: locationError } = await supabase
-        .from("item_locations")
-        .select("item_id,latitude,longitude");
-      if (locationError) throw locationError;
-      const locationByItem = new Map(
-        (pinnedLocations ?? []).map((pin) => [pin.item_id, { latitude: pin.latitude, longitude: pin.longitude }]),
-      );
-
       const userIds = [...new Set(items.map((item) => item.user_id))];
-      const profiles = new Map<string, { uid: string; full_name: string }>();
+      const profiles = new Map<string, { uid: string; full_name: string; role: string }>();
       // Small batches keep URL/request sizes bounded even if the report list grows.
       for (let offset = 0; offset < userIds.length; offset += PROFILE_BATCH_SIZE) {
         const ids = userIds.slice(offset, offset + PROFILE_BATCH_SIZE);
         const { data, error: profilesError } = await supabase
           .from("profiles")
-          .select("id,uid,full_name")
+          .select("id,uid,full_name,role")
           .in("id", ids);
         if (profilesError) throw profilesError;
         for (const profile of data ?? []) {
-          profiles.set(profile.id, { uid: profile.uid, full_name: profile.full_name });
+          profiles.set(profile.id, { uid: profile.uid, full_name: profile.full_name, role: profile.role });
         }
       }
 
@@ -194,16 +148,14 @@ function AdminPage() {
               image_url = null;
             }
           }
-          const pin = locationByItem.get(item.id);
           return {
             ...item,
             note: item.note ?? null,
             image_path: item.image_path ?? null,
             submitter_name: profile?.full_name ?? null,
             submitter_uid: profile?.uid ?? null,
+            submitter_role: profile?.role ?? null,
             image_url,
-            latitude: pin?.latitude ?? null,
-            longitude: pin?.longitude ?? null,
           };
         }),
       );
@@ -256,8 +208,7 @@ function AdminPage() {
           role: profile?.role ?? null,
         };
       });
-      // Do not display administrator sign-ins, including any events recorded before this fix.
-      setLoginEvents(activity.filter((event) => event.role !== "admin"));
+      setLoginEvents(activity);
     } catch {
       setActivityError("We couldn't load recent sign-ins. Please retry.");
     } finally {
@@ -294,23 +245,6 @@ function AdminPage() {
   const counts = countReports(rows);
   const categories = useMemo(() => ["All", ...new Set(rows.map((report) => report.category))], [rows]);
   const visible = filterReports(rows, filter);
-  const campusMarkers = useMemo(() => rows.flatMap((report) => {
-    if (report.latitude === null || report.longitude === null) return [];
-    return [{
-      id: report.id,
-      lat: report.latitude,
-      lng: report.longitude,
-      title: report.name,
-      detail: [
-        "Status: " + report.type,
-        "Category: " + report.category,
-        "Location: " + report.location,
-        "Date: " + report.item_date,
-        "Submitted by " + (report.submitter_name ?? "Unknown") + " (" + (report.submitter_uid ?? "—") + ")",
-      ].join(" · "),
-      href: `#report-${report.id}`,
-    }];
-  }), [rows]);
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
 
   return (
@@ -343,7 +277,7 @@ function AdminPage() {
           <div>
             <p className="kicker admin-kicker">Administrator workspace</p>
             <h1 className="admin-dashboard-title mt-2 text-4xl font-extrabold tracking-tight">Control room</h1>
-            <p className="admin-dashboard-subtitle mt-2 text-sm leading-6">A private overview of campus reports, student activity, incoming messages and item locations.</p>
+            <p className="admin-dashboard-subtitle mt-2 text-sm leading-6">A private overview of campus reports, account activity and incoming messages.</p>
           </div>
           <button
             type="button"
@@ -373,7 +307,7 @@ function AdminPage() {
             <div>
               <p className="kicker text-emerald-800">Account activity</p>
               <h2 className="mt-2 text-2xl font-extrabold">Recent sign-ins</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Recent successful student sign-ins. Administrator sign-ins are excluded.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Recent successful sign-ins by students and administrators.</p>
             </div>
             <button type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {activityLoading ? "Refreshing…" : "Refresh activity"}
@@ -404,7 +338,7 @@ function AdminPage() {
                       </td>
                       <td className="px-5 py-4">
                         <span className={event.role === "admin" ? "rounded-full bg-ink px-2.5 py-1 text-xs font-bold text-white" : "rounded-full bg-secondary px-2.5 py-1 text-xs font-bold"}>
-                          {event.role === "admin" ? "Administrator" : "Student"}
+                          {event.role === "admin" ? "Administrator" : event.role === "student" ? "Student" : "Unknown"}
                         </span>
                       </td>
                       <td className="px-5 py-4">{event.login_method === "otp" ? "SMS OTP" : event.login_method === "signup" ? "Account created" : event.role === "admin" ? "Admin password" : "Password"}</td>
@@ -449,25 +383,6 @@ function AdminPage() {
               ))}
             </div>
           )}
-        </section>
-
-        <section id="campus-map" className="admin-panel admin-map-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
-            <div>
-              <p className="kicker text-emerald-800">Administrator-only location tools</p>
-              <h2 className="mt-2 text-2xl font-extrabold">Chandigarh University campus map</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only administrators can view or assign exact campus pins. Students never see this map. Choose “Set campus pin” on a report, then click its location on this campus-only map.</p>
-            </div>
-            <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{campusMarkers.length} pinned reports</span>
-          </div>
-          {pinTarget && <div className="mx-4 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-secondary/50 p-4">
-            <div><p className="text-sm font-extrabold">Pin location for: {pinTarget.name}</p><p className="mt-1 text-xs text-muted-foreground">Click the correct spot inside the campus boundary to save its private coordinates.</p></div>
-            <button type="button" onClick={() => { setPinTarget(null); setPinError(""); }} disabled={pinSaving} className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-bold disabled:opacity-60">Cancel</button>
-          </div>}
-          {pinError && <p role="alert" className="mx-4 mb-3 rounded-lg bg-destructive/5 p-3 text-sm font-semibold text-destructive">{pinError}</p>}
-          {pinSuccess && <p role="status" className="mx-4 mb-3 rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{pinSuccess}</p>}
-          <CampusMap mode={pinTarget ? "picker" : "viewer"} markers={campusMarkers} {...(pinTarget ? { onPositionChange: (position: CampusCoordinate) => { void saveAdminPin(position); } } : {})} className="mx-4 mb-4" />
-          <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">Pins are stored against the selected report and protected by database row-level security. New reports remain text-only until an administrator assigns a pin.</p>
         </section>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -533,14 +448,10 @@ function AdminPage() {
                     {report.location} · item date {report.item_date} · reported {new Date(report.created_at).toLocaleString()}
                   </p>
                   {report.note && <p className="mt-2 text-sm">{report.note}</p>}
-                  <p className="mt-2 break-all text-xs text-muted-foreground">
-                    Submitted by {report.submitter_name ?? "Unknown"} ({report.submitter_uid ?? "—"}) · user_id {report.user_id}
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button type="button" onClick={() => { setPinTarget(report); setPinError(""); setPinSuccess(""); document.getElementById("campus-map")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} disabled={pinSaving} className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary disabled:opacity-60">
-                      {report.latitude !== null && report.longitude !== null ? "Move campus pin" : "Set campus pin"}
-                    </button>
-                    {report.latitude !== null && report.longitude !== null && <span className="text-xs font-semibold text-emerald-800">Campus pin saved</span>}
+                  <div className="mt-3 rounded-xl bg-secondary/60 p-3 text-xs leading-6 text-muted-foreground">
+                    <p><span className="font-extrabold text-foreground">Reported by:</span> {report.submitter_name ?? "Unknown"} · UID {report.submitter_uid ?? "—"}</p>
+                    <p><span className="font-extrabold text-foreground">Account:</span> {report.submitter_role === "admin" ? "Administrator" : report.submitter_role === "student" ? "Student" : "Unknown"}</p>
+                    <p className="break-all"><span className="font-extrabold text-foreground">Report reference:</span> {report.id}</p>
                   </div>
                 </div>
               </article>

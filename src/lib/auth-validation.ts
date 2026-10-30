@@ -51,7 +51,7 @@ export function validateSignup(input: SignupInput): SignupValidation {
 }
 
 /** Same generic message for unknown phone and wrong password. */
-export const GENERIC_SIGNIN_ERROR = "Incorrect phone number or password.";
+export const GENERIC_SIGNIN_ERROR = "Incorrect UID or password.";
 export const NO_ADMIN_ACCESS = "No administrator access.";
 
 /** Role check from the caller's own RLS-protected profile row; anything other than 'admin' is denied. */

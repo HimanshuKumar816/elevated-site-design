@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
+import { signInWithUid } from "@/lib/auth.functions";
 import { recordSuccessfulLogin } from "@/lib/login-events";
-import { normalizeUid } from "@/lib/uid";
+import { isValidUid, normalizeUid } from "@/lib/uid";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 import { GENERIC_SIGNIN_ERROR, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword, validateSignup } from "@/lib/auth-validation";
 
@@ -32,12 +33,12 @@ export const Route = createFileRoute("/auth")({
       { title: "Sign in — CampusFind" },
       {
         name: "description",
-        content: "Sign in to CampusFind securely with your mobile number and a one-time code.",
+        content: "Sign in to CampusFind securely with your student UID and password.",
       },
       { property: "og:title", content: "Sign in — CampusFind" },
       {
         property: "og:description",
-        content: "Use phone verification to access your campus lost-and-found account.",
+        content: "Use your student UID and password to access your campus lost-and-found account.",
       },
     ],
   }),
@@ -134,17 +135,42 @@ function AuthPage() {
     }
   }
 
-  async function passwordSignIn(phone: string): Promise<boolean> {
-    const { error: signInError } = await supabase.auth.signInWithPassword({ phone, password });
-    if (signInError) {
-      const status = (signInError as { status?: number }).status ?? 0;
-      setError(status >= 500 || status === 0 && /fetch|network/i.test(signInError.message)
-        ? "Sign-in is temporarily unavailable. Please try again later."
-        : GENERIC_SIGNIN_ERROR);
+  async function passwordSignIn(studentUid: string): Promise<"student" | "admin" | false> {
+    const result = await signInWithUid({ data: { uid: studentUid, password } });
+    if (!result.ok) {
+      setError(result.error || GENERIC_SIGNIN_ERROR);
       return false;
     }
+
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+    });
+    if (sessionError) {
+      setError("Sign-in is temporarily unavailable. Please try again later.");
+      return false;
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      await supabase.auth.signOut();
+      setError("We couldn't verify your account. Please sign in again.");
+      return false;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+    if (profileError || !profile || (profile.role !== "student" && profile.role !== "admin")) {
+      await supabase.auth.signOut();
+      setError("We couldn't load your account details. Please try again.");
+      return false;
+    }
+
     await recordSuccessfulLogin("password");
-    return true;
+    return profile.role;
   }
 
   async function submitDetails(event: FormEvent<HTMLFormElement>) {
@@ -175,26 +201,33 @@ function AuthPage() {
       return;
     }
 
-    const phone = normalizePhoneNumber(phoneInput);
-    if (!phone) {
-      setError("Enter a valid mobile number. Indian numbers can be entered as 10 digits; other countries need a +country code.");
-      return;
-    }
-
     if (mode === "in") {
+      const studentUid = normalizeUid(uid);
+      if (!isValidUid(studentUid)) {
+        setError("Enter a valid university UID (5–20 letters and numbers).");
+        return;
+      }
       if (!password) {
         setError("Enter your password.");
         return;
       }
+
       setBusy(true);
       try {
-        if (!(await passwordSignIn(phone))) return;
-        navigate({ to: redirect, replace: true });
+        const role = await passwordSignIn(studentUid);
+        if (!role) return;
+        navigate({ to: role === "admin" ? "/admin" : redirect, replace: true });
       } catch {
         setError("Sign-in is temporarily unavailable. Please try again later.");
       } finally {
         setBusy(false);
       }
+      return;
+    }
+
+    const phone = normalizePhoneNumber(phoneInput);
+    if (!phone) {
+      setError("Enter a valid mobile number. Indian numbers can be entered as 10 digits; other countries need a +country code.");
       return;
     }
 
@@ -341,7 +374,7 @@ function AuthPage() {
   );
 
   const titles: Record<AuthMode, [string, string]> = {
-    in: ["Sign in", "Use your mobile number and password."],
+    in: ["Sign in", "Use your student UID and password."],
     code: ["Sign in with a code", "We'll text a one-time code to your registered number."],
     recover: ["Forgot / set password", "Verify your registered number by SMS, then choose a new password."],
     up: ["Create account", "Add your student details and a password, then verify your mobile number."],
@@ -362,8 +395,7 @@ function AuthPage() {
                 : "Join your campus lost & found."}
             </h1>
             <p className="mt-5 max-w-lg leading-7 text-white/70">
-              Use your mobile number and a one-time code to access reports, publish an item, and
-              manage match alerts in one place. No CU email or password needed.
+              Sign in with your student UID and password. Your mobile number is used for account verification and password recovery.
             </p>
           </div>
           <div className="relative mt-10">
@@ -428,7 +460,7 @@ function AuthPage() {
               <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><LockKeyhole size={27} /></span>
               <p className="mt-6 kicker text-emerald-800">Account password</p>
               <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Choose a new password</h2>
-              <p className="mt-4 leading-7 text-muted-foreground">You'll use it with <strong className="text-foreground">{phoneForOtp}</strong> to sign in next time.</p>
+              <p className="mt-4 leading-7 text-muted-foreground">You'll use your student UID with this password to sign in next time.</p>
               <form onSubmit={saveNewPassword} className="mt-2">
                 {passwordFields("new-password", true)}
                 {messages}
@@ -465,20 +497,22 @@ function AuthPage() {
                   </label>
                 )}
 
-                {mode === "up" && (
+                {(mode === "up" || mode === "in") && (
                   <label className="mb-4 block text-sm font-extrabold text-foreground">
                     Student UID
-                    <input required name="uid" maxLength={20} autoComplete="username" autoCapitalize="characters" value={uid} onChange={(event) => setUid(event.target.value.toUpperCase())} placeholder="e.g. 26BCS11930" className={`${field} uppercase`} />
+                    <input required name="uid" maxLength={20} autoComplete="username" autoCapitalize="characters" value={uid} onChange={(event) => setUid(event.target.value.toUpperCase())} placeholder="Enter your university UID" className={`${field} uppercase`} />
                   </label>
                 )}
 
-                <>
+                {mode !== "in" && (
+                  <>
                     <label className="block text-sm font-extrabold text-foreground">
                       Student phone number
-                      <input required name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={24} value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="98765 43210" className={field} />
+                      <input required name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={24} value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="Enter your registered mobile number" className={field} />
                     </label>
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">Indian mobile numbers can be entered as 10 digits. For another country, include the +country code.</p>
-                </>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">Your number is used for verification and password recovery. Indian mobile numbers can be entered as 10 digits.</p>
+                  </>
+                )}
 
                 {mode === "in" && passwordFields("current-password", false)}
                 {mode === "up" && passwordFields("new-password", true)}

@@ -76,13 +76,13 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "Incorrect UID or password." }, 401, origin);
   }
 
-  // This function is for the separate admin portal only. A known student's UID
-  // must never turn this into an alternate password-login endpoint for student accounts.
+  // Resolve the submitted UID server-side to its Supabase Auth identity.
+  // Credentials are still verified by Supabase Auth; the underlying phone/email
+  // is never exposed to the browser.
   const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("id")
     .eq("uid", uid)
-    .eq("role", "admin")
     .maybeSingle();
 
   if (profileError) {
@@ -91,17 +91,23 @@ Deno.serve(async (req: Request) => {
   }
 
   const publicClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  let email = "invalid-campusfind-login@cuchd.in";
+  let identifier: { email: string } | { phone: string } | null = null;
   if (profile) {
     const { data: userData, error: userError } = await admin.auth.admin.getUserById(profile.id);
     if (userError) {
-      console.error("[UID auth] Admin auth-user lookup failed", { status: userError.status });
+      console.error("[UID auth] Auth-user lookup failed", { status: userError.status });
       return json({ ok: false, error: "Login is temporarily unavailable. Please try again later." }, 500, origin);
     }
-    if (userData.user?.email) email = userData.user.email;
+    if (userData.user?.email) {
+      identifier = { email: userData.user.email };
+    } else if (userData.user?.phone) {
+      identifier = { phone: userData.user.phone };
+    }
   }
 
-  const { data, error } = await publicClient.auth.signInWithPassword({ email, password });
+  if (!identifier) return json({ ok: false, error: "Incorrect UID or password." }, 401, origin);
+
+  const { data, error } = await publicClient.auth.signInWithPassword({ ...identifier, password });
   if (error || !data.session) return json({ ok: false, error: "Incorrect UID or password." }, 401, origin);
 
   return json({
