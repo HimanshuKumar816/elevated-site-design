@@ -158,6 +158,7 @@ function AdminPage() {
   const [claimDrafts, setClaimDrafts] = useState<Record<string, string>>({});
   const [matchDrafts, setMatchDrafts] = useState<Record<string, string>>({});
   const [reportActionError, setReportActionError] = useState("");
+  const [actionBusyId, setActionBusyId] = useState<string | null>(null);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
@@ -505,6 +506,115 @@ function AdminPage() {
     void loadContactMessages();
   }, [loadContactMessages]);
 
+  async function adminActorId() {
+    const { data: userData, error: authError } = await supabase.auth.getUser();
+    if (authError || !userData.user) throw new Error("Your administrator session has expired.");
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+    if (profileError || profile?.role !== "admin") throw new Error("Administrator access is required.");
+    return userData.user.id;
+  }
+
+  async function updateReportStatus(report: Row, status: ReportStatus) {
+    setReportActionError("");
+    setActionBusyId(report.id);
+    try {
+      const actorId = await adminActorId();
+      const { error: updateError } = await supabase.from("items").update({
+        report_status: status,
+        moderated_by: actorId,
+        moderated_at: new Date().toISOString(),
+      }).eq("id", report.id);
+      if (updateError) throw updateError;
+      setRows((current) => current.map((row) => row.id === report.id ? { ...row, report_status: status } : row));
+    } catch {
+      setReportActionError("We couldn't update this report status. Check administrator access and try again.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function updateReportModeration(report: Row, flag: ModerationFlag) {
+    setReportActionError("");
+    setActionBusyId(report.id);
+    try {
+      const actorId = await adminActorId();
+      const { error: updateError } = await supabase.from("items").update({
+        moderation_flag: flag,
+        moderated_by: actorId,
+        moderated_at: new Date().toISOString(),
+      }).eq("id", report.id);
+      if (updateError) throw updateError;
+
+      const note = (moderationDrafts[report.id] ?? "").trim();
+      if (note.length > 0) {
+        if (note.length < 3 || note.length > 1000) throw new Error("Moderation note must be 3–1,000 characters.");
+        const { error: noteError } = await supabase.from("admin_item_moderation_notes").insert({
+          item_id: report.id,
+          actor_id: actorId,
+          note,
+        });
+        if (noteError) throw noteError;
+        setModerationDrafts((current) => ({ ...current, [report.id]: "" }));
+        await loadModerationNotes();
+      }
+      setRows((current) => current.map((row) => row.id === report.id ? { ...row, moderation_flag: flag, moderated_by: actorId, moderated_at: new Date().toISOString() } : row));
+    } catch (cause) {
+      setReportActionError(cause instanceof Error && cause.message.includes("Moderation note")
+        ? cause.message
+        : "We couldn't save the moderation update. Please try again.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function reviewMatch(match: ItemMatch, status: "confirmed" | "rejected" | "resolved") {
+    setReportActionError("");
+    setActionBusyId(match.id);
+    try {
+      const actorId = await adminActorId();
+      const adminNote = (matchDrafts[match.id] ?? "").trim();
+      const { error: updateError } = await supabase.from("item_matches").update({
+        review_status: status,
+        admin_note: adminNote || null,
+        reviewed_by: actorId,
+        reviewed_at: new Date().toISOString(),
+      }).eq("id", match.id);
+      if (updateError) throw updateError;
+      setMatchDrafts((current) => ({ ...current, [match.id]: "" }));
+      await Promise.all([loadMatches(), load()]);
+    } catch {
+      setReportActionError("We couldn't save that match decision. A report may already be closed or moderated.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function reviewClaim(claim: ClaimRecord, status: "approved" | "rejected" | "completed") {
+    setReportActionError("");
+    setActionBusyId(claim.id);
+    try {
+      const actorId = await adminActorId();
+      const adminNote = (claimDrafts[claim.id] ?? "").trim();
+      const { error: updateError } = await supabase.from("item_claims").update({
+        status,
+        admin_note: adminNote || null,
+        reviewed_by: actorId,
+        reviewed_at: new Date().toISOString(),
+      }).eq("id", claim.id);
+      if (updateError) throw updateError;
+      setClaimDrafts((current) => ({ ...current, [claim.id]: "" }));
+      await Promise.all([loadClaims(), load(), loadMatches(), loadAuditHistory()]);
+    } catch {
+      setReportActionError("We couldn't save this claim decision. Please refresh and try again.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
   const counts = countReports(rows);
   const categories = useMemo(() => ["All", ...new Set(rows.map((report) => report.category))], [rows]);
   const input = "rounded-xl border border-input bg-background px-3 py-2.5 text-sm";
@@ -531,6 +641,27 @@ function AdminPage() {
           <p><span className="font-extrabold text-foreground">Reported by:</span> {report.submitter_name ?? "Unknown"} · UID {report.submitter_uid ?? "—"}</p>
           <p><span className="font-extrabold text-foreground">Account:</span> {report.submitter_role === "admin" ? "Administrator" : report.submitter_role === "student" ? "Student" : "Unknown"}</p>
           <p className="break-all"><span className="font-extrabold text-foreground">Report reference:</span> {report.id}</p>
+        </div>
+        <div className="mt-4 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
+          <label className="block text-xs font-extrabold text-muted-foreground">REPORT STATUS
+            <select value={report.report_status} disabled={actionBusyId === report.id} onChange={(event) => void updateReportStatus(report, event.target.value as ReportStatus)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
+              <option value="new">New</option><option value="under_review">Under review</option><option value="matched">Matched</option><option value="claimed">Claimed</option><option value="returned">Returned</option><option value="closed">Closed</option>
+            </select>
+          </label>
+          <label className="block text-xs font-extrabold text-muted-foreground">MODERATION FLAG
+            <select value={report.moderation_flag} disabled={actionBusyId === report.id} onChange={(event) => void updateReportModeration(report, event.target.value as ModerationFlag)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
+              <option value="none">No flag</option><option value="duplicate">Duplicate</option><option value="suspicious">Suspicious</option><option value="hidden">Hide from students</option>
+            </select>
+          </label>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-extrabold text-muted-foreground">PRIVATE MODERATION NOTE
+              <textarea rows={2} maxLength={1000} value={moderationDrafts[report.id] ?? ""} onChange={(event) => setModerationDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Reason for moderation or follow-up note (admin only)" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+            </label>
+            <button type="button" disabled={actionBusyId === report.id || !(moderationDrafts[report.id] ?? "").trim()} onClick={() => void updateReportModeration(report, report.moderation_flag)} className="mt-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save private note"}</button>
+          </div>
+          {moderationNotes.filter((note) => note.item_id === report.id).slice(0, 2).map((note) => (
+            <p key={note.id} className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950"><span className="font-extrabold">Admin note · {new Date(note.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}:</span> {note.note}</p>
+          ))}
         </div>
       </div>
     </article>
@@ -592,7 +723,7 @@ function AdminPage() {
         <div>
           <p className="kicker text-emerald-800">Matching system</p>
           <h2 className="mt-2 text-2xl font-extrabold">Item matches found</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Possible matches between Lost and Found reports. These are system suggestions for administrator review, not confirmed handovers.</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Review system suggestions. Confirm or dismiss a pair; after a confirmed handover, mark it returned.</p>
         </div>
         <button type="button" onClick={() => void loadMatches()} disabled={matchesLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
           {matchesLoading ? "Refreshing…" : "Refresh matches"}
@@ -608,13 +739,33 @@ function AdminPage() {
           {matches.map((match) => (
             <article key={match.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-extrabold text-amber-900">Possible match</span>
-                <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Found {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
+                <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "bg-emerald-50 text-emerald-900" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-amber-50 text-amber-900"}`}>{match.review_status === "confirmed" ? "Confirmed match" : match.review_status === "rejected" ? "Dismissed" : "Pending review"}</span>
+                <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Detected {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
               </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">Score {match.score ?? "—"}/100</span>
+                <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">{match.matching_method === "ai" ? "AI-assisted" : match.matching_method}</span>
+              </div>
+              {match.match_reason && <p className="mt-3 rounded-lg bg-secondary/60 p-3 text-xs leading-5 text-muted-foreground">Why it matched: {match.match_reason}</p>}
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {renderMatchItem("Lost item", match.lost)}
                 {renderMatchItem("Found item", match.found)}
               </div>
+              {match.review_status !== "rejected" && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <label className="block text-xs font-extrabold text-muted-foreground">ADMIN REVIEW NOTE
+                    <textarea rows={2} maxLength={1000} value={matchDrafts[match.id] ?? match.admin_note ?? ""} onChange={(event) => setMatchDrafts((current) => ({ ...current, [match.id]: event.target.value }))} placeholder="Add a note for the audit trail or handover record" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+                  </label>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {match.review_status === "pending" && <>
+                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "confirmed")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Confirm match</button>
+                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject match</button>
+                    </>}
+                    {match.review_status === "confirmed" && <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "resolved")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Mark item returned</button>}
+                    {actionBusyId === match.id && <span className="self-center text-xs text-muted-foreground">Saving decision…</span>}
+                  </div>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -660,9 +811,12 @@ function AdminPage() {
               void load();
               void loadLoginActivity();
               void loadMatches();
+              void loadClaims();
+              void loadModerationNotes();
+              void loadAuditHistory();
               void loadContactMessages();
             }}
-            disabled={loading || activityLoading || matchesLoading || contactLoading}
+            disabled={loading || activityLoading || matchesLoading || claimsLoading || auditLoading || contactLoading}
             className="admin-refresh-button inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -692,6 +846,7 @@ function AdminPage() {
           </label>
         </div>
 
+        {reportActionError && <p role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">{reportActionError}</p>}
         {error && (
           <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">
             <p>{error}</p>
@@ -747,6 +902,64 @@ function AdminPage() {
         </section>
 
         {renderMatchesSection}
+
+        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div><p className="kicker text-emerald-800">Ownership verification</p><h2 className="mt-2 text-2xl font-extrabold">Item claims</h2><p className="mt-1 text-sm text-muted-foreground">Private ownership proof is visible to authorised administrators and the claimant only.</p></div>
+            <button type="button" onClick={() => void loadClaims()} disabled={claimsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{claimsLoading ? "Refreshing…" : "Refresh claims"}</button>
+          </div>
+          {claimsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{claimsError}</p>}
+          {claimsLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading claims…</p> : claims.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No item claims have been submitted.</p> : (
+            <div className="grid gap-3 border-t border-border p-4 sm:p-5">
+              {claims.map((claim) => (
+                <article key={claim.id} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div><h3 className="font-extrabold text-foreground">{claim.item_name}</h3><p className="mt-1 text-sm text-muted-foreground">{claim.item_location}</p><p className="mt-2 text-xs text-muted-foreground">Claimed by {claim.claimant_name ?? "Unknown"} · UID {claim.claimant_uid ?? "—"}</p><p className="mt-1 text-xs text-muted-foreground">Found report submitted by {claim.item_owner_name ?? "Unknown"} · UID {claim.item_owner_uid ?? "—"}</p></div>
+                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{claim.status.toUpperCase()}</span>
+                  </div>
+                  <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Private ownership proof</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p></div>
+                  {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">Previous review note: {claim.admin_note}</p>}
+                  {claim.status !== "rejected" && claim.status !== "completed" && (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <label className="block text-xs font-extrabold text-muted-foreground">DECISION NOTE
+                        <textarea rows={2} maxLength={1000} value={claimDrafts[claim.id] ?? ""} onChange={(event) => setClaimDrafts((current) => ({ ...current, [claim.id]: event.target.value }))} placeholder="Explain approval or rejection, or write a handover note" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+                      </label>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {claim.status === "pending" && <>
+                          <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "approved")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Approve claim</button>
+                          <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject claim</button>
+                        </>}
+                        {claim.status === "approved" && <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "completed")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Confirm returned to owner</button>}
+                      </div>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div><p className="kicker text-emerald-800">Moderation history</p><h2 className="mt-2 text-2xl font-extrabold">Administrator audit log</h2><p className="mt-1 text-sm text-muted-foreground">Records status changes, moderation decisions, match reviews and claim outcomes.</p></div>
+            <button type="button" onClick={() => void loadAuditHistory()} disabled={auditLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{auditLoading ? "Refreshing…" : "Refresh history"}</button>
+          </div>
+          {auditError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{auditError}</p>}
+          {auditLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading audit history…</p> : auditRows.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No administrator actions have been recorded yet.</p> : (
+            <div className="overflow-x-auto border-t border-border">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-secondary/70 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3 font-extrabold">Administrator</th><th className="px-5 py-3 font-extrabold">Action</th><th className="px-5 py-3 font-extrabold">Record</th><th className="px-5 py-3 font-extrabold">When</th><th className="px-5 py-3 font-extrabold">Details</th></tr></thead>
+                <tbody>{auditRows.map((entry) => <tr key={entry.id} className="border-t border-border align-top">
+                  <td className="px-5 py-3"><p className="font-bold">{entry.actor_name ?? "Former administrator"}</p><p className="text-xs text-muted-foreground">UID {entry.actor_uid ?? "—"}</p></td>
+                  <td className="px-5 py-3 font-bold">{entry.action.replaceAll("_", " ")}</td>
+                  <td className="px-5 py-3 text-xs text-muted-foreground">{entry.entity_type} · {entry.entity_id}</td>
+                  <td className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
+                  <td className="max-w-xs whitespace-pre-wrap break-words px-5 py-3 text-xs text-muted-foreground">{JSON.stringify(entry.details)}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
