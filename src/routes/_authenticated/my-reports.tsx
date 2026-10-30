@@ -27,6 +27,10 @@ type OwnReport = {
   category: string;
   location: string;
   item_date: string;
+  item_time?: string;
+  brand?: string;
+  color?: string;
+  model?: string;
   note: string | null;
   created_at: string;
   report_status: ReportStatus;
@@ -82,7 +86,7 @@ function MyReportsPage() {
       const [reportsResult, claimsResult] = await Promise.all([
         supabase
           .from("items")
-          .select("id,type,name,category,location,item_date,note,created_at,report_status,moderation_flag")
+          .select("id,type,name,category,location,item_date,item_time,brand,color,model,note,created_at,report_status,moderation_flag")
           .eq("user_id", userId)
           .order("created_at", { ascending: false }),
         supabase
@@ -191,7 +195,8 @@ function MyReportsPage() {
                     </div>
                     <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{statusLabels[report.report_status] ?? report.report_status}</span>
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{report.location} · Item date {report.item_date}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{report.location} · Item date {report.item_date}{report.item_time ? ` · ${report.item_time}` : ""}</p>
+                  {(report.brand || report.color || report.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[report.brand, report.color, report.model].filter(Boolean).join(" · ")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Submitted {dateLabel(report.created_at)}</p>
                   {report.moderation_flag !== "none" && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs font-bold text-amber-900">This report has been flagged for administrator review. Contact the CampusFind team if you need help.</p>}
                   {report.note && <p className="mt-3 text-sm leading-6 text-muted-foreground">{report.note}</p>}
