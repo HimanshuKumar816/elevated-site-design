@@ -5,6 +5,7 @@ import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
+import type { ModerationFlag, ReportStatus } from "@/lib/items";
 
 const PAGE_SIZE = 500;
 const PROFILE_BATCH_SIZE = 100;
@@ -44,6 +45,10 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type Row = AdminReport & {
   image_url?: string | null;
   submitter_role: string | null;
+  report_status: ReportStatus;
+  moderation_flag: ModerationFlag;
+  moderated_at: string | null;
+  moderated_by: string | null;
 };
 
 type ContactMessage = {
@@ -83,8 +88,50 @@ type MatchItem = {
 type ItemMatch = {
   id: string;
   matched_at: string;
+  score: number | null;
+  matching_method: string;
+  match_reason: string | null;
+  review_status: string;
+  admin_note: string | null;
   lost: MatchItem;
   found: MatchItem;
+};
+
+type ClaimRecord = {
+  id: string;
+  item_id: string;
+  claimant_id: string;
+  proof: string;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  item_name: string;
+  item_location: string;
+  item_owner_name: string | null;
+  item_owner_uid: string | null;
+  claimant_name: string | null;
+  claimant_uid: string | null;
+};
+
+type AuditRecord = {
+  id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  actor_uid: string | null;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  details: unknown;
+  created_at: string;
+};
+
+type ModerationNote = {
+  id: string;
+  item_id: string;
+  actor_id: string;
+  note: string;
+  created_at: string;
 };
 
 function AdminPage() {
@@ -100,6 +147,17 @@ function AdminPage() {
   const [matches, setMatches] = useState<ItemMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesError, setMatchesError] = useState("");
+  const [claims, setClaims] = useState<ClaimRecord[]>([]);
+  const [claimsLoading, setClaimsLoading] = useState(true);
+  const [claimsError, setClaimsError] = useState("");
+  const [auditRows, setAuditRows] = useState<AuditRecord[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditError, setAuditError] = useState("");
+  const [moderationNotes, setModerationNotes] = useState<ModerationNote[]>([]);
+  const [moderationDrafts, setModerationDrafts] = useState<Record<string, string>>({});
+  const [claimDrafts, setClaimDrafts] = useState<Record<string, string>>({});
+  const [matchDrafts, setMatchDrafts] = useState<Record<string, string>>({});
+  const [reportActionError, setReportActionError] = useState("");
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
@@ -180,6 +238,10 @@ function AdminPage() {
             submitter_name: profile?.full_name ?? null,
             submitter_uid: profile?.uid ?? null,
             submitter_role: profile?.role ?? null,
+            report_status: item.report_status ?? "new",
+            moderation_flag: item.moderation_flag ?? "none",
+            moderated_at: item.moderated_at ?? null,
+            moderated_by: item.moderated_by ?? null,
             image_url,
           };
         }),
@@ -250,55 +312,43 @@ function AdminPage() {
     setMatchesLoading(true);
     setMatchesError("");
     try {
-      // Match alerts are stored as two mirrored notifications (one per reporter).
-      // Deduplicate them into one Lost-versus-Found pair for the admin console.
-      const { data: notifications, error: notificationsError } = await supabase
-        .from("notifications")
-        .select("id,item_id,matched_item_id,created_at")
-        .not("matched_item_id", "is", null)
+      const { data: pairs, error: pairsError } = await supabase
+        .from("item_matches")
+        .select("id,lost_item_id,found_item_id,score,matching_method,match_reason,review_status,admin_note,created_at,reviewed_at")
+        .neq("review_status", "resolved")
         .order("created_at", { ascending: false })
-        .limit(200);
-      if (notificationsError) throw notificationsError;
-
-      const pairMap = new Map<string, { itemIds: [string, string]; matched_at: string }>();
-      for (const notification of notifications ?? []) {
-        if (!notification.item_id || !notification.matched_item_id) continue;
-        const sortedIds = [notification.item_id, notification.matched_item_id].sort() as [string, string];
-        const pairKey = sortedIds.join(":");
-        if (!pairMap.has(pairKey)) pairMap.set(pairKey, { itemIds: sortedIds, matched_at: notification.created_at });
-      }
-
-      const itemIds = [...new Set([...pairMap.values()].flatMap((pair) => pair.itemIds))];
-      if (itemIds.length === 0) {
+        .limit(100);
+      if (pairsError) throw pairsError;
+      if (!pairs?.length) {
         setMatches([]);
         return;
       }
 
+      const itemIds = [...new Set(pairs.flatMap((pair) => [pair.lost_item_id, pair.found_item_id]))];
       const { data: itemRows, error: itemsError } = await supabase
         .from("items")
         .select("id,user_id,type,name,category,location,item_date,note,created_at,image_path")
         .in("id", itemIds);
       if (itemsError) throw itemsError;
-
-      const userIds = [...new Set((itemRows ?? []).map((item) => item.user_id))];
+      const profilesIds = [...new Set((itemRows ?? []).map((item) => item.user_id))];
       const profilesById = new Map<string, { full_name: string; uid: string }>();
-      if (userIds.length > 0) {
+      if (profilesIds.length) {
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id,full_name,uid")
-          .in("id", userIds);
+          .in("id", profilesIds);
         if (profilesError) throw profilesError;
         for (const profile of profiles ?? []) profilesById.set(profile.id, { full_name: profile.full_name, uid: profile.uid });
       }
 
-      const enrichedItems = await Promise.all((itemRows ?? []).map(async (item) => {
+      const enriched = await Promise.all((itemRows ?? []).map(async (item) => {
         let image_url: string | null = null;
         if (item.image_path) {
           try {
-            const { data, error: imageError } = await supabase.storage
+            const { data, error: signedError } = await supabase.storage
               .from("item-images")
               .createSignedUrl(item.image_path, 60 * 60);
-            if (!imageError) image_url = data?.signedUrl ?? null;
+            if (!signedError) image_url = data?.signedUrl ?? null;
           } catch {
             image_url = null;
           }
@@ -313,21 +363,23 @@ function AdminPage() {
           submitter_uid: profile?.uid ?? null,
         } satisfies MatchItem;
       }));
-      const itemsById = new Map(enrichedItems.map((item) => [item.id, item]));
-
-      const result: ItemMatch[] = [];
-      for (const [pairKey, pair] of pairMap) {
-        const first = itemsById.get(pair.itemIds[0]);
-        const second = itemsById.get(pair.itemIds[1]);
-        if (!first || !second || first.type === second.type) continue;
-        result.push({
-          id: pairKey,
-          matched_at: pair.matched_at,
-          lost: first.type === "Lost" ? first : second,
-          found: first.type === "Found" ? first : second,
-        });
-      }
-      result.sort((a, b) => new Date(b.matched_at).getTime() - new Date(a.matched_at).getTime());
+      const itemsById = new Map(enriched.map((item) => [item.id, item]));
+      const result: ItemMatch[] = pairs.flatMap((pair) => {
+        const lost = itemsById.get(pair.lost_item_id);
+        const found = itemsById.get(pair.found_item_id);
+        if (!lost || !found) return [];
+        return [{
+          id: pair.id,
+          matched_at: pair.created_at,
+          score: pair.score,
+          matching_method: pair.matching_method,
+          match_reason: pair.match_reason,
+          review_status: pair.review_status,
+          admin_note: pair.admin_note,
+          lost,
+          found,
+        }];
+      });
       setMatches(result);
     } catch {
       setMatchesError("We couldn't load possible item matches. Please retry.");
@@ -336,9 +388,100 @@ function AdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    void loadMatches();
-  }, [loadMatches]);
+  useEffect(() => { void loadMatches(); }, [loadMatches]);
+
+  const loadClaims = useCallback(async () => {
+    setClaimsLoading(true);
+    setClaimsError("");
+    try {
+      const { data: claimRows, error: claimError } = await supabase
+        .from("item_claims")
+        .select("id,item_id,claimant_id,proof,status,admin_note,created_at,reviewed_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (claimError) throw claimError;
+      if (!claimRows?.length) {
+        setClaims([]);
+        return;
+      }
+      const itemIds = [...new Set(claimRows.map((claim) => claim.item_id))];
+      const userIds = [...new Set(claimRows.map((claim) => claim.claimant_id))];
+      const [itemsResult, claimantProfiles] = await Promise.all([
+        supabase.from("items").select("id,user_id,name,location").in("id", itemIds),
+        supabase.from("profiles").select("id,full_name,uid").in("id", userIds),
+      ]);
+      if (itemsResult.error) throw itemsResult.error;
+      if (claimantProfiles.error) throw claimantProfiles.error;
+      const itemsById = new Map((itemsResult.data ?? []).map((item) => [item.id, item]));
+      const owners = [...new Set((itemsResult.data ?? []).map((item) => item.user_id))];
+      const ownerProfilesResult = owners.length
+        ? await supabase.from("profiles").select("id,full_name,uid").in("id", owners)
+        : { data: [], error: null };
+      if (ownerProfilesResult.error) throw ownerProfilesResult.error;
+      const profilesById = new Map([...(claimantProfiles.data ?? []), ...(ownerProfilesResult.data ?? [])].map((profile) => [profile.id, profile]));
+      setClaims(claimRows.map((claim) => {
+        const item = itemsById.get(claim.item_id);
+        const claimant = profilesById.get(claim.claimant_id);
+        const owner = item ? profilesById.get(item.user_id) : null;
+        return {
+          ...claim,
+          item_name: item?.name ?? "Found item",
+          item_location: item?.location ?? "Details unavailable",
+          item_owner_name: owner?.full_name ?? null,
+          item_owner_uid: owner?.uid ?? null,
+          claimant_name: claimant?.full_name ?? null,
+          claimant_uid: claimant?.uid ?? null,
+        };
+      }) as ClaimRecord[]);
+    } catch {
+      setClaimsError("We couldn't load item claims. Please retry.");
+    } finally {
+      setClaimsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadClaims(); }, [loadClaims]);
+
+  const loadModerationNotes = useCallback(async () => {
+    const { data, error: notesError } = await supabase
+      .from("admin_item_moderation_notes")
+      .select("id,item_id,actor_id,note,created_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!notesError) setModerationNotes((data ?? []) as ModerationNote[]);
+  }, []);
+
+  useEffect(() => { void loadModerationNotes(); }, [loadModerationNotes]);
+
+  const loadAuditHistory = useCallback(async () => {
+    setAuditLoading(true);
+    setAuditError("");
+    try {
+      const { data, error: auditQueryError } = await supabase
+        .from("admin_audit_logs")
+        .select("id,actor_id,entity_type,entity_id,action,details,created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (auditQueryError) throw auditQueryError;
+      const actorIds = [...new Set((data ?? []).map((entry) => entry.actor_id).filter(Boolean))] as string[];
+      const { data: profiles, error: profilesError } = actorIds.length
+        ? await supabase.from("profiles").select("id,full_name,uid").in("id", actorIds)
+        : { data: [], error: null };
+      if (profilesError) throw profilesError;
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      setAuditRows((data ?? []).map((entry) => ({
+        ...entry,
+        actor_name: entry.actor_id ? profileById.get(entry.actor_id)?.full_name ?? null : null,
+        actor_uid: entry.actor_id ? profileById.get(entry.actor_id)?.uid ?? null : null,
+      })) as AuditRecord[]);
+    } catch {
+      setAuditError("We couldn't load the administrator audit history. Please retry.");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadAuditHistory(); }, [loadAuditHistory]);
 
   const loadContactMessages = useCallback(async () => {
     setContactLoading(true);
