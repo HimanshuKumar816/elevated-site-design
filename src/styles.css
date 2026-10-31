@@ -152,8 +152,8 @@
 .home-primary-cta:hover { background: #982630; }
 .home-secondary-cta { background: #fff; border: 1px solid #c7ceca; border-radius: 6px; }
 .home-secondary-cta:hover { border-color: var(--primary); color: var(--primary); }
-.home-image-frame { aspect-ratio: 1.08 / 1; border: 1px solid #d9ddda; background: #e9eae7; }
-.home-image { object-position: center; }
+.home-image-frame { aspect-ratio: 1.35 / 1; border: 1px solid #d9ddda; background: #e9eae7; }
+.home-image { object-position: center 46%; }
 .home-image-caption { background: linear-gradient(180deg, transparent 0%, rgba(10, 19, 36, .84) 100%); }
 .home-photo-stamp { display: grid; width: 54px; height: 54px; place-items: center; border: 1px solid rgba(255,255,255,.65); color: #fff; font-size: 10px; font-weight: 800; line-height: 1.4; letter-spacing: .12em; text-align: center; }
 .home-image-note { position: relative; right: auto; bottom: auto; display: flex; align-items: center; gap: 12px; max-width: none; margin-top: 0; padding: 14px 2px 0; border: 0; border-top: 1px solid #d9ddda; background: transparent; color: #626b68; font-size: 12px; line-height: 1.5; box-shadow: none; }

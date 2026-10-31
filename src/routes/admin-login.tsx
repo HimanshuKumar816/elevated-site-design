@@ -81,7 +81,7 @@ function AdminLoginPage() {
   }
 
   return (
-    <main className="admin-login relative flex min-h-screen items-center justify-center overflow-hidden bg-ink px-4 py-8 text-ink-foreground sm:px-6 sm:py-12">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink px-4 py-8 text-ink-foreground sm:px-6 sm:py-12">
       <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-0 size-80 rounded-full bg-emerald-300/10 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute -right-24 bottom-0 size-96 rounded-full bg-blue-300/10 blur-3xl" />
 

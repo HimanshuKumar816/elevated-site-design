@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { ArrowRight, ArrowUpRight, Check, LockKeyhole, PackageSearch, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Page } from "@/components/site";
-import hero from "@/assets/hero.jpg";
+const hero = "https://images.pexels.com/photos/2305098/pexels-photo-2305098.jpeg?auto=compress&dpr=1&h=750&w=1260";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -72,13 +72,13 @@ function Home() {
 
           <div className="home-hero-visual relative mx-auto w-full max-w-[640px] lg:ml-auto">
             <div className="home-image-frame relative overflow-hidden">
-              <img src={hero} alt="A wallet and student ID left on a campus bench" width={1600} height={1008} fetchPriority="high" className="home-image h-full w-full object-cover" />
+              <img src={hero} alt="A red-brick university building framed by trees beside a campus walkway" title="Photo by Matthis Volquardsen on Pexels" width={1260} height={750} fetchPriority="high" className="home-image h-full w-full object-cover" />
               <div className="home-image-caption absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-4 p-5 text-white sm:p-7">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">The campus return desk</p>
                   <p className="mt-2 max-w-sm text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">A lost item is not a lost cause.</p>
                 </div>
-                <span className="home-photo-stamp">CU<br/>01</span>
+                <span className="home-photo-stamp">CF<br/>01</span>
               </div>
             </div>
             <div className="home-image-note">
