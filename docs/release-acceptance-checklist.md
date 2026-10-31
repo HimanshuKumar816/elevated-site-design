@@ -66,11 +66,7 @@ Use a dedicated administrator account.
 - [ ] Add a private moderation note and confirm it is visible only to administrators.
 - [ ] Change a report moderation/status value and confirm the audit record is created.
 - [ ] Confirm the admin activity view shows student sign-ins and does not expose passwords, OTPs, tokens, or private claim evidence.
-- [ ] Confirm the interactive Chandigarh University campus map loads only inside the authenticated administrator workspace.
-- [ ] On a test report, set a campus pin and move it to another in-bounds point; confirm the saved marker updates after refresh.
-- [ ] Confirm out-of-bounds map clicks are ignored and the database rejects out-of-campus coordinates.
-- [ ] Confirm no campus map or precise item coordinates appear on public/home/student browsing pages and that an ordinary student cannot access the admin route.
-- [ ] With two student accounts, confirm each student can access only their own exact location record while administrators can review all report pins.
+- [ ] Confirm no campus map, map panel, exact pin control, or precise coordinates appear anywhere in the public, student, or administrator interfaces.
 
 ## 6. Access-control and security checks
 

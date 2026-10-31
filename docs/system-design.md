@@ -34,7 +34,7 @@ CampusFind is a single-campus lost-and-found service for Chandigarh University. 
 
 CampusFind is scoped to Chandigarh University. Report forms use a controlled list of campus areas with an optional local detail. Do not accept or display a location outside the campus scope.
 
-A public-facing map is not part of the product requirement. Do not display a map or precise coordinates on the homepage, visitor pages, or the student browsing board. The authenticated administrator workspace contains a Leaflet campus map using OpenStreetMap tiles. Administrators can view saved report pins and assign or move a pin on the campus-bounded map. The map component is rendered only on the role-guarded administrator route; it is not included on visitor, homepage, or student pages. Pin coordinates are stored in the private `item_locations` table, which uses owner/admin row-level security and a database in-campus coordinate constraint. Students can access their own precise location records under the owner policy; administrators can review report pins. The map bounds are a rectangular campus-area boundary, not a surveyed cadastral polygon.
+A campus map is not part of the current product interface. Do not render maps, map panels, exact pins, or precise coordinates on the homepage, visitor pages, student pages, or administrator dashboard. The legacy `item_locations` table remains protected by its existing owner/admin row-level security policies and campus-coordinate constraint, but the CampusFind interface no longer reads or writes those pins. Any future map feature requires a separate product decision and privacy review.
 
 ## Security requirements
 
@@ -57,7 +57,7 @@ A public-facing map is not part of the product requirement. Do not display a map
 
 ## Out of scope for the current product
 
-Payments, subscription billing, multi-university tenancy, public live location tracking, direct student-to-student chat, AI image recognition, Kubernetes, and microservices. An administrator-only campus map remains unimplemented until verified campus geometry and an approved data-access design are available.
+Payments, subscription billing, multi-university tenancy, public live location tracking, direct student-to-student chat, AI image recognition, Kubernetes, microservices, and campus-map UI.
 
 ## Privacy and operational requirements
 
