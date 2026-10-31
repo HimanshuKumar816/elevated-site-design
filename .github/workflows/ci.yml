@@ -24,18 +24,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .node-version
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
-      - name: Lint
-        run: bun run lint
-      - name: Tests
-        run: bun run test
       - name: Validate macOS backup script syntax
         run: bash -n scripts/backup_campusfind.sh
-      - name: Production build
+      - name: Lint, typecheck, tests and production build
         run: bun run build
-      - name: Typecheck
-        run: bunx tsc --noEmit
