@@ -962,6 +962,40 @@ function AdminPage() {
           </div>
         </section>
 
+        <section aria-labelledby="campus-map-title" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="kicker text-emerald-800">Administrator reference</p>
+              <h2 id="campus-map-title" className="mt-2 text-2xl font-extrabold">Chandigarh University campus map</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Official CU 360° campus virtual tour for orientation. This map is available only inside the authenticated administrator workspace.
+              </p>
+            </div>
+            <a
+              href="https://www.cuchd.in/maps/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="admin-utility-link inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition sm:text-sm"
+            >
+              Open official CU maps <ArrowUpRight size={15} />
+            </a>
+          </div>
+          <div className="mt-5 overflow-hidden rounded-xl border border-border bg-secondary">
+            <iframe
+              src="https://iviewd.com/cu2/"
+              title="Official Chandigarh University campus 360-degree virtual tour"
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allow="fullscreen; accelerometer; gyroscope; autoplay; xr-spatial-tracking"
+              allowFullScreen
+              className="h-[360px] w-full sm:h-[480px] lg:h-[560px]"
+            />
+          </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">
+            Orientation reference only: the tour does not plot student item reports or precise item coordinates. Use the controlled campus-area fields on each report for location records.
+          </p>
+        </section>
+
         <div className="mt-6 flex flex-wrap gap-3">
           <label className="relative min-w-56 flex-1">
             <span className="sr-only">Search reports</span>
