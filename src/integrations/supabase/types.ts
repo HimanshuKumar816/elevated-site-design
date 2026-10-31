@@ -108,6 +108,7 @@ export type Database = {
           admin_note: string | null
           claimant_id: string
           created_at: string
+          handover_code_hash: string | null
           id: string
           item_category_snapshot: string | null
           item_id: string
@@ -123,6 +124,7 @@ export type Database = {
           admin_note?: string | null
           claimant_id: string
           created_at?: string
+          handover_code_hash?: string | null
           id?: string
           item_category_snapshot?: string | null
           item_id: string
@@ -138,6 +140,7 @@ export type Database = {
           admin_note?: string | null
           claimant_id?: string
           created_at?: string
+          handover_code_hash?: string | null
           id?: string
           item_category_snapshot?: string | null
           item_id?: string
@@ -152,41 +155,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "item_claims_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      item_status_history: {
-        Row: {
-          changed_by: string | null
-          created_at: string
-          id: string
-          item_id: string
-          new_status: string
-          previous_status: string | null
-        }
-        Insert: {
-          changed_by?: string | null
-          created_at?: string
-          id?: string
-          item_id: string
-          new_status: string
-          previous_status?: string | null
-        }
-        Update: {
-          changed_by?: string | null
-          created_at?: string
-          id?: string
-          item_id?: string
-          new_status?: string
-          previous_status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "item_status_history_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
@@ -277,6 +245,41 @@ export type Database = {
           {
             foreignKeyName: "item_matches_lost_item_id_fkey"
             columns: ["lost_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          item_id: string
+          new_status: string
+          previous_status: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          new_status: string
+          previous_status?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          new_status?: string
+          previous_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_status_history_item_id_fkey"
+            columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
@@ -526,8 +529,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_review_item_claim: {
+        Args: {
+          p_admin_note?: string
+          p_claim_id: string
+          p_handover_code?: string
+          p_status: string
+        }
+        Returns: undefined
+      }
       admin_set_student_verification: {
         Args: { p_user_id: string; p_verified: boolean }
+        Returns: undefined
+      }
+      admin_update_item_moderation: {
+        Args: { p_flag: string; p_item_id: string; p_note?: string }
         Returns: undefined
       }
       consume_edge_rate_limit: {
