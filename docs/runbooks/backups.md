@@ -30,11 +30,19 @@ Then verify profiles/Auth references, items, claims, matches, notifications, and
 
 ## macOS local backup
 
-The Mac backup script uses `pg_dump` and retrieves the database password from macOS Keychain. Its custom-format archive can be checked with:
+The repository now includes `scripts/backup_campusfind.sh`. It uses `pg_dump`, retrieves the database password from macOS Keychain, verifies the local custom-format archive, and copies a matching file into `My Drive/CampusFind-Backups`.
+
+Install it at the path already used by the LaunchAgent:
 
 ```bash
-pg_restore --list "$HOME/Desktop/CampusFind-Backup/backup_test.dump"
+cp scripts/backup_campusfind.sh "$HOME/Desktop/CampusFind-Backup/backup_campusfind.sh"
+chmod 700 "$HOME/Desktop/CampusFind-Backup/backup_campusfind.sh"
+bash "$HOME/Desktop/CampusFind-Backup/backup_campusfind.sh"
 ```
+
+The script auto-detects a single Google Drive for desktop account under `~/Library/CloudStorage/GoogleDrive-*/My Drive`. If more than one account is mounted, set `CAMPUSFIND_GOOGLE_DRIVE_DIR` in the LaunchAgent environment to the intended `My Drive` folder. It keeps the recent local dumps and does not automatically delete cloud copies.
+
+A matching file in the local Drive folder means the copy was verified and is queued for the Drive client; it does not prove the cloud upload has completed. Open Google Drive on the web and confirm the file is present. The Drive mirror is a regular custom-format dump, not client-side encrypted. Restrict access to the Google account and use the encrypted GitHub artifact as another backup destination.
 
 A successful archive listing is not a full restore test. Review the latest dated log under `~/Desktop/CampusFind-Backup/logs` and confirm the LaunchAgent is loaded. The launchd template schedules the script at 23:00 local time.
 
