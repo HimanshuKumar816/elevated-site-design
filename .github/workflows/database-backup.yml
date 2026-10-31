@@ -8,44 +8,75 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: campusfind-database-backup
+  cancel-in-progress: false
+
 jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Check backup connection secret
+      - name: Validate backup secrets
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          CAMPUSFIND_BACKUP_PASSPHRASE: ${{ secrets.CAMPUSFIND_BACKUP_PASSPHRASE }}
         shell: bash
         run: |
+          set -euo pipefail
           if [[ -z "$SUPABASE_DB_URL" ]]; then
-            echo "::error::Add the SUPABASE_DB_URL GitHub Actions secret before running database backups."
+            echo "::error::Add the SUPABASE_DB_URL repository Actions secret."
+            exit 1
+          fi
+          if [[ -z "$CAMPUSFIND_BACKUP_PASSPHRASE" || ${#CAMPUSFIND_BACKUP_PASSPHRASE} -lt 24 ]]; then
+            echo "::error::Add a CAMPUSFIND_BACKUP_PASSPHRASE secret with at least 24 characters."
             exit 1
           fi
 
-      - name: Install PostgreSQL 17 client
+      - name: Install PostgreSQL 17 client and GnuPG
         shell: bash
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y curl ca-certificates gnupg lsb-release
           sudo install -d /etc/apt/keyrings
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
           echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
-          sudo apt-get install -y postgresql-client-17
+          sudo apt-get install -y postgresql-client-17 gnupg
 
-      - name: Create encrypted-transport database dump
+      - name: Create, encrypt, and verify database dump
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          CAMPUSFIND_BACKUP_PASSPHRASE: ${{ secrets.CAMPUSFIND_BACKUP_PASSPHRASE }}
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p backups
-          pg_dump --format=custom --no-owner --no-acl --verbose --file="backups/campusfind-$(date -u +%Y%m%dT%H%M%SZ).dump" "$SUPABASE_DB_URL"
+          timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          dump_file="backups/campusfind-${timestamp}.dump"
+          encrypted_file="${dump_file}.gpg"
+          verify_file="$(mktemp)"
 
-      - name: Store backup artifact
+          cleanup() {
+            rm -f "$dump_file" "$verify_file"
+          }
+          trap cleanup EXIT
+
+          pg_dump --format=custom --no-owner --no-acl --verbose --file="$dump_file" "$SUPABASE_DB_URL"
+
+          gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256             --passphrase-fd 3 --output "$encrypted_file" "$dump_file"             3<<<"$CAMPUSFIND_BACKUP_PASSPHRASE"
+
+          gpg --batch --quiet --decrypt --passphrase-fd 3             --output "$verify_file" "$encrypted_file"             3<<<"$CAMPUSFIND_BACKUP_PASSPHRASE"
+
+          pg_restore --list "$verify_file" >/dev/null
+          rm -f "$dump_file" "$verify_file"
+          echo "Encrypted backup created and archive listing verified: $encrypted_file"
+
+      - name: Store encrypted backup artifact
         uses: actions/upload-artifact@v4
         with:
           name: campusfind-database-backup-${{ github.run_id }}
-          path: backups/*.dump
+          path: backups/*.dump.gpg
           if-no-files-found: error
           retention-days: 30
