@@ -78,7 +78,7 @@ function Browse() {
   const itemsLengthRef = useRef(0);
   const fetchSequenceRef = useRef(0);
   const [me, setMe] = useState<string | null>(null);
-  const [profile, setProfile] = useState<{ full_name: string; uid: string; verification_status: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; uid: string; role: string; verification_status: string } | null>(null);
   const [savedItemIds, setSavedItemIds] = useState<string[]>([]);
   const [savedOnly, setSavedOnly] = useState(false);
   const [locationFilter, setLocationFilter] = useState("All");
@@ -164,7 +164,7 @@ function Browse() {
         if (active) setMe(userId);
 
         const [profileResult, alertResult] = await Promise.all([
-          supabase.from("profiles").select("full_name,uid,verification_status").eq("id", userId).maybeSingle(),
+          supabase.from("profiles").select("full_name,uid,role,verification_status").eq("id", userId).maybeSingle(),
           supabase.from("notifications").select("id,title,body,created_at,read_at")
             .eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
         ]);
@@ -172,6 +172,7 @@ function Browse() {
           setProfile({
             full_name: profileResult.data.full_name,
             uid: profileResult.data.uid,
+            role: profileResult.data.role ?? "student",
             verification_status: profileResult.data.verification_status ?? "unverified",
           });
         }
@@ -298,7 +299,7 @@ function Browse() {
   return (
     <Page>
       <section className="student-workspace mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
-        {profile && (
+        {profile?.role === "student" && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-white px-5 py-4 shadow-sm">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Signed in as</p>
