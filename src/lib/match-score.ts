@@ -33,10 +33,15 @@ function overlapCount(left: Set<string>, right: Set<string>) {
 }
 
 function minutesBetween(left: string, right: string) {
-  const [leftHours, leftMinutes] = left.split(":").map(Number);
-  const [rightHours, rightMinutes] = right.split(":").map(Number);
-  if (![leftHours, leftMinutes, rightHours, rightMinutes].every(Number.isFinite)) return Infinity;
-  return Math.abs((leftHours * 60 + leftMinutes) - (rightHours * 60 + rightMinutes));
+  const parseTime = (value: string): number | null => {
+    const match = /^([01]\\d|2[0-3]):([0-5]\\d)$/.exec(value);
+    if (!match) return null;
+    return Number(match[1]) * 60 + Number(match[2]);
+  };
+  const leftMinutes = parseTime(left);
+  const rightMinutes = parseTime(right);
+  if (leftMinutes === null || rightMinutes === null) return Infinity;
+  return Math.abs(leftMinutes - rightMinutes);
 }
 
 export function scoreItemMatch(a: MatchFields, b: MatchFields) {
