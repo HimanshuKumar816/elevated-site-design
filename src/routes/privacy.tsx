@@ -9,6 +9,7 @@ export const Route = createFileRoute("/privacy")({
       { property: "og:title", content: "Privacy Policy — CampusFind" },
       { property: "og:description", content: "How CampusFind handles account details, reports, private location pins and contact messages." },
     ],
+    links: [{ rel: "canonical", href: "https://campusfind-fs6c.onrender.com/privacy" }],
   }),
   component: PrivacyPage,
 });
@@ -25,7 +26,7 @@ function PrivacyPage() {
         <header className="mb-8">
           <p className="kicker text-emerald-800">Privacy and safety</p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">CampusFind Privacy Policy</h1>
-          <p className="mt-3 text-sm text-muted-foreground">Last updated: 30 October 2026</p>
+          <p className="mt-3 text-sm text-muted-foreground">Last updated: 1 November 2026</p>
         </header>
         <div className="space-y-8 rounded-[2rem] border border-border bg-white p-6 leading-7 text-muted-foreground shadow-sm sm:p-10">
           <section>
@@ -39,6 +40,7 @@ function PrivacyPage() {
               <li>Lost-and-found report details such as item name, category, lost/found status, date, written location, public description, and any image you choose to upload.</li>
               <li>Campus pin coordinates attached to reports. Exact coordinates are restricted to the report owner and authorised administrators; the public report board does not intentionally display those coordinates.</li>
               <li>Account activity, such as recorded successful sign-ins, and notification preferences or alerts you use.</li>
+              <li>One-time handover codes issued when an administrator approves an item claim. The code is delivered in the claimant’s private in-app notification; a verification hash is stored for completion checks.</li>
               <li>Contact-form messages, including the name, email address, subject, message, and submission time you provide.</li>
               <li>Basic technical request information processed by the website, hosting provider, and backend service to operate and protect the application.</li>
             </ul>
@@ -49,7 +51,7 @@ function PrivacyPage() {
           </section>
           <section>
             <h2 className="text-xl font-extrabold text-foreground">4. Who can see information</h2>
-            <p className="mt-3">Basic report details are visible to signed-in CampusFind users so they can identify possible matches. Your profile details and notifications are access-controlled. Exact report pins and administrator sign-in activity are restricted through database access policies. Contact messages are stored in an administrator-only inbox. Do not include passwords, one-time codes, private proof-of-ownership details, or other sensitive information in public report descriptions.</p>
+            <p className="mt-3">Basic report details from verified student accounts are visible to signed-in CampusFind users so they can identify possible matches. Unverified accounts can browse but cannot submit reports or ownership claims. Your profile details, claim proof, handover code and notifications are access-controlled. Exact report pins and administrator sign-in activity are restricted through database access policies. Contact messages are stored in an administrator-only inbox. Do not include passwords, one-time codes, private proof-of-ownership details, or other sensitive information in public report descriptions.</p>
           </section>
           <section>
             <h2 className="text-xl font-extrabold text-foreground">5. Service providers and security</h2>
