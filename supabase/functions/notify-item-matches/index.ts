@@ -86,17 +86,40 @@ Deno.serve(async (request) => {
 
   let itemId = "";
   try {
-    const body = await request.json();
+    const contentLength = Number(request.headers.get("content-length") ?? "0");
+    if (Number.isFinite(contentLength) && contentLength > 2_048) {
+      return Response.json({ error: "Request is too large." }, { status: 413, headers: corsHeaders(origin) });
+    }
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 2_048) {
+      return Response.json({ error: "Request is too large." }, { status: 413, headers: corsHeaders(origin) });
+    }
+    const body = JSON.parse(rawBody) as { item_id?: unknown };
     itemId = typeof body.item_id === "string" ? body.item_id : "";
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400, headers: corsHeaders(origin) });
   }
-  if (!itemId) return Response.json({ error: "Item ID required" }, { status: 400, headers: corsHeaders(origin) });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId)) {
+    return Response.json({ error: "A valid report ID is required." }, { status: 400, headers: corsHeaders(origin) });
+  }
 
   const { data: item, error: itemError } = await admin.from("items").select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path,report_status,moderation_flag").eq("id", itemId).single();
   if (itemError || !item || item.user_id !== authData.user.id) return Response.json({ error: "Report not found" }, { status: 404, headers: corsHeaders(origin) });
   if (!isEligibleForMatching(item)) {
     return Response.json({ ok: true, matches: 0, skipped: true, reason: "report_not_eligible" }, { headers: corsHeaders(origin) });
+  }
+
+  const { data: candidates, error: candidateError } = await admin.from("items")
+    .select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path,report_status,moderation_flag")
+    .neq("user_id", item.user_id)
+    .eq("type", item.type === "Lost" ? "Found" : "Lost")
+    .in("report_status", ["new", "under_review", "matched"])
+    .eq("moderation_flag", "none")
+    .order("created_at", { ascending: false })
+    .limit(150);
+  if (candidateError) {
+    console.error("[item matches] Candidate lookup failed", { code: candidateError.code });
+    return Response.json({ error: "Matching service is temporarily unavailable." }, { status: 503, headers: corsHeaders(origin) });
   }
 
   const itemRateLimitKey = await hashRateLimitKey(`notify-item-matches:item:${item.id}`);
@@ -113,18 +136,6 @@ Deno.serve(async (request) => {
     return Response.json({ error: "This report was checked recently. Please try again later." }, { status: 429, headers: corsHeaders(origin) });
   }
 
-  const { data: candidates, error: candidateError } = await admin.from("items")
-    .select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path,report_status,moderation_flag")
-    .neq("user_id", item.user_id)
-    .eq("type", item.type === "Lost" ? "Found" : "Lost")
-    .in("report_status", ["new", "under_review", "matched"])
-    .eq("moderation_flag", "none")
-    .order("created_at", { ascending: false })
-    .limit(150);
-  if (candidateError) {
-    console.error("[item matches] Candidate lookup failed", { code: candidateError.code });
-    return Response.json({ error: "Matching service is temporarily unavailable." }, { status: 503, headers: corsHeaders(origin) });
-  }
   const candidateItems = (candidates ?? []) as Item[];
   let matches = candidateItems.map((candidate) => ({ item: candidate, score: matchScore(item as Item, candidate) })).filter((entry) => entry.score >= 45).sort((a, b) => b.score - a.score).slice(0, 5);
   let matchingMethod = "text-similarity";
