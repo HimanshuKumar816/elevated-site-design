@@ -817,6 +817,7 @@ function AdminPage() {
           <p><span className="font-extrabold text-foreground">Reported by:</span> {report.submitter_name ?? "Unknown"} · UID {report.submitter_uid ?? "—"}</p>
           <p><span className="font-extrabold text-foreground">Account:</span> {report.submitter_role === "admin" ? "Administrator" : report.submitter_role === "student" ? "Student" : "Unknown"}</p>
           <p className="break-all"><span className="font-extrabold text-foreground">Report reference:</span> {report.id}</p>
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
