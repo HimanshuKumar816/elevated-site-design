@@ -272,6 +272,7 @@
 }
 
 .admin-stat-card {
+  position: relative;
   overflow: hidden;
   border-color: #e4dac9;
   background: #fffdf8;

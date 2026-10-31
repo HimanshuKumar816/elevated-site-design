@@ -966,8 +966,6 @@ function AdminPage() {
         </section>
 
 
-        </section>
-
         <div className="mt-6 flex flex-wrap gap-3">
           <label className="relative min-w-56 flex-1">
             <span className="sr-only">Search reports</span>
