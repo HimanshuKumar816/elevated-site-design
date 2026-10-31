@@ -19,6 +19,7 @@ import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, type Item, type ReportStatus } from "@/lib/items";
 import { CAMPUS_LOCATIONS } from "@/lib/campus-locations";
+import { canClaimFoundReport } from "@/lib/access";
 
 const PAGE_SIZE = 24;
 
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/_authenticated/browse")({
       { name: "description", content: "Search lost and found reports across campus by item, category and location." },
       { property: "og:title", content: "Browse lost & found items — CampusFind" },
       { property: "og:description", content: "Search lost and found reports across campus." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: Browse,
@@ -313,6 +315,7 @@ function Browse() {
               ) : (
                 <p className="mt-1 text-[11px] font-semibold text-muted-foreground">Identity verification not completed</p>
               )}
+              {profile.verification_status !== "verified" && <p className="mt-2 text-[11px] leading-5 text-muted-foreground">You can browse reports now. Reporting and claiming unlock after administrator verification.</p>}
             </div>
             <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
               My reports <ArrowUpRight size={14} />
@@ -462,7 +465,7 @@ function Browse() {
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((item) => {
               const reportStatus = item.report_status ?? "new";
-              const canClaim = item.type === "Found" && item.user_id !== me && ["new", "under_review", "matched"].includes(reportStatus) && (item.moderation_flag ?? "none") !== "hidden";
+              const canClaim = canClaimFoundReport(profile, { ...item, report_status: reportStatus }, me);
               return (
                 <article key={item.id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
                   <div className="relative aspect-[16/10] overflow-hidden bg-secondary">
