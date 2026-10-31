@@ -129,18 +129,6 @@ type ClaimRecord = {
   claimant_uid: string | null;
 };
 
-type AuditRecord = {
-  id: string;
-  actor_id: string | null;
-  actor_name: string | null;
-  actor_uid: string | null;
-  entity_type: string;
-  entity_id: string;
-  action: string;
-  details: unknown;
-  created_at: string;
-};
-
 type ModerationNote = {
   id: string;
   item_id: string;
@@ -168,9 +156,6 @@ function AdminPage() {
   const [claims, setClaims] = useState<ClaimRecord[]>([]);
   const [claimsLoading, setClaimsLoading] = useState(true);
   const [claimsError, setClaimsError] = useState("");
-  const [auditRows, setAuditRows] = useState<AuditRecord[]>([]);
-  const [auditLoading, setAuditLoading] = useState(true);
-  const [auditError, setAuditError] = useState("");
   const [moderationNotes, setModerationNotes] = useState<ModerationNote[]>([]);
   const [moderationDrafts, setModerationDrafts] = useState<Record<string, string>>({});
   const [claimDrafts, setClaimDrafts] = useState<Record<string, string>>({});
@@ -510,36 +495,6 @@ function AdminPage() {
 
   useEffect(() => { void loadModerationNotes(); }, [loadModerationNotes]);
 
-  const loadAuditHistory = useCallback(async () => {
-    setAuditLoading(true);
-    setAuditError("");
-    try {
-      const { data, error: auditQueryError } = await supabase
-        .from("admin_audit_logs")
-        .select("id,actor_id,entity_type,entity_id,action,details,created_at")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (auditQueryError) throw auditQueryError;
-      const actorIds = [...new Set((data ?? []).map((entry) => entry.actor_id).filter(Boolean))] as string[];
-      const { data: profiles, error: profilesError } = actorIds.length
-        ? await supabase.from("profiles").select("id,full_name,uid").in("id", actorIds)
-        : { data: [], error: null };
-      if (profilesError) throw profilesError;
-      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-      setAuditRows((data ?? []).map((entry) => ({
-        ...entry,
-        actor_name: entry.actor_id ? profileById.get(entry.actor_id)?.full_name ?? null : null,
-        actor_uid: entry.actor_id ? profileById.get(entry.actor_id)?.uid ?? null : null,
-      })) as AuditRecord[]);
-    } catch {
-      setAuditError("We couldn't load the administrator audit history. Please retry.");
-    } finally {
-      setAuditLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void loadAuditHistory(); }, [loadAuditHistory]);
-
   const loadContactMessages = useCallback(async () => {
     setContactLoading(true);
     setContactError("");
@@ -659,7 +614,7 @@ function AdminPage() {
         p_verified: verified,
       });
       if (updateError) throw updateError;
-      await Promise.all([loadStudents(), loadAuditHistory()]);
+      await loadStudents();
     } catch {
       setStudentsError("We couldn't update this verification status. Please confirm administrator access and try again.");
     } finally {
@@ -681,7 +636,7 @@ function AdminPage() {
       }).eq("id", claim.id);
       if (updateError) throw updateError;
       setClaimDrafts((current) => ({ ...current, [claim.id]: "" }));
-      await Promise.all([loadClaims(), load(), loadMatches(), loadAuditHistory()]);
+      await Promise.all([loadClaims(), load(), loadMatches()]);
     } catch {
       setReportActionError("We couldn't save this claim decision. Please refresh and try again.");
     } finally {
@@ -865,7 +820,7 @@ function AdminPage() {
               {match.review_status !== "rejected" && (
                 <div className="mt-4 border-t border-border pt-4">
                   <label className="block text-xs font-extrabold text-muted-foreground">ADMIN REVIEW NOTE
-                    <textarea rows={2} maxLength={1000} value={matchDrafts[match.id] ?? match.admin_note ?? ""} onChange={(event) => setMatchDrafts((current) => ({ ...current, [match.id]: event.target.value }))} placeholder="Add a note for the audit trail or handover record" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+                    <textarea rows={2} maxLength={1000} value={matchDrafts[match.id] ?? match.admin_note ?? ""} onChange={(event) => setMatchDrafts((current) => ({ ...current, [match.id]: event.target.value }))} placeholder="Add an internal note for review or handover context" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
                   </label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {match.review_status === "pending" && <>
@@ -924,11 +879,10 @@ function AdminPage() {
               void loadMatches();
               void loadClaims();
               void loadModerationNotes();
-              void loadAuditHistory();
               void loadContactMessages();
               void loadStudents();
             }}
-            disabled={loading || activityLoading || matchesLoading || claimsLoading || auditLoading || contactLoading || studentsLoading}
+            disabled={loading || activityLoading || matchesLoading || claimsLoading || contactLoading || studentsLoading}
             className="admin-refresh-button inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -1100,27 +1054,7 @@ function AdminPage() {
           )}
         </section>
 
-        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
-            <div><p className="kicker text-emerald-800">Moderation history</p><h2 className="mt-2 text-2xl font-extrabold">Administrator audit log</h2><p className="mt-1 text-sm text-muted-foreground">Records status changes, moderation decisions, match reviews and claim outcomes.</p></div>
-            <button type="button" onClick={() => void loadAuditHistory()} disabled={auditLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{auditLoading ? "Refreshing…" : "Refresh history"}</button>
-          </div>
-          {auditError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{auditError}</p>}
-          {auditLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading audit history…</p> : auditRows.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No administrator actions have been recorded yet.</p> : (
-            <div className="overflow-x-auto border-t border-border">
-              <table className="w-full min-w-[720px] text-left text-sm">
-                <thead className="bg-secondary/70 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3 font-extrabold">Administrator</th><th className="px-5 py-3 font-extrabold">Action</th><th className="px-5 py-3 font-extrabold">Record</th><th className="px-5 py-3 font-extrabold">When</th><th className="px-5 py-3 font-extrabold">Details</th></tr></thead>
-                <tbody>{auditRows.map((entry) => <tr key={entry.id} className="border-t border-border align-top">
-                  <td className="px-5 py-3"><p className="font-bold">{entry.actor_name ?? "Former administrator"}</p><p className="text-xs text-muted-foreground">UID {entry.actor_uid ?? "—"}</p></td>
-                  <td className="px-5 py-3 font-bold">{entry.action.replaceAll("_", " ")}</td>
-                  <td className="px-5 py-3 text-xs text-muted-foreground">{entry.entity_type} · {entry.entity_id}</td>
-                  <td className="whitespace-nowrap px-5 py-3 text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
-                  <td className="max-w-xs whitespace-pre-wrap break-words px-5 py-3 text-xs text-muted-foreground">{JSON.stringify(entry.details)}</td>
-                </tr>)}</tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        
 
         <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
