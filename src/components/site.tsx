@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowUpRight, LogOut, MapPin, Menu, X } from "lucide-react";
+import { ArrowUpRight, LogOut, Menu, PackageSearch, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type HeaderProfile = { uid: string; role: string };
@@ -85,11 +85,11 @@ export function Header() {
   const mobileLink = "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold text-foreground transition hover:bg-secondary";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-xl">
+    <header className="site-header sticky top-0 z-40 border-b border-border bg-white">
       <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link to="/" onClick={() => setMenuOpen(false)} className="group flex min-w-0 items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:-rotate-3">
-            <MapPin size={23} strokeWidth={2.3} />
+            <PackageSearch size={23} strokeWidth={2.1} />
           </span>
           <span className="min-w-0">
             <span className="block font-display text-xl font-extrabold leading-tight tracking-tight text-foreground">CampusFind</span>
@@ -147,7 +147,7 @@ export function Footer() {
         <div className="grid gap-10 border-b border-white/10 pb-10 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <Link to="/" className="inline-flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-2xl border border-white/15 bg-white/10"><MapPin size={22} /></span>
+              <span className="grid size-11 place-items-center rounded-2xl border border-white/15 bg-white/10"><PackageSearch size={22} /></span>
               <span className="font-display text-2xl font-extrabold tracking-tight">CampusFind</span>
             </Link>
             <p className="mt-4 max-w-md text-sm leading-7 text-ink-foreground/70">A simpler way for Chandigarh University students to report, find, and return lost belongings—with privacy and care at every step.</p>
@@ -178,7 +178,7 @@ export function Footer() {
 
 export function Page({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="site-frame flex min-h-screen flex-col">
       <a href="#main-content" className="sr-only z-50 rounded-xl bg-primary px-4 py-3 font-extrabold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to main content</a>
       <Header />
       <main id="main-content" tabIndex={-1} className="page-enter min-w-0 flex-1">{children}</main>
