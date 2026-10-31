@@ -11,6 +11,7 @@ export const Route = createFileRoute("/contact")({
       { property: "og:title", content: "Contact CampusFind" },
       { property: "og:description", content: "Send a question or report a problem to the CampusFind administrators." },
     ],
+    links: [{ rel: "canonical", href: "https://campusfind-fs6c.onrender.com/contact" }],
   }),
   component: ContactPage,
 });
