@@ -33,9 +33,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "Administrator dashboard — CampusFind" },
-      { name: "description", content: "Read-only moderation view of all CampusFind lost and found reports." },
+      { name: "description", content: "Review student verification, lost and found reports, claims, possible matches, and campus recovery activity." },
       { property: "og:title", content: "Administrator dashboard — CampusFind" },
-      { property: "og:description", content: "Moderation dashboard for campus lost and found reports." },
+      { property: "og:description", content: "Administrator workspace for reviewing campus lost and found reports, claims, and possible matches." },
       { name: "robots", content: "noindex" },
     ],
   }),
