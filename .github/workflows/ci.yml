@@ -33,6 +33,8 @@ jobs:
         run: bun run lint
       - name: Tests
         run: bun run test
+      - name: Validate macOS backup script syntax
+        run: bash -n scripts/backup_campusfind.sh
       - name: Production build
         run: bun run build
       - name: Typecheck
