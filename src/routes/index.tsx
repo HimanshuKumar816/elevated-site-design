@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { ArrowRight, ArrowUpRight, Check, LockKeyhole, PackageSearch, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Page } from "@/components/site";
-const hero = "https://www.vidyavision.com/CollegeUploads/Photos/2025-24-1-17-09-29_IMG_20250122_154356.jpg";
+import heroImage from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "CampusFind — Lost & Found at Chandigarh University" },
       { property: "og:description", content: "Report it. Search the board. Bring it home." },
     ],
+    links: [{ rel: "canonical", href: "https://campusfind-fs6c.onrender.com/" }],
   }),
   component: Home,
 });
@@ -72,7 +73,7 @@ function Home() {
 
           <div className="home-hero-visual relative mx-auto w-full max-w-[640px] lg:ml-auto">
             <div className="home-image-frame relative overflow-hidden">
-              <img src={hero} alt="Academic Block D8 building at Chandigarh University" width={1280} height={853} fetchPriority="high" className="home-image h-full w-full object-cover" />
+              <img src={heroImage} alt="Academic Block D8 building at Chandigarh University" width={1280} height={853} fetchPriority="high" className="home-image h-full w-full object-cover" />
               <div className="home-image-caption absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-4 p-5 text-white sm:p-7">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">The campus return desk</p>
