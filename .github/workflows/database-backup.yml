@@ -57,6 +57,7 @@ jobs:
           dump_file="backups/campusfind-${timestamp}.dump"
           encrypted_file="${dump_file}.gpg"
           verify_file="$(mktemp)"
+          rm -f "$verify_file"
 
           cleanup() {
             rm -f "$dump_file" "$verify_file"
@@ -65,9 +66,9 @@ jobs:
 
           pg_dump --format=custom --no-owner --no-acl --verbose --file="$dump_file" "$SUPABASE_DB_URL"
 
-          gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256             --passphrase-fd 3 --output "$encrypted_file" "$dump_file"             3<<<"$CAMPUSFIND_BACKUP_PASSPHRASE"
+          gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256 --passphrase-fd 3 --output "$encrypted_file" "$dump_file" 3<<<"$CAMPUSFIND_BACKUP_PASSPHRASE"
 
-          gpg --batch --quiet --decrypt --passphrase-fd 3             --output "$verify_file" "$encrypted_file"             3<<<"$CAMPUSFIND_BACKUP_PASSPHRASE"
+          gpg --batch --quiet --decrypt --passphrase-fd 3 --output "$verify_file" "$encrypted_file" 3<<<"$CAMPUSFIND_BACKUP_PASSPHRASE"
 
           pg_restore --list "$verify_file" >/dev/null
           rm -f "$dump_file" "$verify_file"
