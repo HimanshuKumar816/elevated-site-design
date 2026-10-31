@@ -9,6 +9,7 @@ import { compressItemImage, validateItemImage } from "@/lib/item-image";
 import { CAMPUS_LOCATIONS, buildCampusLocation, type CampusLocation } from "@/lib/campus-locations";
 import { buildNotificationPreferencePayload, validateNotificationPreference } from "@/lib/notification-preferences";
 import { supabase } from "@/integrations/supabase/client";
+import { isVerifiedStudent } from "@/lib/access";
 
 export const Route = createFileRoute("/_authenticated/report")({
   head: () => ({
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/report")({
       { name: "description", content: "Report a lost or found item on campus in under a minute." },
       { property: "og:title", content: "Report an item — CampusFind" },
       { property: "og:description", content: "Report a lost or found item on campus in under a minute." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: Report,
@@ -35,6 +37,25 @@ function Report() {
   const [preferencesLoading, setPreferencesLoading] = useState(true);
   const [preferencesAvailable, setPreferencesAvailable] = useState(true);
   const [preferencesDirty, setPreferencesDirty] = useState(false);
+  const [verificationState, setVerificationState] = useState<"checking" | "verified" | "unverified" | "unavailable">("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkStudentVerification() {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) throw new Error("Sign-in required.");
+        const { data: profile, error: profileError } = await supabase.from("profiles")
+          .select("role,verification_status").eq("id", authData.user.id).maybeSingle();
+        if (profileError || !profile) throw new Error("Could not verify this account.");
+        if (!cancelled) setVerificationState(isVerifiedStudent(profile) ? "verified" : "unverified");
+      } catch {
+        if (!cancelled) setVerificationState("unavailable");
+      }
+    }
+    void checkStudentVerification();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +187,18 @@ function Report() {
         setError("Please sign in again.");
         return;
       }
+      const { data: profile, error: profileError } = await supabase.from("profiles")
+        .select("role,verification_status").eq("id", u.user.id).maybeSingle();
+      if (profileError || !profile) {
+        setVerificationState("unavailable");
+        setError("We couldn't check your student verification. Refresh the page and try again.");
+        return;
+      }
+      if (!isVerifiedStudent(profile)) {
+        setVerificationState("unverified");
+        setError("Administrator verification is required before you can submit a report.");
+        return;
+      }
       if (preferencesDirty && preferencesAvailable) {
         const { error: preferenceSaveError } = await supabase
           .from("notification_preferences")
@@ -252,7 +285,11 @@ function Report() {
             <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5 text-xs font-bold text-white/60"><CheckCircle2 size={16} className="text-emerald-200" /> Your report helps someone start looking.</div>
           </div>
         </aside>
-        {done ? (
+        {verificationState === "checking" ? (
+          <div role="status" className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><h2 className="text-2xl font-extrabold">Checking student verification</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">CampusFind checks your account before enabling report submission.</p></div>
+        ) : verificationState !== "verified" ? (
+          <div className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><p className="kicker text-emerald-800">Student access</p><h2 className="mt-3 text-2xl font-extrabold">{verificationState === "unverified" ? "Student verification required" : "Verification temporarily unavailable"}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{verificationState === "unverified" ? "You can browse campus reports, but submitting reports and claiming found items is available only after an administrator verifies your Chandigarh University student identity." : "CampusFind could not confirm your student status. Refresh the page or contact the administrator before trying again."}</p><Link to="/contact" className="mt-6 inline-flex w-fit rounded-xl border border-border px-4 py-3 text-sm font-extrabold text-primary hover:bg-secondary">Contact CampusFind</Link></div>
+        ) : done ? (
           <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10">
             <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
             <p className="mt-6 kicker text-emerald-800">Submission complete</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Report received.</h2>
