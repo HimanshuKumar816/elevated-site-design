@@ -3,6 +3,7 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "vite dev",
     "build": "npm run lint && npx tsc --noEmit && npm test && vite build",
