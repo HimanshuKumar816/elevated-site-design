@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { ArrowRight, ArrowUpRight, Check, LockKeyhole, PackageSearch, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Page } from "@/components/site";
-const hero = "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Block_1_of_Chandigarh_University_Punjab.jpg/1280px-Block_1_of_Chandigarh_University_Punjab.jpg";
+const hero = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Block_1_of_Chandigarh_University_Punjab.jpg/1280px-Block_1_of_Chandigarh_University_Punjab.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
