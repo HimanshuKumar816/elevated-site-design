@@ -82,7 +82,7 @@ export function scoreItemMatch(a: MatchFields, b: MatchFields) {
 /** Explains only public report fields; never uses private claim evidence. */
 export function explainItemMatch(a: MatchFields, b: MatchFields): string[] {
   const reasons: string[] = [];
-  if (a.category === b.category) reasons.push(\`same category (\${a.category})\`);
+  if (a.category === b.category) reasons.push("same category (" + a.category + ")");
 
   const nameOverlap = overlapCount(words(a.name), words(b.name));
   if (nameOverlap > 0) reasons.push("similar item names");
@@ -91,7 +91,7 @@ export function explainItemMatch(a: MatchFields, b: MatchFields): string[] {
     const left = (a[key] ?? "").trim().toLowerCase();
     const right = (b[key] ?? "").trim().toLowerCase();
     if (left && right && left === right) {
-      reasons.push(key === "color" ? "same colour" : \`same \${key}\`);
+      reasons.push(key === "color" ? "same colour" : "same " + key);
     }
   }
 
