@@ -24,8 +24,7 @@ This checklist separates repository implementation from configuration and tests 
 ## Backup evidence and limitations
 
 - A local custom-format database dump was listed successfully with `pg_restore --list`. This confirms that the archive can be read as a PostgreSQL archive; it does **not** prove that a full restore succeeds.
-- A macOS backup script uses the macOS Keychain and writes local dump files. The LaunchAgent template schedules a daily run. Confirm the live LaunchAgent and latest successful log on the Mac.
-- Google Drive for desktop was installed according to the operator's setup notes, but remote Drive synchronization has not been verified.
+- `scripts/backup_campusfind.sh` creates and validates a local custom-format dump using the macOS Keychain, then mirrors it to `My Drive/CampusFind-Backups` when a single Google Drive for desktop account is mounted. CI checks its Bash syntax. Confirm the installed script, live LaunchAgent, latest successful log, and that the file actually appears in Google Drive on the web.
 - A GitHub Actions workflow is configured for daily backups. It requires the `SUPABASE_DB_URL` and `CAMPUSFIND_BACKUP_PASSPHRASE` repository secrets. It must complete successfully and create an encrypted `.gpg` artifact before it can be counted as operational.
 - Restore drills must use a separate non-production database, never the production database.
 
