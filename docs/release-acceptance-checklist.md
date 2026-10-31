@@ -66,7 +66,9 @@ Use a dedicated administrator account.
 - [ ] Add a private moderation note and confirm it is visible only to administrators.
 - [ ] Change a report moderation/status value and confirm the audit record is created.
 - [ ] Confirm the admin activity view shows student sign-ins and does not expose passwords, OTPs, tokens, or private claim evidence.
-- [ ] Confirm no campus map or exact coordinates appear on public/home/student browsing pages. Any future campus map must be restricted to the administrator workspace and use verified campus geometry.
+- [ ] Confirm the official Chandigarh University 360° virtual tour loads only inside the authenticated administrator workspace; verify the fallback link opens the official CU Maps page.
+- [ ] Confirm no campus map iframe or exact coordinates appear on public/home/student browsing pages and that an ordinary student cannot access the admin route.
+- [ ] Confirm the tour is used only for orientation and does not display student item reports or precise report coordinates.
 
 ## 6. Access-control and security checks
 
