@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, BellRing, Camera, CheckCircle2, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
 import { CATEGORIES, type Item } from "@/lib/items";
-import { findItemMatches } from "@/lib/match-score";
+import { explainItemMatch, findItemMatches } from "@/lib/match-score";
 import { isValidIsoDate } from "@/lib/date";
 import { compressItemImage, validateItemImage } from "@/lib/item-image";
 import { CAMPUS_LOCATIONS, buildCampusLocation, type CampusLocation } from "@/lib/campus-locations";
@@ -27,7 +27,7 @@ const field = "mt-2 w-full rounded-xl border border-input bg-background px-4 py-
 function Report() {
   const [type, setType] = useState<"Lost" | "Found">("Lost");
   const [done, setDone] = useState(false);
-  const [matches, setMatches] = useState<Array<{ item: Item; score: number }>>([]);
+  const [matches, setMatches] = useState<Array<{ item: Item; score: number; reasons: string[] }>>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -222,9 +222,9 @@ function Report() {
       setImageFile(null);
       setImagePreview("");
       try {
-        const { data: rows } = await supabase.from("items").select("*").eq("type", type === "Lost" ? "Found" : "Lost").neq("user_id", u.user.id).limit(100);
+        const { data: rows } = await supabase.from("items").select("*").eq("type", type === "Lost" ? "Found" : "Lost").neq("user_id", u.user.id).in("report_status", ["new", "under_review", "matched"]).eq("moderation_flag", "none").order("created_at", { ascending: false }).limit(150);
         const freshItem: Item = { id: "new-report", user_id: u.user.id, type, name, category, location, item_date: date, item_time: itemTime, brand, color, model, note };
-        setMatches(findItemMatches(freshItem, (rows ?? []) as Item[]));
+        setMatches(findItemMatches(freshItem, (rows ?? []) as Item[]).map((match) => ({ ...match, reasons: explainItemMatch(freshItem, match.item) })));
       } catch {
         setMatches([]);
       }
@@ -257,7 +257,7 @@ function Report() {
             <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
             <p className="mt-6 kicker text-emerald-800">Submission complete</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Report received.</h2>
             <p className="mt-4 max-w-xl leading-7 text-muted-foreground">Your report has been added to the board. CampusFind checks similar reports and may create alerts when a likely match is found.</p>
-            {matches.length > 0 && <div className="mt-7 rounded-2xl border border-emerald-900/10 bg-emerald-50/60 p-5"><h3 className="text-lg font-extrabold">Possible matches</h3><ul className="mt-4 grid gap-3">{matches.map(({ item, score }) => <li key={item.id} className="rounded-xl border border-border bg-white p-4"><p className="font-extrabold text-foreground">{item.name}</p><p className="mt-1 text-sm text-muted-foreground">{item.type} · {item.category} · {item.location}</p><p className="mt-2 text-xs font-bold text-emerald-800">Similarity score: {score}% · Verify details before claiming</p></li>)}</ul></div>}
+            {matches.length > 0 && <div className="mt-7 rounded-2xl border border-emerald-900/10 bg-emerald-50/60 p-5"><h3 className="text-lg font-extrabold">Possible matches</h3><ul className="mt-4 grid gap-3">{matches.map(({ item, score, reasons }) => <li key={item.id} className="rounded-xl border border-border bg-white p-4"><p className="font-extrabold text-foreground">{item.name}</p><p className="mt-1 text-sm text-muted-foreground">{item.type} · {item.category} · {item.location}</p><p className="mt-2 text-xs font-bold text-primary">Match signal: {score}%</p>{reasons.length > 0 && <p className="mt-2 text-xs leading-5 text-muted-foreground">Why it appeared: {reasons.join(" · ")}</p>}<p className="mt-2 text-xs font-semibold text-amber-800">Suggestion only — compare the details and verify ownership before arranging a return.</p></li>)}</ul></div>}
             {matches.length === 0 && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm leading-6 text-muted-foreground">No strong match yet. If a similar report is added later, CampusFind can create a notification.</p>}
             <p className="mt-4 text-xs leading-5 text-muted-foreground">SMS alerts require the project's SMS gateway to be configured. In-app match alerts are recorded in CampusFind.</p>
             <div className="mt-8 flex flex-wrap gap-3">

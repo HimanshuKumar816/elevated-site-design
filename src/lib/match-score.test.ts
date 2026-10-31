@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findItemMatches, scoreItemMatch } from "@/lib/match-score";
+import { explainItemMatch, findItemMatches, scoreItemMatch } from "@/lib/match-score";
 import type { Item } from "@/lib/items";
 
 type MatchCandidate = Pick<Item, "type" | "name" | "category" | "location" | "note" | "item_date"> &
@@ -38,6 +38,30 @@ describe("item matching", () => {
     };
 
     expect(scoreItemMatch(lost, detailedMatch)).toBeGreaterThan(scoreItemMatch(lost, weakerMatch));
+  });
+
+  it("recognises common item-name synonyms without treating them as ownership proof", () => {
+    const phone = {
+      type: "Lost" as const,
+      name: "Samsung cellphone",
+      category: "Electronics",
+      location: "Central Library",
+      note: "Black phone case",
+      item_date: "2026-10-30",
+      brand: "Samsung",
+      color: "Black",
+      model: "Galaxy",
+    };
+    const candidate = { ...phone, type: "Found" as const, name: "Samsung smartphone" };
+    expect(scoreItemMatch(phone, candidate)).toBeGreaterThan(70);
+    expect(explainItemMatch(phone, candidate)).toContain("same brand");
+  });
+
+  it("explains matches using only public report fields", () => {
+    const candidate = { ...lost, type: "Found" as const };
+    expect(explainItemMatch(lost, candidate)).toEqual(
+      expect.arrayContaining(["same category (Electronics)", "similar item names", "same brand", "same colour", "same model"]),
+    );
   });
 
   it("never matches two reports of the same type", () => {
