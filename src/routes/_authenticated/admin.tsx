@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { CampusMap, type CampusMapMarker } from "@/components/campus-map";
+import { isInsideCampus, type CampusCoordinate } from "@/lib/campus-location";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
 import type { ModerationFlag, ReportStatus } from "@/lib/items";
@@ -44,6 +46,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type Row = AdminReport & {
   image_url?: string | null;
+  latitude: number | null;
+  longitude: number | null;
   submitter_role: string | null;
   report_status: ReportStatus;
   moderation_flag: ModerationFlag;
@@ -185,6 +189,10 @@ function AdminPage() {
   const [studentsError, setStudentsError] = useState("");
   const [studentQuery, setStudentQuery] = useState("");
   const [verificationBusyId, setVerificationBusyId] = useState<string | null>(null);
+  const [pinTarget, setPinTarget] = useState<Row | null>(null);
+  const [pinSaving, setPinSaving] = useState(false);
+  const [pinError, setPinError] = useState("");
+  const [pinSuccess, setPinSuccess] = useState("");
 
   async function signOut() {
     try {
@@ -194,6 +202,46 @@ function AdminPage() {
     }
     queryClient.clear();
     navigate({ to: "/admin-login", replace: true });
+  }
+
+  async function saveAdminPin(position: CampusCoordinate) {
+    const target = pinTarget;
+    if (!target || pinSaving) return;
+    if (!isInsideCampus(position)) {
+      setPinError("Choose a point inside the Chandigarh University campus boundary.");
+      return;
+    }
+
+    setPinSaving(true);
+    setPinError("");
+    setPinSuccess("");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Your administrator session has expired.");
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+      if (profileError || !isAdminProfile(profile)) throw new Error("Administrator access required.");
+
+      const { error: saveError } = await supabase.from("item_locations").upsert({
+        item_id: target.id,
+        user_id: target.user_id,
+        latitude: position.lat,
+        longitude: position.lng,
+      }, { onConflict: "item_id" });
+      if (saveError) throw saveError;
+
+      setPinSuccess(`Campus pin saved for "${target.name}".`);
+      setPinTarget(null);
+      await load();
+    } catch {
+      setPinError("We couldn't save that campus pin. Check administrator access and confirm the campus-location migration is applied.");
+    } finally {
+      setPinSaving(false);
+    }
   }
 
   const load = useCallback(async () => {
@@ -230,6 +278,19 @@ function AdminPage() {
         if (page.length < PAGE_SIZE) break;
       }
 
+      const { data: pinnedLocations, error: locationError } = await supabase
+        .from("item_locations")
+        .select("item_id,latitude,longitude");
+      if (locationError) {
+        console.error("[CampusFind admin map] Could not load campus pins", { code: locationError.code });
+        setPinError("Saved campus pins are unavailable. Check that the campus-location migration is applied.");
+      } else {
+        setPinError("");
+      }
+      const locationByItem = new Map(
+        (pinnedLocations ?? []).map((pin) => [pin.item_id, { latitude: pin.latitude, longitude: pin.longitude }]),
+      );
+
       const userIds = [...new Set(items.map((item) => item.user_id))];
       const profiles = new Map<string, { uid: string; full_name: string; role: string }>();
       // Small batches keep URL/request sizes bounded even if the report list grows.
@@ -260,8 +321,13 @@ function AdminPage() {
               image_url = null;
             }
           }
+          const pin = locationByItem.get(item.id);
+          const pinPosition = pin ? { lat: pin.latitude, lng: pin.longitude } : null;
+          const validPin = pinPosition && isInsideCampus(pinPosition) ? pin : null;
           return {
             ...item,
+            latitude: validPin?.latitude ?? null,
+            longitude: validPin?.longitude ?? null,
             note: item.note ?? null,
             image_path: item.image_path ?? null,
             submitter_name: profile?.full_name ?? null,
@@ -707,6 +773,25 @@ function AdminPage() {
     }
     return [...countsByLocation.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [rows]);
+  const campusMarkers: CampusMapMarker[] = useMemo(() => rows.flatMap((report) => {
+    if (report.latitude === null || report.longitude === null) return [];
+    const point = { lat: report.latitude, lng: report.longitude };
+    if (!isInsideCampus(point)) return [];
+    return [{
+      id: report.id,
+      lat: point.lat,
+      lng: point.lng,
+      title: report.name,
+      detail: [
+        `${report.type} · ${report.report_status.replaceAll("_", " ")}`,
+        report.category,
+        report.location,
+        `Item date: ${report.item_date}`,
+        `Reported by ${report.submitter_name ?? "Unknown"} · UID ${report.submitter_uid ?? "—"}`,
+      ].join(" · "),
+      href: `#report-${report.id}`,
+    }];
+  }), [rows]);
   const visibleStudents = useMemo(() => {
     const query = studentQuery.trim().toLowerCase();
     return students.filter((student) => !query || student.full_name.toLowerCase().includes(query) || student.uid.toLowerCase().includes(query));
@@ -732,6 +817,23 @@ function AdminPage() {
           <p><span className="font-extrabold text-foreground">Reported by:</span> {report.submitter_name ?? "Unknown"} · UID {report.submitter_uid ?? "—"}</p>
           <p><span className="font-extrabold text-foreground">Account:</span> {report.submitter_role === "admin" ? "Administrator" : report.submitter_role === "student" ? "Student" : "Unknown"}</p>
           <p className="break-all"><span className="font-extrabold text-foreground">Report reference:</span> {report.id}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPinTarget(report);
+              setPinError("");
+              setPinSuccess("");
+              document.getElementById("campus-map")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            disabled={pinSaving}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary disabled:opacity-60"
+          >
+            {report.latitude !== null && report.longitude !== null ? "Move campus pin" : "Set campus pin"}
+          </button>
+          {report.latitude !== null && report.longitude !== null && (
+            <span className="text-xs font-semibold text-emerald-800">Exact campus pin saved</span>
+          )}
         </div>
         <div className="mt-4 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
           <label className="block text-xs font-extrabold text-muted-foreground">REPORT STATUS
@@ -962,37 +1064,36 @@ function AdminPage() {
           </div>
         </section>
 
-        <section aria-labelledby="campus-map-title" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="kicker text-emerald-800">Administrator reference</p>
+        <section id="campus-map" aria-labelledby="campus-map-title" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
+            <div>
+              <p className="kicker text-emerald-800">Administrator-only location tools</p>
               <h2 id="campus-map-title" className="mt-2 text-2xl font-extrabold">Chandigarh University campus map</h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Official CU 360° campus virtual tour for orientation. This map is available only inside the authenticated administrator workspace.
+                Only administrators can view or assign exact campus pins. Students and public visitors never see this map. Choose “Set campus pin” on a report, then click its location inside the campus map.
               </p>
             </div>
-            <a
-              href="https://www.cuchd.in/maps/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="admin-utility-link inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition sm:text-sm"
-            >
-              Open official CU maps <ArrowUpRight size={15} />
-            </a>
+            <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{campusMarkers.length} pinned reports</span>
           </div>
-          <div className="mt-5 overflow-hidden rounded-xl border border-border bg-secondary">
-            <iframe
-              src="https://iviewd.com/cu2/"
-              title="Official Chandigarh University campus 360-degree virtual tour"
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allow="fullscreen; accelerometer; gyroscope; autoplay; xr-spatial-tracking"
-              allowFullScreen
-              className="h-[360px] w-full sm:h-[480px] lg:h-[560px]"
-            />
-          </div>
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">
-            Orientation reference only: the tour does not plot student item reports or precise item coordinates. Use the controlled campus-area fields on each report for location records.
+          {pinTarget && (
+            <div className="mx-4 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-secondary/50 p-4">
+              <div>
+                <p className="text-sm font-extrabold">Pin location for: {pinTarget.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Click the correct spot inside the Chandigarh University map bounds. The saved pin is private to administrators and the report owner.</p>
+              </div>
+              <button type="button" onClick={() => { setPinTarget(null); setPinError(""); }} disabled={pinSaving} className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-bold disabled:opacity-60">Cancel</button>
+            </div>
+          )}
+          {pinError && <p role="alert" className="mx-4 mb-3 rounded-lg bg-destructive/5 p-3 text-sm font-semibold text-destructive">{pinError}</p>}
+          {pinSuccess && <p role="status" className="mx-4 mb-3 rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">{pinSuccess}</p>}
+          <CampusMap
+            mode={pinTarget ? "picker" : "viewer"}
+            markers={campusMarkers}
+            {...(pinTarget ? { onPositionChange: (position: CampusCoordinate) => { void saveAdminPin(position); } } : {})}
+            className="mx-4 mb-4"
+          />
+          <p className="px-5 pb-5 text-xs leading-5 text-muted-foreground sm:px-6">
+            Pins are stored in the private item_locations table with database row-level security and an in-campus coordinate constraint. Map tiles are provided by OpenStreetMap.
           </p>
         </section>
 
