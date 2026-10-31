@@ -698,7 +698,11 @@ function AdminPage() {
   const pageStudents = visibleStudents.slice((studentPage - 1) * 25, studentPage * 25);
   useEffect(() => { setStudentPage(1); }, [studentQuery]);
 
-  const renderReportCard = (report: Row) => (
+  const renderReportCard = (report: Row) => {
+    const selectedFlag = moderationFlagDrafts[report.id] ?? report.moderation_flag;
+    const moderationNote = (moderationDrafts[report.id] ?? "").trim();
+    const moderationHasChanges = selectedFlag !== report.moderation_flag || moderationNote.length > 0;
+    return (
     <article id={`report-${report.id}`} key={report.id} className="interactive-card grid gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft sm:grid-cols-[96px_1fr]">
       {report.image_url ? (
         <img src={report.image_url} alt={report.name} loading="lazy" referrerPolicy="no-referrer" className="size-24 rounded-xl object-cover" />
@@ -727,7 +731,7 @@ function AdminPage() {
             </select>
           </label>
           <label className="block text-xs font-extrabold text-muted-foreground">MODERATION FLAG
-            <select value={report.moderation_flag} disabled={actionBusyId === report.id} onChange={(event) => void updateReportModeration(report, event.target.value as ModerationFlag)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
+            <select value={selectedFlag} disabled={actionBusyId === report.id} onChange={(event) => setModerationFlagDrafts((current) => ({ ...current, [report.id]: event.target.value as ModerationFlag }))} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
               <option value="none">No flag</option><option value="duplicate">Duplicate</option><option value="suspicious">Suspicious</option><option value="hidden">Hide from students</option>
             </select>
           </label>
@@ -735,7 +739,8 @@ function AdminPage() {
             <label className="block text-xs font-extrabold text-muted-foreground">PRIVATE MODERATION NOTE
               <textarea rows={2} maxLength={1000} value={moderationDrafts[report.id] ?? ""} onChange={(event) => setModerationDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Reason for moderation or follow-up note (admin only)" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
             </label>
-            <button type="button" disabled={actionBusyId === report.id || !(moderationDrafts[report.id] ?? "").trim()} onClick={() => void updateReportModeration(report, report.moderation_flag, true)} className="mt-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save private note"}</button>
+            <button type="button" disabled={actionBusyId === report.id || !moderationHasChanges || (selectedFlag !== "none" && (moderationNote.length < 3 || moderationNote.length > 1000))} onClick={() => void updateReportModeration(report, selectedFlag)} className="mt-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save moderation"}</button>
+            {selectedFlag !== "none" && <p className="mt-2 text-xs font-semibold text-amber-800">A private reason is required. Flagged reports are removed from student search, claims and automatic matching.</p>}
           </div>
           {moderationNotes.filter((note) => note.item_id === report.id).slice(0, 2).map((note) => (
             <p key={note.id} className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950"><span className="font-extrabold">Admin note · {new Date(note.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}:</span> {note.note}</p>
@@ -743,7 +748,8 @@ function AdminPage() {
         </div>
       </div>
     </article>
-  );
+    );
+  };
 
   const renderReportSection = (title: string, reports: Row[], emptyText: string) => {
     const isLost = title === "Lost reports";
@@ -752,7 +758,7 @@ function AdminPage() {
     const pageReports = reports.slice((currentPage - 1) * 25, currentPage * 25);
     const setPage = isLost ? setLostReportPage : setFoundReportPage;
     return (
-    <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+    <section id={isLost ? "admin-reports" : "admin-found-reports"} className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
         <div>
           <p className="kicker text-emerald-800">Report management</p>
@@ -813,7 +819,7 @@ function AdminPage() {
   );
 
   const renderMatchesSection = (
-    <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+    <section id="admin-matches" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
         <div>
           <p className="kicker text-emerald-800">Matching system</p>
@@ -927,9 +933,9 @@ function AdminPage() {
           ))}
         </div>
 
-        <section className="admin-panel mt-6 rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
+        <section id="admin-overview" className="admin-panel mt-6 rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="kicker text-emerald-800">Campus insights</p><h2 className="mt-2 text-2xl font-extrabold">Recovery and activity overview</h2><p className="mt-1 text-sm text-muted-foreground">Calculated from the reports, matches and claims currently loaded from the database.</p></div>
+            <div><p className="kicker text-emerald-800">Campus insights</p><h2 className="mt-2 text-2xl font-extrabold">Recovery and activity overview</h2><p className="mt-1 text-sm text-muted-foreground">Calculated from all reports, matches and claims currently stored.</p></div>
             <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{recoveryRate}% reports returned</span>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -948,6 +954,10 @@ function AdminPage() {
           </div>
         </section>
 
+
+        <nav aria-label="Administrator sections" className="mt-6 flex flex-wrap gap-2">
+          {[["Overview", "#admin-overview"], ["Lost reports", "#admin-reports"], ["Found reports", "#admin-found-reports"], ["Students", "#admin-students"], ["Sign-ins", "#admin-activity"], ["Matches", "#admin-matches"], ["Claims", "#admin-claims"], ["Contact", "#admin-contact"]].map(([label, href]) => <a key={href} href={href} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary">{label}</a>)}
+        </nav>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <label className="relative min-w-56 flex-1">
@@ -969,7 +979,7 @@ function AdminPage() {
           </label>
         </div>
 
-        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        <section id="admin-students" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div><p className="kicker text-emerald-800">Student identity controls</p><h2 className="mt-2 text-2xl font-extrabold">Student verification</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only mark a student verified after checking their UID and identity against an authorised Chandigarh University roster or physical student ID. This manual status is not an automatic CU directory check.</p></div>
             <button type="button" onClick={() => void loadStudents()} disabled={studentsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{studentsLoading ? "Refreshing…" : "Refresh students"}</button>
@@ -981,11 +991,11 @@ function AdminPage() {
           {studentsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{studentsError}</p>}
           {studentsLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading student records…</p> : visibleStudents.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No student records match this search.</p> : (
             <div className="grid gap-3 border-t border-border p-4 sm:p-5">
-              {visibleStudents.slice(0, 100).map((student) => <article key={student.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
+              {pageStudents.map((student) => <article key={student.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
                 <div><p className="font-extrabold">{student.full_name || "Unnamed student"}</p><p className="mt-1 text-xs text-muted-foreground">UID {student.uid}</p><p className="mt-1 text-xs text-muted-foreground">{student.verification_status === "verified" ? `Verified ${student.verified_at ? new Date(student.verified_at).toLocaleDateString("en-IN") : ""}` : "Identity not yet verified"}</p></div>
                 {student.verification_status === "verified" ? <button type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, false)} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Revoke verification"}</button> : <button type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, true)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Mark verified"}</button>}
               </article>)}
-              {visibleStudents.length > 100 && <p className="text-xs text-muted-foreground">Showing the first 100 matches. Refine the search to find another student.</p>}
+              {visibleStudents.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><span className="text-xs text-muted-foreground">Page {studentPage} of {studentPageCount} · {visibleStudents.length} students</span><div className="flex gap-2"><button type="button" disabled={studentPage <= 1} onClick={() => setStudentPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={studentPage >= studentPageCount} onClick={() => setStudentPage((page) => Math.min(studentPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
             </div>
           )}
         </section>
@@ -1002,12 +1012,12 @@ function AdminPage() {
         {renderReportSection("Found reports", visibleFound, "No found-item reports match these filters.")}
 
 
-        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        <section id="admin-activity" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Account activity</p>
               <h2 className="mt-2 text-2xl font-extrabold">Recent sign-ins</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Student account activity only. Administrator sign-ins are not recorded.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Latest 50 successful student sign-ins. Administrator sign-ins are not recorded in this list.</p>
             </div>
             <button type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {activityLoading ? "Refreshing…" : "Refresh activity"}
@@ -1047,9 +1057,9 @@ function AdminPage() {
 
         {renderMatchesSection}
 
-        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        <section id="admin-claims" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
-            <div><p className="kicker text-emerald-800">Ownership verification</p><h2 className="mt-2 text-2xl font-extrabold">Item claims</h2><p className="mt-1 text-sm text-muted-foreground">Private ownership proof is visible to authorised administrators and the claimant only.</p></div>
+            <div><p className="kicker text-emerald-800">Ownership verification</p><h2 className="mt-2 text-2xl font-extrabold">Item claims</h2><p className="mt-1 text-sm text-muted-foreground">Private ownership proof is visible to authorised administrators and the claimant only. Approvals issue a one-time handover code to the claimant.</p></div>
             <button type="button" onClick={() => void loadClaims()} disabled={claimsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{claimsLoading ? "Refreshing…" : "Refresh claims"}</button>
           </div>
           {claimsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{claimsError}</p>}
@@ -1073,7 +1083,7 @@ function AdminPage() {
                           <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "approved")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Approve claim</button>
                           <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject claim</button>
                         </>}
-                        {claim.status === "approved" && <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "completed")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Confirm returned to owner</button>}
+                        {claim.status === "approved" && <div className="w-full max-w-md"><label className="block text-xs font-extrabold text-muted-foreground">CLAIMANT HANDOVER CODE<input inputMode="text" autoComplete="off" maxLength={12} value={claimHandoverCodeDrafts[claim.id] ?? ""} onChange={(event) => setClaimHandoverCodeDrafts((current) => ({ ...current, [claim.id]: event.target.value.toUpperCase().replace(/[^A-F0-9]/g, "") }))} placeholder="12-character code shown by claimant" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 font-mono text-sm tracking-widest" /></label><p className="mt-1 text-xs leading-5 text-muted-foreground">Enter the code only when the claimant shows it to you during the physical handover.</p><button type="button" disabled={actionBusyId === claim.id || !/^[A-F0-9]{12}$/.test(claimHandoverCodeDrafts[claim.id] ?? "")} onClick={() => void reviewClaim(claim, "completed")} className="mt-3 rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Verify handover and mark returned</button></div>}
                       </div>
                     </div>
                   )}
@@ -1085,11 +1095,11 @@ function AdminPage() {
 
         
 
-        <section className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+        <section id="admin-contact" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Contact inbox</p>
-              <h2 className="mt-2 text-2xl font-extrabold">Messages from the website</h2>
+              <h2 className="mt-2 text-2xl font-extrabold">Messages from the website</h2><p className="mt-1 text-xs text-muted-foreground">Latest 50 messages.</p>
               <p className="mt-1 text-sm text-muted-foreground">Only authenticated administrators can read these messages.</p>
             </div>
             <button type="button" onClick={() => void loadContactMessages()} disabled={contactLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
