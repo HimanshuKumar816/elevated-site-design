@@ -34,7 +34,7 @@ CampusFind is a single-campus lost-and-found service for Chandigarh University. 
 
 CampusFind is scoped to Chandigarh University. Report forms use a controlled list of campus areas with an optional local detail. Do not accept or display a location outside the campus scope.
 
-A public-facing map is not part of the product requirement. Do not display a map or precise coordinates on the homepage, visitor pages, or the student browsing board. Any future interactive campus map must be restricted to the authenticated administrator workspace, use verified Chandigarh University campus geometry, and respect owner/admin database policies. The current campus-area form is not evidence that an interactive map has been implemented.
+A public-facing map is not part of the product requirement. Do not display a map or precise coordinates on the homepage, visitor pages, or the student browsing board. The authenticated administrator workspace embeds Chandigarh University's official 360° virtual tour from the university's Maps page as an orientation reference. It is not a report-pin map and does not display student item coordinates. Any future item-location overlay must be restricted to the administrator workspace, use verified Chandigarh University campus geometry, and respect owner/admin database policies. The controlled campus-area form remains the source of report location labels.
 
 ## Security requirements
 
