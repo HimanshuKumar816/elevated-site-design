@@ -60,3 +60,10 @@ See `.env.example`. Never commit `.env` or paste credentials into issues or chat
 ## Database migrations
 
 SQL migration files are versioned under `drizzle/migrations`. Committing a migration does not execute it. Confirm the target database and take a backup before applying migrations. Do not apply a migration to a production database without reviewing its contents and confirming the backend project.
+
+## Release verification
+
+- [15-layer release readiness](docs/15-layer-playbook-readiness.md)
+- [Manual release acceptance checklist](docs/release-acceptance-checklist.md)
+- [Database migration runbook](docs/runbooks/database-migration.md)
+- [Encrypted backup and restore runbook](docs/runbooks/backups.md)
