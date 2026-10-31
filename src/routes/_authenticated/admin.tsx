@@ -158,7 +158,10 @@ function AdminPage() {
   const [claimsError, setClaimsError] = useState("");
   const [moderationNotes, setModerationNotes] = useState<ModerationNote[]>([]);
   const [moderationDrafts, setModerationDrafts] = useState<Record<string, string>>({});
+  const [moderationFlagDrafts, setModerationFlagDrafts] = useState<Record<string, ModerationFlag>>({});
   const [claimDrafts, setClaimDrafts] = useState<Record<string, string>>({});
+  const [claimHandoverCodeDrafts, setClaimHandoverCodeDrafts] = useState<Record<string, string>>({});
+  const [studentPage, setStudentPage] = useState(1);
   const [matchDrafts, setMatchDrafts] = useState<Record<string, string>>({});
   const [reportActionError, setReportActionError] = useState("");
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
@@ -332,13 +335,19 @@ function AdminPage() {
     setMatchesLoading(true);
     setMatchesError("");
     try {
-      const { data: pairs, error: pairsError } = await supabase
+      const getPairsPage = (offset: number) => supabase
         .from("item_matches")
         .select("id,lost_item_id,found_item_id,score,matching_method,match_reason,review_status,admin_note,created_at,reviewed_at")
         .neq("review_status", "resolved")
         .order("created_at", { ascending: false })
-        .limit(100);
-      if (pairsError) throw pairsError;
+        .range(offset, offset + 99);
+      const pairs: NonNullable<Awaited<ReturnType<typeof getPairsPage>>["data"]> = [];
+      for (let offset = 0; ; offset += 100) {
+        const { data: page, error: pairsError } = await getPairsPage(offset);
+        if (pairsError) throw pairsError;
+        pairs.push(...(page ?? []));
+        if (!page || page.length < 100) break;
+      }
       if (!pairs?.length) {
         setMatches([]);
         return;
@@ -414,12 +423,18 @@ function AdminPage() {
     setClaimsLoading(true);
     setClaimsError("");
     try {
-      const { data: claimRows, error: claimError } = await supabase
+      const getClaimsPage = (offset: number) => supabase
         .from("item_claims")
         .select("id,item_id,claimant_id,proof,status,admin_note,created_at,reviewed_at,item_name_snapshot,item_location_snapshot,item_category_snapshot")
         .order("created_at", { ascending: false })
-        .limit(100);
-      if (claimError) throw claimError;
+        .range(offset, offset + 99);
+      const claimRows: NonNullable<Awaited<ReturnType<typeof getClaimsPage>>["data"]> = [];
+      for (let offset = 0; ; offset += 100) {
+        const { data: page, error: claimError } = await getClaimsPage(offset);
+        if (claimError) throw claimError;
+        claimRows.push(...(page ?? []));
+        if (!page || page.length < 100) break;
+      }
       if (!claimRows?.length) {
         setClaims([]);
         return;
@@ -467,14 +482,20 @@ function AdminPage() {
     setStudentsLoading(true);
     setStudentsError("");
     try {
-      const { data, error: queryError } = await supabase
+      const getStudentsPage = (offset: number) => supabase
         .from("profiles")
         .select("id,uid,full_name,role,verification_status,verified_at,created_at")
         .eq("role", "student")
         .order("created_at", { ascending: false })
-        .limit(250);
-      if (queryError) throw queryError;
-      setStudents((data ?? []) as StudentRecord[]);
+        .range(offset, offset + 249);
+      const records: NonNullable<Awaited<ReturnType<typeof getStudentsPage>>["data"]> = [];
+      for (let offset = 0; ; offset += 250) {
+        const { data: page, error: queryError } = await getStudentsPage(offset);
+        if (queryError) throw queryError;
+        records.push(...(page ?? []));
+        if (!page || page.length < 250) break;
+      }
+      setStudents(records as StudentRecord[]);
     } catch {
       setStudentsError("We couldn't load student verification records. Please retry.");
     } finally {
@@ -548,36 +569,33 @@ function AdminPage() {
     }
   }
 
-  async function updateReportModeration(report: Row, flag: ModerationFlag, saveNote = false) {
+  async function updateReportModeration(report: Row, flag: ModerationFlag) {
     setReportActionError("");
     const note = (moderationDrafts[report.id] ?? "").trim();
-    if (saveNote && note.length > 0 && (note.length < 3 || note.length > 1000)) {
-      setReportActionError("Moderation note must be 3–1,000 characters.");
+    if (flag !== "none" && (note.length < 3 || note.length > 1000)) {
+      setReportActionError("Add a private reason of 3–1,000 characters before applying a moderation flag.");
+      return;
+    }
+    if (note.length > 0 && (note.length < 3 || note.length > 1000)) {
+      setReportActionError("Private moderation notes must be 3–1,000 characters.");
       return;
     }
     setActionBusyId(report.id);
     try {
       const actorId = await adminActorId();
-      const { error: updateError } = await supabase.from("items").update({
-        moderation_flag: flag,
-        moderated_by: actorId,
-        moderated_at: new Date().toISOString(),
-      }).eq("id", report.id);
+      const { error: updateError } = await supabase.rpc("admin_update_item_moderation", {
+        p_item_id: report.id,
+        p_flag: flag,
+        p_note: note || null,
+      });
       if (updateError) throw updateError;
-
-      if (saveNote && note.length > 0) {
-        const { error: noteError } = await supabase.from("admin_item_moderation_notes").insert({
-          item_id: report.id,
-          actor_id: actorId,
-          note,
-        });
-        if (noteError) throw noteError;
-        setModerationDrafts((current) => ({ ...current, [report.id]: "" }));
-        await loadModerationNotes();
-      }
-      setRows((current) => current.map((row) => row.id === report.id ? { ...row, moderation_flag: flag, moderated_by: actorId, moderated_at: new Date().toISOString() } : row));
+      const moderatedAt = new Date().toISOString();
+      setRows((current) => current.map((row) => row.id === report.id ? { ...row, moderation_flag: flag, moderated_by: actorId, moderated_at: moderatedAt } : row));
+      setModerationDrafts((current) => ({ ...current, [report.id]: "" }));
+      setModerationFlagDrafts((current) => { const next = { ...current }; delete next[report.id]; return next; });
+      await loadModerationNotes();
     } catch {
-      setReportActionError("We couldn't save the moderation update. Please try again.");
+      setReportActionError("We couldn't save the moderation update. Add a private reason for flagged reports and try again.");
     } finally {
       setActionBusyId(null);
     }
@@ -624,21 +642,29 @@ function AdminPage() {
 
   async function reviewClaim(claim: ClaimRecord, status: "approved" | "rejected" | "completed") {
     setReportActionError("");
+    const handoverCode = (claimHandoverCodeDrafts[claim.id] ?? "").trim().toUpperCase();
+    if (status === "completed" && !/^[A-F0-9]{12}$/.test(handoverCode)) {
+      setReportActionError("Enter the claimant’s 12-character handover code after checking it in person.");
+      return;
+    }
     setActionBusyId(claim.id);
     try {
-      const actorId = await adminActorId();
+      await adminActorId();
       const adminNote = (claimDrafts[claim.id] ?? "").trim();
-      const { error: updateError } = await supabase.from("item_claims").update({
-        status,
-        admin_note: adminNote || null,
-        reviewed_by: actorId,
-        reviewed_at: new Date().toISOString(),
-      }).eq("id", claim.id);
+      const { error: updateError } = await supabase.rpc("admin_review_item_claim", {
+        p_claim_id: claim.id,
+        p_status: status,
+        p_admin_note: adminNote || null,
+        p_handover_code: status === "completed" ? handoverCode : null,
+      });
       if (updateError) throw updateError;
       setClaimDrafts((current) => ({ ...current, [claim.id]: "" }));
+      setClaimHandoverCodeDrafts((current) => ({ ...current, [claim.id]: "" }));
       await Promise.all([loadClaims(), load(), loadMatches()]);
     } catch {
-      setReportActionError("We couldn't save this claim decision. Please refresh and try again.");
+      setReportActionError(status === "completed"
+        ? "The item could not be marked returned. Check the handover code and confirm the physical handover first."
+        : "We couldn't save this claim decision. Please refresh and try again.");
     } finally {
       setActionBusyId(null);
     }
@@ -666,8 +692,11 @@ function AdminPage() {
 
   const visibleStudents = useMemo(() => {
     const query = studentQuery.trim().toLowerCase();
-    return students.filter((student) => !query || student.full_name.toLowerCase().includes(query) || student.uid.toLowerCase().includes(query));
+    return students.filter((student) => !query || (student.full_name ?? "").toLowerCase().includes(query) || (student.uid ?? "").toLowerCase().includes(query));
   }, [students, studentQuery]);
+  const studentPageCount = Math.max(1, Math.ceil(visibleStudents.length / 25));
+  const pageStudents = visibleStudents.slice((studentPage - 1) * 25, studentPage * 25);
+  useEffect(() => { setStudentPage(1); }, [studentQuery]);
 
   const renderReportCard = (report: Row) => (
     <article id={`report-${report.id}`} key={report.id} className="interactive-card grid gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft sm:grid-cols-[96px_1fr]">
