@@ -230,7 +230,7 @@ function applySecurityHeaders(response: Response, nonce: string, url: URL): Resp
       "script-src 'self' 'nonce-" + nonce + "' 'strict-dynamic' https://unpkg.com https://www.googletagmanager.com",
       "style-src 'self' 'nonce-" + nonce + "' https://unpkg.com https://fonts.googleapis.com",
       "style-src-attr 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://upload.wikimedia.org",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://www.vidyavision.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://*.tile.openstreetmap.org",
       "frame-src https://www.openstreetmap.org",
