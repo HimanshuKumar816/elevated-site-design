@@ -1,28 +1,27 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { ArrowRight, ArrowUpRight, Check, LockKeyhole, PackageSearch, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, ArrowUpRight, BadgeCheck, BellRing, Check, LockKeyhole, MapPin, PackageSearch, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
 import hero from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "CampusFind — Smart Campus Lost & Found" },
-      { name: "description", content: "A trusted campus-focused place to report lost items, discover potential matches, and safely reconnect belongings with their owners." },
-      { property: "og:title", content: "CampusFind — Smart Campus Lost & Found" },
-      { property: "og:description", content: "Report, search and safely recover lost items around Chandigarh University." },
+      { title: "CampusFind — Lost & Found at Chandigarh University" },
+      { name: "description", content: "One clear place for Chandigarh University students to report lost items, browse found belongings, and arrange safer returns." },
+      { property: "og:title", content: "CampusFind — Lost & Found at Chandigarh University" },
+      { property: "og:description", content: "Report it. Search the board. Bring it home." },
     ],
   }),
   component: Home,
 });
 
 const steps = [
-  { number: "01", title: "Report", description: "Add the item, where you last saw it, and useful details.", icon: PackageSearch },
-  { number: "02", title: "Discover matches", description: "Search reports and compare details that might line up.", icon: Search },
-  { number: "03", title: "Verify & return", description: "Keep one private detail for a safer handoff.", icon: ShieldCheck },
+  { number: "01", title: "Make a report", description: "Share what the item looks like, where it was last seen, and when it went missing.", icon: PackageSearch },
+  { number: "02", title: "Search the board", description: "Browse reports from across campus and narrow the list with useful filters.", icon: Search },
+  { number: "03", title: "Verify and return", description: "Compare a private identifying detail before arranging a handoff.", icon: ShieldCheck },
 ];
-const assurances = ["One place for campus reports", "Private details stay private", "Verify before handing over"];
 
 function Home() {
   const navigate = useNavigate();
@@ -34,11 +33,7 @@ function Home() {
       try {
         const { data: authData } = await supabase.auth.getUser();
         if (!active || !authData.user) return;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", authData.user.id)
-          .maybeSingle();
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
         if (!active) return;
         navigate({ to: profile?.role === "admin" ? "/admin" : "/browse", replace: true });
       } catch {
@@ -50,104 +45,100 @@ function Home() {
 
   return (
     <Page>
-      <section className="relative isolate overflow-hidden">
-        <div className="hero-grid absolute inset-0 -z-10" />
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 pb-16 pt-12 sm:px-8 sm:pb-20 sm:pt-16 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16 lg:pb-24 lg:pt-20">
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-white/80 px-3.5 py-2 text-xs font-extrabold text-primary shadow-sm backdrop-blur">
-              <span className="size-2 rounded-full bg-emerald-500" /> Campus lost & found, made simpler
-            </div>
-            <h1 className="mt-7 max-w-3xl text-balance text-5xl font-extrabold leading-[1.02] tracking-[-0.055em] text-foreground sm:text-6xl lg:text-[4.65rem]">
-              Lost something?<span className="mt-1 block text-primary">Let's get it back.</span>
+      <section className="home-hero">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-16 pt-12 sm:px-8 sm:pb-20 sm:pt-16 lg:grid-cols-[0.96fr_1.04fr] lg:gap-16 lg:pb-24 lg:pt-20">
+          <div className="home-hero-copy relative z-10">
+            <div className="home-eyebrow"><span className="home-eyebrow-mark" /> CHANDIGARH UNIVERSITY · LOST & FOUND</div>
+            <h1 className="mt-7 max-w-2xl text-balance text-[2.8rem] font-extrabold leading-[0.99] tracking-[-0.065em] text-foreground sm:text-6xl lg:text-[4.55rem]">
+              Lost on campus?
+              <span className="home-headline-accent mt-2 block">Let's bring it back.</span>
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">Campus life moves fast. CampusFind brings lost and found reports into one organised place, so students can search clearly, share useful details, and reconnect belongings with their owners.</p>
+            <p className="mt-6 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
+              The campus moves quickly. Your belongings shouldn't disappear into group chats and guesswork. Report an item, search what's been found, and take the next step with confidence.
+            </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to="/report" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground shadow-md shadow-primary/15 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">Report an item <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" /></Link>
-              <Link to="/browse" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white/80 px-5 py-3 text-sm font-extrabold text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white">Explore the board <ArrowUpRight size={17} /></Link>
+              <Link to="/browse" className="home-primary-cta group inline-flex min-h-14 items-center justify-center gap-3 px-6 py-3.5 text-sm font-bold text-white transition">
+                Find an item <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+              </Link>
+              <Link to="/report" className="home-secondary-cta inline-flex min-h-14 items-center justify-center gap-3 px-6 py-3.5 text-sm font-bold text-foreground transition">
+                Report lost or found <ArrowUpRight size={17} />
+              </Link>
             </div>
-            <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 text-xs font-bold text-muted-foreground sm:text-sm">
-              <span className="inline-flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-700" /> Built around safer returns</span>
-              <span className="inline-flex items-center gap-2"><LockKeyhole size={15} className="text-emerald-700" /> Student-focused privacy</span>
+            <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-5 text-xs font-semibold text-muted-foreground sm:text-sm">
+              <span className="inline-flex items-center gap-2"><LockKeyhole size={16} className="text-primary" /> Private student details</span>
+              <span className="inline-flex items-center gap-2"><ShieldCheck size={16} className="text-primary" /> Verify before handoff</span>
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[570px] lg:ml-auto">
-            <div className="absolute -right-5 -top-5 size-28 rounded-full bg-emerald-200/70 blur-3xl" />
-            <div className="absolute -bottom-5 -left-5 size-32 rounded-full bg-blue-200/70 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white p-2 shadow-[0_35px_100px_-45px_oklch(0.20_0.05_253_/_0.55)] sm:p-3">
-              <div className="relative min-h-[390px] overflow-hidden rounded-[1.45rem] bg-primary sm:min-h-[475px]">
-                <img src={hero} alt="A wallet and student ID left on a campus bench" width={1600} height={1008} fetchPriority="high" className="absolute inset-0 h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/20 to-primary/10" />
-                <div className="absolute left-5 right-5 top-5 flex items-start justify-between gap-4 sm:left-7 sm:right-7 sm:top-7">
-                  <div className="rounded-full border border-white/25 bg-primary/25 px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-[0.15em] text-white backdrop-blur-md">CampusFind · CU</div>
-                  <div className="grid size-11 place-items-center rounded-2xl border border-white/25 bg-white/15 text-white backdrop-blur-md"><Sparkles size={20} /></div>
+          <div className="home-hero-visual relative mx-auto w-full max-w-[640px] lg:ml-auto">
+            <div className="home-image-frame relative overflow-hidden">
+              <img src={hero} alt="A wallet and student ID left on a campus bench" width={1600} height={1008} fetchPriority="high" className="home-image h-full w-full object-cover" />
+              <div className="home-image-caption absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-4 p-5 text-white sm:p-7">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">The campus return desk</p>
+                  <p className="mt-2 max-w-sm text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">A lost item is not a lost cause.</p>
                 </div>
-                <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7">
-                  <p className="kicker text-white/70">A clearer way to reconnect</p>
-                  <h2 className="mt-2 max-w-sm text-3xl font-extrabold leading-tight text-white sm:text-4xl">From lost to found, one step at a time.</h2>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur"><Search size={14} /> Search reports</span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white backdrop-blur"><BellRing size={14} /> Match alerts</span>
-                  </div>
-                </div>
+                <span className="home-photo-stamp">CU<br/>01</span>
               </div>
             </div>
-            <div className="surface-card absolute -bottom-7 left-4 right-4 rounded-2xl p-4 sm:-left-8 sm:right-12 sm:p-5">
-              <div className="flex items-center gap-3">
-                <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-800"><BadgeCheck size={22} /></div>
-                <div className="min-w-0 flex-1"><p className="text-sm font-extrabold text-foreground">A more thoughtful return</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Compare details privately. A match is a starting point, not proof of ownership.</p></div>
-                <Check size={18} className="shrink-0 text-emerald-700" />
-              </div>
+            <div className="home-image-note">
+              <span className="home-note-icon"><Check size={17} strokeWidth={2.5} /></span>
+              <span><strong>Made for campus life.</strong> One place to report, search and reconnect.</span>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-y border-border/80 bg-white/75">
-        <div className="mx-auto grid max-w-7xl gap-4 px-5 py-6 sm:px-8 md:grid-cols-3 md:gap-8">
-          {assurances.map((item, index) => <div key={item} className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">{index === 0 ? <Search size={17} /> : index === 1 ? <LockKeyhole size={17} /> : <ShieldCheck size={17} />}</span><p className="text-sm font-extrabold text-foreground">{item}</p></div>)}
+      <section aria-label="How CampusFind works" className="home-process-band">
+        <div className="mx-auto grid max-w-7xl gap-0 px-5 sm:px-8 md:grid-cols-3">
+          {steps.map(({ number, title, description, icon: Icon }) => (
+            <article key={number} className="home-process-step">
+              <div className="flex items-center justify-between gap-4">
+                <span className="home-step-number">{number}</span>
+                <Icon size={20} strokeWidth={1.8} className="text-primary" />
+              </div>
+              <h2 className="mt-5 text-xl font-bold tracking-tight text-foreground">{title}</h2>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl"><p className="kicker text-emerald-800">Simple by design</p><h2 className="mt-4 text-3xl font-extrabold leading-tight text-foreground sm:text-5xl">Less searching in circles. More chances of a return.</h2><p className="mt-4 max-w-xl leading-7 text-muted-foreground">A clear journey from the first report to a safer handoff—without chasing information across scattered messages.</p></div>
-          <Link to="/how-it-works" className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl px-3 py-2 text-sm font-extrabold text-primary transition hover:bg-secondary md:self-auto">See how it works <ArrowUpRight size={17} /></Link>
-        </div>
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {steps.map(({ number, title, description, icon: Icon }) => <article key={number} className="group rounded-3xl border border-border bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-900/20 hover:shadow-xl hover:shadow-primary/5 sm:p-8"><div className="flex items-center justify-between"><span className="text-xs font-extrabold tracking-[0.18em] text-muted-foreground/70">{number} / 03</span><span className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary transition group-hover:bg-emerald-100 group-hover:text-emerald-900"><Icon size={22} /></span></div><h3 className="mt-8 text-xl font-extrabold tracking-tight text-foreground">{title}</h3><p className="mt-3 leading-7 text-muted-foreground">{description}</p></article>)}
-        </div>
-      </section>
-
-      <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
-          <div className="max-w-xl">
-            <p className="kicker text-emerald-800">Made for campus life</p>
-            <h2 className="mt-4 text-3xl font-extrabold leading-tight text-foreground sm:text-4xl">Good returns begin with clear information.</h2>
-            <p className="mt-4 leading-7 text-muted-foreground">CampusFind gives students one organised flow to report an item, search existing reports, and compare details before arranging a handoff.</p>
-            <Link to="/browse" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90">Explore campus reports <ArrowRight size={16} /></Link>
+      <section className="home-trust-section">
+        <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+          <div>
+            <p className="home-section-label">A better way to look after your things</p>
+            <h2 className="mt-4 max-w-xl text-3xl font-extrabold leading-[1.05] tracking-[-0.045em] text-foreground sm:text-5xl">
+              Less noise.
+              <span className="block text-primary">More found.</span>
+            </h2>
+            <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
+              CampusFind turns scattered messages into clear, searchable reports. You stay in control of the details you share and the proof you keep private.
+            </p>
+            <Link to="/how-it-works" className="home-text-link mt-7 inline-flex items-center gap-2 text-sm font-bold text-primary">
+              See how it works <ArrowUpRight size={17} />
+            </Link>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              { number: "01", title: "Organised reports", description: "Search by item, type, category and location.", icon: Search },
-              { number: "02", title: "Useful context", description: "Share the details that help others recognise an item.", icon: MapPin },
-              { number: "03", title: "Safer handoffs", description: "Keep one identifying detail private until verification.", icon: ShieldCheck },
-            ].map(({ number, title, description, icon: Icon }) => (
-              <article key={number} className="group rounded-2xl border border-border bg-background p-5 transition duration-200 hover:-translate-y-1 hover:border-emerald-900/20 hover:bg-white hover:shadow-xl hover:shadow-primary/5 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold tracking-[0.16em] text-muted-foreground/70">{number}</span>
-                  <span className="grid size-10 place-items-center rounded-xl bg-white text-primary shadow-sm transition group-hover:bg-emerald-100 group-hover:text-emerald-900"><Icon size={19} /></span>
-                </div>
-                <h3 className="mt-7 text-base font-extrabold tracking-tight text-foreground">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-              </article>
-            ))}
+          <div className="home-principles">
+            <article className="home-principle-row"><span className="home-principle-number">01</span><div><h3 className="font-bold text-foreground">A focused campus board</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Search by item, category, report type and campus location.</p></div></article>
+            <article className="home-principle-row"><span className="home-principle-number">02</span><div><h3 className="font-bold text-foreground">Details that stay yours</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Keep a unique ownership detail private until you need to verify a claim.</p></div></article>
+            <article className="home-principle-row"><span className="home-principle-number">03</span><div><h3 className="font-bold text-foreground">A more considered handoff</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">Use a possible match as a lead, then verify before returning an item.</p></div></article>
           </div>
         </div>
       </section>
 
-      <section className="px-5 pb-20 sm:px-8 sm:pb-28">
-        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-ink px-6 py-10 text-ink-foreground sm:px-12 sm:py-14 lg:px-16"><div className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-emerald-300/15 blur-3xl" /><div className="relative grid gap-8 md:grid-cols-[1fr_auto] md:items-center"><div className="max-w-2xl"><p className="kicker text-emerald-200">A better way to bring things home</p><h2 className="mt-4 text-3xl font-extrabold leading-tight text-white sm:text-5xl">That missing item could be one report away.</h2><p className="mt-4 max-w-xl leading-7 text-white/70">Add what you know, browse what has been reported, and help make campus returns a little easier.</p></div><div className="flex flex-wrap gap-3"><Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-emerald-300 px-5 py-3 text-sm font-extrabold text-primary transition hover:bg-emerald-200">Report an item <ArrowRight size={17} /></Link><Link to="/browse" className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-white/10">Browse board</Link></div></div></div>
+      <section className="home-final-cta px-5 py-14 sm:px-8 sm:py-20">
+        <div className="mx-auto grid max-w-7xl gap-7 bg-ink px-6 py-9 text-white sm:px-10 sm:py-12 lg:grid-cols-[1fr_auto] lg:items-center lg:px-14">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Your next step starts here</p>
+            <h2 className="mt-4 max-w-2xl text-3xl font-extrabold leading-tight tracking-[-0.04em] sm:text-4xl">Something missing? Start with the board.</h2>
+            <p className="mt-3 max-w-xl text-sm leading-7 text-white/70">Search recent reports or add a clear report of your own. Every useful detail helps.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/browse" className="home-final-primary inline-flex min-h-12 items-center justify-center gap-2 px-5 py-3 text-sm font-bold text-white transition">Browse items <ArrowRight size={17} /></Link>
+            <Link to="/report" className="home-final-secondary inline-flex min-h-12 items-center justify-center gap-2 border border-white/25 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10">Make a report</Link>
+          </div>
+        </div>
       </section>
     </Page>
   );
