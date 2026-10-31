@@ -78,7 +78,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "CampusFind" },
       { property: "og:description", content: "CampusFind — smart campus lost & found" },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://campusfind-fs6c.onrender.com/og-campusfind.svg" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://campusfind-fs6c.onrender.com/og-campusfind.svg" },
     ],
     links: [
       {
