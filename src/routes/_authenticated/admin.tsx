@@ -594,7 +594,7 @@ function AdminPage() {
       const { error: updateError } = await supabase.rpc("admin_update_item_moderation", {
         p_item_id: report.id,
         p_flag: flag,
-        p_note: note || undefined,
+        ...(note ? { p_note: note } : {}),
       });
       if (updateError) throw updateError;
       const moderatedAt = new Date().toISOString();
@@ -662,8 +662,8 @@ function AdminPage() {
       const { error: updateError } = await supabase.rpc("admin_review_item_claim", {
         p_claim_id: claim.id,
         p_status: status,
-        p_admin_note: adminNote || undefined,
-        p_handover_code: status === "completed" ? handoverCode : undefined,
+        ...(adminNote ? { p_admin_note: adminNote } : {}),
+        ...(status === "completed" ? { p_handover_code: handoverCode } : {}),
       });
       if (updateError) throw updateError;
       setClaimDrafts((current) => ({ ...current, [claim.id]: "" }));
