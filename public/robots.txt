@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /auth
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /browse
+Disallow: /report
+Disallow: /my-reports
+Disallow: /reset-password
 
-Sitemap: https://campusfind-uir0.onrender.com/sitemap.xml
+Sitemap: https://campusfind-fs6c.onrender.com/sitemap.xml
