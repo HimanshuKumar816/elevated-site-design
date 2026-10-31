@@ -1,12 +1,30 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isEligibleForMatching } from "./matching.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const allowedOrigins = new Set([
+  "https://campusfind-uir0.onrender.com",
+  "https://campusfind-fs6c.onrender.com",
+  "http://localhost:5173",
+  "http://localhost:8080",
+]);
 
-type Item = { id: string; user_id: string; type: "Lost" | "Found"; name: string; category: string; location: string; note: string; item_date?: string; brand?: string; color?: string; model?: string; image_path?: string | null };
+function corsHeaders(origin: string | null): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Max-Age": "600",
+    "Vary": "Origin",
+  };
+  if (origin && allowedOrigins.has(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
+}
+
+async function hashRateLimitKey(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+type Item = { id: string; user_id: string; type: "Lost" | "Found"; name: string; category: string; location: string; note: string; item_date?: string; brand?: string; color?: string; model?: string; image_path?: string | null; report_status: string; moderation_flag: string };
 
 function similarity(a: string, b: string) {
   const words = (value: string) => new Set(value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((word) => word.length > 1));
@@ -32,35 +50,92 @@ function matchScore(a: Item, b: Item) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (request.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders });
+  const origin = request.headers.get("origin");
+  if (origin && !allowedOrigins.has(origin)) {
+    return Response.json({ error: "Origin not allowed" }, { status: 403 });
+  }
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (request.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders(origin) });
 
   const authHeader = request.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return Response.json({ error: "Sign in required" }, { status: 401, headers: corsHeaders });
+  if (!authHeader?.startsWith("Bearer ")) return Response.json({ error: "Sign in required" }, { status: 401, headers: corsHeaders(origin) });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !anonKey || !serviceKey) return Response.json({ error: "Server configuration incomplete" }, { status: 500, headers: corsHeaders });
+  if (!supabaseUrl || !anonKey || !serviceKey) return Response.json({ error: "Server configuration incomplete" }, { status: 500, headers: corsHeaders(origin) });
 
   const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
   const { data: authData, error: authError } = await authClient.auth.getUser();
-  if (authError || !authData.user) return Response.json({ error: "Invalid session" }, { status: 401, headers: corsHeaders });
+  if (authError || !authData.user) return Response.json({ error: "Invalid session" }, { status: 401, headers: corsHeaders(origin) });
+
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const userRateLimitKey = await hashRateLimitKey(`notify-item-matches:user:${authData.user.id}`);
+  const { data: userRateAllowed, error: userRateError } = await admin.rpc("consume_edge_rate_limit", {
+    p_key_hash: userRateLimitKey,
+    p_window_seconds: 60,
+    p_max_requests: 10,
+  });
+  if (userRateError) {
+    console.error("[item matches] User rate-limit check failed", { code: userRateError.code });
+    return Response.json({ error: "Matching service is temporarily unavailable." }, { status: 503, headers: corsHeaders(origin) });
+  }
+  if (userRateAllowed !== true) {
+    return Response.json({ error: "Too many match requests. Please wait a minute and try again." }, { status: 429, headers: corsHeaders(origin) });
+  }
 
   let itemId = "";
   try {
-    const body = await request.json();
+    const contentLength = Number(request.headers.get("content-length") ?? "0");
+    if (Number.isFinite(contentLength) && contentLength > 2_048) {
+      return Response.json({ error: "Request is too large." }, { status: 413, headers: corsHeaders(origin) });
+    }
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 2_048) {
+      return Response.json({ error: "Request is too large." }, { status: 413, headers: corsHeaders(origin) });
+    }
+    const body = JSON.parse(rawBody) as { item_id?: unknown };
     itemId = typeof body.item_id === "string" ? body.item_id : "";
   } catch {
-    return Response.json({ error: "Invalid request" }, { status: 400, headers: corsHeaders });
+    return Response.json({ error: "Invalid request" }, { status: 400, headers: corsHeaders(origin) });
   }
-  if (!itemId) return Response.json({ error: "Item ID required" }, { status: 400, headers: corsHeaders });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId)) {
+    return Response.json({ error: "A valid report ID is required." }, { status: 400, headers: corsHeaders(origin) });
+  }
 
-  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-  const { data: item, error: itemError } = await admin.from("items").select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path").eq("id", itemId).single();
-  if (itemError || !item || item.user_id !== authData.user.id) return Response.json({ error: "Report not found" }, { status: 404, headers: corsHeaders });
+  const { data: item, error: itemError } = await admin.from("items").select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path,report_status,moderation_flag").eq("id", itemId).single();
+  if (itemError || !item || item.user_id !== authData.user.id) return Response.json({ error: "Report not found" }, { status: 404, headers: corsHeaders(origin) });
+  if (!isEligibleForMatching(item)) {
+    return Response.json({ ok: true, matches: 0, skipped: true, reason: "report_not_eligible" }, { headers: corsHeaders(origin) });
+  }
 
-  const { data: candidates } = await admin.from("items").select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path").neq("user_id", item.user_id).eq("type", item.type === "Lost" ? "Found" : "Lost").limit(150);
+  const { data: candidates, error: candidateError } = await admin.from("items")
+    .select("id,user_id,type,name,category,location,note,item_date,brand,color,model,image_path,report_status,moderation_flag")
+    .neq("user_id", item.user_id)
+    .eq("type", item.type === "Lost" ? "Found" : "Lost")
+    .in("report_status", ["new", "under_review", "matched"])
+    .eq("moderation_flag", "none")
+    .order("created_at", { ascending: false })
+    .limit(150);
+  if (candidateError) {
+    console.error("[item matches] Candidate lookup failed", { code: candidateError.code });
+    return Response.json({ error: "Matching service is temporarily unavailable." }, { status: 503, headers: corsHeaders(origin) });
+  }
+
+  const itemRateLimitKey = await hashRateLimitKey(`notify-item-matches:item:${item.id}`);
+  const { data: itemRateAllowed, error: itemRateError } = await admin.rpc("consume_edge_rate_limit", {
+    p_key_hash: itemRateLimitKey,
+    p_window_seconds: 300,
+    p_max_requests: 1,
+  });
+  if (itemRateError) {
+    console.error("[item matches] Item rate-limit check failed", { code: itemRateError.code });
+    return Response.json({ error: "Matching service is temporarily unavailable." }, { status: 503, headers: corsHeaders(origin) });
+  }
+  if (itemRateAllowed !== true) {
+    return Response.json({ error: "This report was checked recently. Please try again later." }, { status: 429, headers: corsHeaders(origin) });
+  }
+
   const candidateItems = (candidates ?? []) as Item[];
   let matches = candidateItems.map((candidate) => ({ item: candidate, score: matchScore(item as Item, candidate) })).filter((entry) => entry.score >= 45).sort((a, b) => b.score - a.score).slice(0, 5);
   let matchingMethod = "text-similarity";
@@ -97,6 +172,7 @@ Deno.serve(async (request) => {
             { role: "user", content: aiContent },
           ],
         }),
+        signal: AbortSignal.timeout(12_000),
       });
       if (aiResponse.ok) {
         const aiBody = await aiResponse.json();
@@ -116,7 +192,7 @@ Deno.serve(async (request) => {
       // Keep the service available with transparent text-similarity fallback.
     }
   }
-  if (matches.length === 0) return Response.json({ ok: true, sms_sent: 0, matches: 0, matching_method: matchingMethod }, { headers: corsHeaders });
+  if (matches.length === 0) return Response.json({ ok: true, sms_sent: 0, matches: 0, matching_method: matchingMethod }, { headers: corsHeaders(origin) });
 
   // Persist each candidate pair once so administrators can review, confirm, or dismiss it.
   // An upsert refreshes the score/reason but omits review_status, preserving prior admin decisions.
@@ -164,7 +240,7 @@ Deno.serve(async (request) => {
   const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN");
   const twilioFrom = Deno.env.get("TWILIO_FROM_NUMBER");
   if (!twilioSid || !twilioToken || !twilioFrom) {
-    return Response.json({ ok: true, sms_sent: 0, matches: matches.length, sms_configured: false }, { headers: corsHeaders });
+    return Response.json({ ok: true, sms_sent: 0, matches: matches.length, sms_configured: false }, { headers: corsHeaders(origin) });
   }
 
   const userIds = [...new Set([item.user_id, ...matches.map((entry) => entry.item.user_id)])];
@@ -187,8 +263,9 @@ Deno.serve(async (request) => {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({ From: twilioFrom, To: to, Body: body }),
+      signal: AbortSignal.timeout(8_000),
     });
     if (response.ok) sent += 1;
   }
-  return Response.json({ ok: true, sms_sent: sent, matches: matches.length, sms_configured: true, matching_method: matchingMethod }, { headers: corsHeaders });
+  return Response.json({ ok: true, sms_sent: sent, matches: matches.length, sms_configured: true, matching_method: matchingMethod }, { headers: corsHeaders(origin) });
 });
