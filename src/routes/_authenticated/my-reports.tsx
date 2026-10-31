@@ -398,6 +398,7 @@ function MyReportsPage() {
                     <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Your private proof</p>
                     <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p>
                   </div>
+                  {claim.status === "approved" && <p className="mt-3 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900">Your approval notification contains a one-time 12-character handover code. Show it to a CampusFind administrator in person when the item is handed over. Do not share it in advance.</p>}
                   {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900">Admin update: {claim.admin_note}</p>}
                   {claim.reviewed_at && <p className="mt-2 text-xs text-muted-foreground">Reviewed {dateLabel(claim.reviewed_at)}</p>}
                 </article>
