@@ -150,6 +150,7 @@ function AdminPage() {
   const [loginEvents, setLoginEvents] = useState<LoginActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState("");
+  const [activityPage, setActivityPage] = useState(1);
   const [matches, setMatches] = useState<ItemMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesError, setMatchesError] = useState("");
@@ -168,6 +169,8 @@ function AdminPage() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
+  const [contactQuery, setContactQuery] = useState("");
+  const [contactPage, setContactPage] = useState(1);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [studentsError, setStudentsError] = useState("");
@@ -285,41 +288,39 @@ function AdminPage() {
     setActivityLoading(true);
     setActivityError("");
     try {
-      const { data: events, error: eventsError } = await supabase
+      const getEventsPage = (offset: number) => supabase
         .from("login_events")
         .select("id,user_id,login_method,logged_in_at")
         .order("logged_in_at", { ascending: false })
-        .limit(50);
-      if (eventsError) throw eventsError;
+        .range(offset, offset + 99);
+      const events: NonNullable<Awaited<ReturnType<typeof getEventsPage>>["data"]> = [];
+      for (let offset = 0; ; offset += 100) {
+        const { data: page, error: eventsError } = await getEventsPage(offset);
+        if (eventsError) throw eventsError;
+        events.push(...(page ?? []));
+        if (!page || page.length < 100) break;
+      }
 
-      const userIds = [...new Set((events ?? []).map((event) => event.user_id))];
+      const userIds = [...new Set(events.map((event) => event.user_id))];
       const profilesById = new Map<string, { full_name: string; uid: string; role: string }>();
-      if (userIds.length) {
+      for (let offset = 0; offset < userIds.length; offset += 100) {
+        const ids = userIds.slice(offset, offset + 100);
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id,uid,full_name,role")
-          .in("id", userIds);
+          .in("id", ids);
         if (profilesError) throw profilesError;
         for (const profile of profiles ?? []) {
-          profilesById.set(profile.id, {
-            full_name: profile.full_name,
-            uid: profile.uid,
-            role: profile.role,
-          });
+          profilesById.set(profile.id, { full_name: profile.full_name, uid: profile.uid, role: profile.role });
         }
       }
 
-      const activity = (events ?? []).map((event) => {
+      const activity = events.map((event) => {
         const profile = profilesById.get(event.user_id);
-        return {
-          ...event,
-          full_name: profile?.full_name ?? null,
-          uid: profile?.uid ?? null,
-          role: profile?.role ?? null,
-        };
+        return { ...event, full_name: profile?.full_name ?? null, uid: profile?.uid ?? null, role: profile?.role ?? null };
       });
-      // Hide any historical administrator events from before admin logging was disabled.
       setLoginEvents(activity.filter((event) => event.role === "student"));
+      setActivityPage(1);
     } catch {
       setActivityError("We couldn't load recent sign-ins. Please retry.");
     } finally {
@@ -520,13 +521,20 @@ function AdminPage() {
     setContactLoading(true);
     setContactError("");
     try {
-      const { data, error: messagesError } = await supabase
+      const getMessagesPage = (offset: number) => supabase
         .from("contact_messages")
         .select("id,name,email,subject,message,created_at")
         .order("created_at", { ascending: false })
-        .limit(50);
-      if (messagesError) throw messagesError;
-      setContactMessages((data ?? []) as ContactMessage[]);
+        .range(offset, offset + 99);
+      const messages: NonNullable<Awaited<ReturnType<typeof getMessagesPage>>["data"]> = [];
+      for (let offset = 0; ; offset += 100) {
+        const { data: page, error: messagesError } = await getMessagesPage(offset);
+        if (messagesError) throw messagesError;
+        messages.push(...(page ?? []));
+        if (!page || page.length < 100) break;
+      }
+      setContactMessages(messages as ContactMessage[]);
+      setContactPage(1);
     } catch {
       setContactError("We couldn't load contact messages. Please retry.");
     } finally {
@@ -696,7 +704,17 @@ function AdminPage() {
   }, [students, studentQuery]);
   const studentPageCount = Math.max(1, Math.ceil(visibleStudents.length / 25));
   const pageStudents = visibleStudents.slice((studentPage - 1) * 25, studentPage * 25);
+  const activityPageCount = Math.max(1, Math.ceil(loginEvents.length / 25));
+  const pageLoginEvents = loginEvents.slice((activityPage - 1) * 25, activityPage * 25);
+  const filteredContactMessages = useMemo(() => {
+    const query = contactQuery.trim().toLowerCase();
+    if (!query) return contactMessages;
+    return contactMessages.filter((message) => [message.name, message.email, message.subject, message.message].some((value) => value.toLowerCase().includes(query)));
+  }, [contactMessages, contactQuery]);
+  const contactPageCount = Math.max(1, Math.ceil(filteredContactMessages.length / 25));
+  const pageContactMessages = filteredContactMessages.slice((contactPage - 1) * 25, contactPage * 25);
   useEffect(() => { setStudentPage(1); }, [studentQuery]);
+  useEffect(() => { setContactPage(1); }, [contactQuery]);
 
   const renderReportCard = (report: Row) => {
     const selectedFlag = moderationFlagDrafts[report.id] ?? report.moderation_flag;
@@ -1017,7 +1035,7 @@ function AdminPage() {
             <div>
               <p className="kicker text-emerald-800">Account activity</p>
               <h2 className="mt-2 text-2xl font-extrabold">Recent sign-ins</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Latest 50 successful student sign-ins. Administrator sign-ins are not recorded in this list.</p>
+              <p className="mt-1 text-sm text-muted-foreground">All recorded successful student sign-ins. Administrator sign-ins are kept separate.</p>
             </div>
             <button type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {activityLoading ? "Refreshing…" : "Refresh activity"}
@@ -1039,7 +1057,7 @@ function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loginEvents.map((event) => (
+                  {pageLoginEvents.map((event) => (
                     <tr key={event.id} className="border-t border-border align-top">
                       <td className="px-5 py-4 sm:px-6">
                         <p className="font-extrabold">{event.full_name ?? "Unknown account"}</p>
@@ -1053,6 +1071,7 @@ function AdminPage() {
               </table>
             </div>
           )}
+          {!activityLoading && loginEvents.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {activityPage} of {activityPageCount} · {loginEvents.length} sign-ins</span><div className="flex gap-2"><button type="button" disabled={activityPage <= 1} onClick={() => setActivityPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={activityPage >= activityPageCount} onClick={() => setActivityPage((page) => Math.min(activityPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
         </section>
 
         {renderMatchesSection}
@@ -1099,7 +1118,8 @@ function AdminPage() {
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Contact inbox</p>
-              <h2 className="mt-2 text-2xl font-extrabold">Messages from the website</h2><p className="mt-1 text-xs text-muted-foreground">Latest 50 messages.</p>
+              <h2 className="mt-2 text-2xl font-extrabold">Messages from the website</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Search and review all messages in the administrator inbox.</p>
               <p className="mt-1 text-sm text-muted-foreground">Only authenticated administrators can read these messages.</p>
             </div>
             <button type="button" onClick={() => void loadContactMessages()} disabled={contactLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
@@ -1107,13 +1127,14 @@ function AdminPage() {
             </button>
           </div>
           {contactError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{contactError}</p>}
+          <div className="border-t border-border p-4 sm:p-5"><label className="block max-w-xl text-xs font-extrabold text-muted-foreground">SEARCH MESSAGES<input value={contactQuery} onChange={(event) => setContactQuery(event.target.value)} placeholder="Search name, email, subject or message…" className={input + " mt-2 w-full"} /></label></div>
           {contactLoading ? (
             <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading contact messages…</p>
-          ) : contactMessages.length === 0 ? (
-            <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No contact messages have been received yet.</p>
+          ) : filteredContactMessages.length === 0 ? (
+            <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">{contactMessages.length === 0 ? "No contact messages have been received yet." : "No messages match this search."}</p>
           ) : (
             <div className="grid gap-3 border-t border-border p-4 sm:p-5">
-              {contactMessages.map((message) => (
+              {pageContactMessages.map((message) => (
                 <article key={message.id} className="interactive-card rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -1127,6 +1148,7 @@ function AdminPage() {
               ))}
             </div>
           )}
+          {!contactLoading && filteredContactMessages.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {contactPage} of {contactPageCount} · {filteredContactMessages.length} messages</span><div className="flex gap-2"><button type="button" disabled={contactPage <= 1} onClick={() => setContactPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={contactPage >= contactPageCount} onClick={() => setContactPage((page) => Math.min(contactPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
         </section>
 
 
