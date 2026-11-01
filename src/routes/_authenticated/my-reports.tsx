@@ -346,6 +346,9 @@ function MyReportsPage() {
                     <div className="min-w-0">
                       <h3 className="text-sm font-extrabold text-foreground">{notification.title}</h3>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">{notification.body}</p>
+                      {(notification.title.toLowerCase().includes("support") || notification.body.toLowerCase().includes("support")) && (
+                        <Link to="/contact" className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-primary hover:underline">Open Help &amp; Support <ArrowUpRight size={13} /></Link>
+                      )}
                       <time dateTime={notification.created_at} className="mt-2 block text-[11px] text-muted-foreground">{dateLabel(notification.created_at)}</time>
                     </div>
                   </div>
@@ -422,11 +425,17 @@ function MyReportsPage() {
                     </div>
                     <span className={`cf-claim-pill cf-claim-${claim.status}`}>{claimLabels[claim.status]}</span>
                   </div>
-                  <div className="mt-4 rounded-lg bg-secondary/60 p-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">{claim.source_match_id ? "AI match handover record" : "Your private proof"}</p>
-                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p>
-                    {claim.source_match_id && <p className="mt-2 text-xs leading-5 text-muted-foreground">An administrator approved the AI-suggested pair. Your one-time handover code is in the approval notification. Show it only during the physical handover.</p>}
-                  </div>
+                  {claim.source_match_id ? (
+                    <div className="mt-4 rounded-lg border border-border bg-secondary/60 p-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">AI-assisted return</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground">This claim is linked to an internal match record. The private matching proof is kept out of the student view.</p>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-lg bg-secondary/60 p-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Your private proof</p>
+                      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p>
+                    </div>
+                  )}
                   {claim.status === "approved" && <p className="mt-3 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900">Your approval notification contains a one-time 12-character handover code. Show it to a CampusFind administrator in person when the item is handed over. Do not share it in advance.</p>}
                   {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900">Admin update: {claim.admin_note}</p>}
                   {claim.reviewed_at && <p className="mt-2 text-xs text-muted-foreground">Reviewed {dateLabel(claim.reviewed_at)}</p>}

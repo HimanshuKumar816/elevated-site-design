@@ -108,6 +108,26 @@ function ContactPage() {
 
   useEffect(() => {
     void loadTickets();
+
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadTickets();
+    };
+    const interval = window.setInterval(refresh, 25_000);
+    document.addEventListener("visibilitychange", refresh);
+
+    // Realtime gives immediate updates where the project has the tables in its
+    // publication. Polling remains as a fallback if Realtime is not enabled.
+    const channel = supabase
+      .channel("campusfind-support-student")
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_messages" }, refresh)
+      .subscribe();
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+      void supabase.removeChannel(channel);
+    };
   }, [loadTickets]);
 
   async function submitTicket(event: FormEvent<HTMLFormElement>) {
@@ -137,8 +157,13 @@ function ContactPage() {
       setMessage("");
       setNotice("Your message has been sent. The administrator team can reply here.");
       await loadTickets();
-    } catch {
-      setError("We couldn't send your message. Please try again.");
+    } catch (cause) {
+      const message = cause && typeof cause === "object" && "message" in cause
+        ? String((cause as { message?: unknown }).message ?? "")
+        : "";
+      setError(message.includes("SUPPORT_RATE_LIMITED")
+        ? "You've sent several support messages recently. Please wait a little and try again."
+        : "We couldn't send your message. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -162,8 +187,13 @@ function ContactPage() {
       setReplyDrafts((current) => ({ ...current, [ticketId]: "" }));
       setNotice("Your reply has been sent.");
       await loadTickets();
-    } catch {
-      setError("We couldn't send your reply. Please try again.");
+    } catch (cause) {
+      const message = cause && typeof cause === "object" && "message" in cause
+        ? String((cause as { message?: unknown }).message ?? "")
+        : "";
+      setError(message.includes("SUPPORT_RATE_LIMITED")
+        ? "You've sent several support messages recently. Please wait a little and try again."
+        : "We couldn't send your reply. Please try again.");
     } finally {
       setBusyTicket(null);
     }

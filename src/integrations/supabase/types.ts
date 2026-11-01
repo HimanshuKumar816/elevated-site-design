@@ -631,6 +631,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      admin_list_support_conversations: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          id: string
+          messages: Json
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+          user_name: string | null
+          user_uid: string | null
+        }[]
+      }
       create_support_ticket: {
         Args: { p_message: string; p_subject: string }
         Returns: string

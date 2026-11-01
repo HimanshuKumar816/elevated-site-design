@@ -6,7 +6,6 @@ import { CATEGORIES } from "@/lib/items";
 import { isValidIsoDate } from "@/lib/date";
 import { compressItemImage, validateItemImage } from "@/lib/item-image";
 import { CAMPUS_LOCATIONS, buildCampusLocation, type CampusLocation } from "@/lib/campus-locations";
-import { buildNotificationPreferencePayload, validateNotificationPreference } from "@/lib/notification-preferences";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/report")({
@@ -34,11 +33,6 @@ function Report() {
   const [matchingDetail, setMatchingDetail] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [smsEnabled, setSmsEnabled] = useState(false);
-  const [preferencesLoading, setPreferencesLoading] = useState(true);
-  const [preferencesAvailable, setPreferencesAvailable] = useState(true);
-  const [preferencesDirty, setPreferencesDirty] = useState(false);
   const [accountState, setAccountState] = useState<"checking" | "signed-in" | "signed-out" | "unavailable">("checking");
 
   useEffect(() => {
@@ -60,39 +54,6 @@ function Report() {
     if (!imagePreview) return;
     return () => URL.revokeObjectURL(imagePreview);
   }, [imagePreview]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadNotificationPreferences() {
-      try {
-        const { data: authData, error: authError } = await supabase.auth.getUser();
-        if (authError || !authData.user) throw new Error("Could not read the current user.");
-
-        const { data, error: preferencesError } = await supabase
-          .from("notification_preferences")
-          .select("phone_number,sms_notifications_enabled")
-          .eq("user_id", authData.user.id)
-          .maybeSingle();
-        if (preferencesError) throw preferencesError;
-
-        if (!cancelled && data) {
-          setPhoneNumber(data.phone_number ?? "");
-          setSmsEnabled(Boolean(data.sms_notifications_enabled));
-        }
-      } catch {
-        // SMS preferences are optional; this must not block basic item reporting.
-        if (!cancelled) setPreferencesAvailable(false);
-      } finally {
-        if (!cancelled) setPreferencesLoading(false);
-      }
-    }
-
-    void loadNotificationPreferences();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     return () => {
@@ -164,9 +125,6 @@ function Report() {
     const color = String(form.get("color") ?? "").trim();
     const model = String(form.get("model") ?? "").trim();
     const itemTime = String(form.get("item_time") ?? "");
-    const submittedPhoneNumber = phoneNumber.trim();
-    const submittedSmsEnabled = smsEnabled;
-
     if (!name || name.length > 120) {
       setError("Enter an item name (up to 120 characters).");
       setBusy(false);
@@ -192,14 +150,6 @@ function Report() {
       setBusy(false);
       return;
     }
-    if (preferencesDirty && preferencesAvailable) {
-      const preferenceError = validateNotificationPreference(submittedPhoneNumber, submittedSmsEnabled);
-      if (preferenceError) {
-        setError(preferenceError);
-        setBusy(false);
-        return;
-      }
-    }
     if (note.length > 500 || brand.length > 80 || color.length > 50 || model.length > 80) {
       setError("Keep the description within 500 characters, brand/model within 80, and colour within 50.");
       setBusy(false);
@@ -216,16 +166,6 @@ function Report() {
       if (authError || !u.user) {
         setError("Please sign in again.");
         return;
-      }
-      if (preferencesDirty && preferencesAvailable) {
-        const { error: preferenceSaveError } = await supabase
-          .from("notification_preferences")
-          .upsert(buildNotificationPreferencePayload(u.user.id, submittedPhoneNumber, submittedSmsEnabled));
-        if (preferenceSaveError) {
-          setError("We couldn't update your SMS alert preference. Please try again.");
-          return;
-        }
-        setPreferencesDirty(false);
       }
       let imagePath: string | null = null;
       if (imageFile) {
@@ -410,7 +350,15 @@ function Report() {
                 <label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Drop an image here or choose a file · JPG, PNG or WebP · 5 MB max</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>
                 {imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-muted-foreground">{imageFile ? `${imageFile.name} · ${Math.max(1, Math.round(imageFile.size / 1024))} KB` : "Photo selected"} · Choose another file above to replace</p><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div></div>}
               </div>
-              <div className="mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><BellRing size={18} /></span><div><p className="text-sm font-extrabold text-foreground">SMS match alerts <span className="font-semibold text-muted-foreground">(optional)</span></p><p className="mt-1 text-xs leading-5 text-muted-foreground">Your number is stored privately and only used for alerts when you explicitly consent.</p></div></div>{preferencesLoading && <p className="mt-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}{!preferencesLoading && !preferencesAvailable && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">SMS settings are temporarily unavailable. You can still submit this report; saved preferences haven't been changed.</p>}<label className="mt-4 block text-sm font-extrabold text-foreground">Mobile number<input name="phone_number" type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => { setPhoneNumber(e.target.value); setPreferencesDirty(true); }} disabled={preferencesLoading || !preferencesAvailable} placeholder="+919876543210" className={field} /></label><label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white p-3 text-sm"><input type="checkbox" name="sms_notifications_enabled" checked={smsEnabled} onChange={(e) => { const enabled = e.target.checked; setSmsEnabled(enabled); setPreferencesDirty(true); if (!enabled) setPhoneNumber(""); }} disabled={preferencesLoading || !preferencesAvailable} className="mt-1 size-4 accent-primary" /><span><span className="block font-extrabold text-foreground">I consent to SMS alerts</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">You can opt out by unchecking this at any time.</span></span></label></div>
+              <div className="mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><BellRing size={18} /></span>
+                  <div>
+                    <p className="text-sm font-extrabold text-foreground">In-app match updates</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Match, claim and report-status updates appear in My Reports → Notifications. SMS delivery is not enabled, so CampusFind does not collect a mobile number for alerts.</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div data-report-panel="4" hidden={reportStep !== 4} className="cf-report-panel mt-6">

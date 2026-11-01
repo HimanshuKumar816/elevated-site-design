@@ -551,6 +551,23 @@ function AdminPage() {
     setContactLoading(true);
     setContactError("");
     try {
+      // The admin-only RPC reads the private support thread under an explicit
+      // role check. Fall back to the direct RLS-protected queries until its
+      // migration has been applied to an existing environment.
+      const { data: inboxRows, error: inboxError } = await supabase.rpc("admin_list_support_conversations", {
+        p_limit: 500,
+      });
+      if (!inboxError) {
+        setContactMessages((inboxRows ?? []).map((ticket) => ({
+          ...ticket,
+          status: ticket.status as ContactMessage["status"],
+          messages: Array.isArray(ticket.messages) ? ticket.messages as unknown as SupportMessage[] : [],
+        })));
+        setContactPage(1);
+        return;
+      }
+      if (inboxError.code !== "PGRST202" && inboxError.code !== "42883") throw inboxError;
+
       const { data: ticketRows, error: ticketsError } = await supabase
         .from("support_tickets")
         .select("id,user_id,subject,status,created_at,updated_at")
@@ -577,12 +594,23 @@ function AdminPage() {
         ...tickets.map((ticket) => ticket.user_id),
         ...(messageRows ?? []).map((message) => message.sender_id),
       ])];
-      const { data: profileRows, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id,full_name,uid,role")
-        .in("id", senderIds);
-      if (profilesError) throw profilesError;
-      const profilesById = new Map((profileRows ?? []).map((profile) => [profile.id, profile]));
+      let profileRows: Array<{ id: string; full_name: string | null; uid: string | null; role: string | null }> = [];
+      if (senderIds.length) {
+        const { data, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id,full_name,uid,role")
+          .in("id", senderIds);
+        if (profilesError) {
+          // Profile labels are useful, but must not make the entire inbox fail.
+          console.warn("[CampusFind] Support inbox profile enrichment failed", {
+            code: profilesError.code,
+            message: profilesError.message,
+          });
+        } else {
+          profileRows = data ?? [];
+        }
+      }
+      const profilesById = new Map(profileRows.map((profile) => [profile.id, profile]));
 
       const messagesByTicket = new Map<string, SupportMessage[]>();
       for (const message of messageRows ?? []) {
@@ -609,8 +637,13 @@ function AdminPage() {
         };
       }));
       setContactPage(1);
-    } catch {
-      setContactError("We couldn't load support conversations. Please retry.");
+    } catch (cause) {
+      const issue = cause && typeof cause === "object" ? cause as { code?: unknown; message?: unknown } : {};
+      const code = typeof issue.code === "string" ? issue.code : "UNKNOWN";
+      const message = typeof issue.message === "string" ? issue.message.slice(0, 220) : "Unexpected database error";
+      console.error("[CampusFind] Support inbox load failed", { code, message });
+      setContactMessages([]);
+      setContactError(`Support inbox error (${code}): ${message}. Check the support database migration and permissions, then refresh.`);
     } finally {
       setContactLoading(false);
     }
@@ -618,6 +651,25 @@ function AdminPage() {
 
   useEffect(() => {
     void loadContactMessages();
+
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadContactMessages();
+    };
+    const interval = window.setInterval(refresh, 25_000);
+    document.addEventListener("visibilitychange", refresh);
+
+    // Realtime is used when enabled; polling is the reliability fallback.
+    const channel = supabase
+      .channel("campusfind-support-admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_messages" }, refresh)
+      .subscribe();
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+      void supabase.removeChannel(channel);
+    };
   }, [loadContactMessages]);
 
   async function sendContactReply(ticket: ContactMessage) {
@@ -1002,7 +1054,7 @@ function AdminPage() {
         <div className="min-w-0">
           <p className="kicker text-emerald-800">AI matching system</p>
           <h2 className="mt-2 text-2xl font-extrabold">Suggested Lost/Found pairs</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">CampusFind compares active opposite-type reports, ranks likely pairs using item details and available photos, and sends each suggestion here for one administrator return approval.</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">CampusFind compares active opposite-type reports using item text and details. Photos are available for administrators to inspect, but the AI service does not receive or analyse images. Each suggestion is shown here for administrator review.</p>
           {aiStatusMessage && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${aiStatus === "ready" ? "bg-emerald-50 text-emerald-900" : aiStatus === "missing" || aiStatus === "unreachable" ? "bg-amber-50 text-amber-950" : "bg-secondary text-muted-foreground"}`}>{aiStatusMessage}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1307,7 +1359,7 @@ function AdminPage() {
           <div className="border-t border-border p-4 sm:p-5"><label className="block max-w-xl text-xs font-extrabold text-muted-foreground">SEARCH CONVERSATIONS<input value={contactQuery} onChange={(event) => setContactQuery(event.target.value)} placeholder="Search student, UID, subject or message…" className={input + " mt-2 w-full"} /></label></div>
           {contactLoading ? (
             <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading support conversations…</p>
-          ) : filteredContactMessages.length === 0 ? (
+          ) : contactError ? null : filteredContactMessages.length === 0 ? (
             <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">{contactMessages.length === 0 ? "No support conversations have been received yet." : "No conversations match this search."}</p>
           ) : (
             <div className="grid gap-3 border-t border-border p-4 sm:p-5">
