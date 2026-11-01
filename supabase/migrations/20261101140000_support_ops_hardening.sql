@@ -7,6 +7,23 @@ GRANT SELECT ON TABLE public.support_tickets, public.support_messages TO authent
 GRANT INSERT ON TABLE public.support_messages TO authenticated;
 GRANT UPDATE (status) ON TABLE public.support_tickets TO authenticated;
 
+-- SMS delivery is not implemented. Remove previously collected phone numbers
+-- and disable SMS preferences now that the app no longer offers SMS alerts.
+DO $
+BEGIN
+  IF to_regclass('public.notification_preferences') IS NOT NULL THEN
+    EXECUTE $cleanup$
+      UPDATE public.notification_preferences
+      SET phone_number = NULL,
+          sms_notifications_enabled = false,
+          updated_at = now()
+      WHERE phone_number IS NOT NULL
+         OR sms_notifications_enabled IS DISTINCT FROM false
+    $cleanup$;
+  END IF;
+END;
+$;
+
 CREATE INDEX IF NOT EXISTS support_tickets_user_updated_at_idx
   ON public.support_tickets (user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS support_messages_ticket_created_at_idx
