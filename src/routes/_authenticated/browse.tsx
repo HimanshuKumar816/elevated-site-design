@@ -382,13 +382,13 @@ function Browse() {
             <div><p className="text-2xl font-extrabold tracking-tight">{lostCount}</p><p className="text-xs font-bold text-muted-foreground">Lost reports loaded</p></div>
           </div>
           <div className="surface-card flex items-center gap-3 rounded-2xl p-4">
-            <span className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-800"><Check size={20} /></span>
+            <span className="cf-success-icon grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-800"><Check size={20} /></span>
             <div><p className="text-2xl font-extrabold tracking-tight">{foundCount}</p><p className="text-xs font-bold text-muted-foreground">Found reports loaded</p></div>
           </div>
         </div>
 
         {claimSuccess && (
-          <div role="status" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">
+          <div role="status" className="cf-success-surface cf-success-border cf-success-text mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">
             <span>{claimSuccess}</span>
             <Link to="/my-reports" className="underline underline-offset-4">Track your claim</Link>
           </div>

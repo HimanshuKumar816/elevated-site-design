@@ -7,7 +7,7 @@ export async function authenticateCronRequest(
 
   if (!currentSecret) return new Response('Server configuration error', { status: 500 })
 
-  const match = /^Bearer ([^\\s,]+)$/.exec(request.headers.get('authorization') ?? '')
+  const match = /^Bearer ([^\s,]+)$/.exec(request.headers.get('authorization') ?? '')
   const token = match?.[1]
   if (!token) return new Response('Unauthorized', { status: 401 })
 

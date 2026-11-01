@@ -17,6 +17,7 @@ import { recordSuccessfulLogin } from "@/lib/login-events";
 import { isValidUid, normalizeUid } from "@/lib/uid";
 import { isValidOtp, normalizePhoneNumber } from "@/lib/phone";
 import { GENERIC_SIGNIN_ERROR, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword, validateSignup } from "@/lib/auth-validation";
+import { checkPasswordAgainstBreaches, passwordCheckMessage } from "@/lib/pwned-password";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -89,6 +90,7 @@ function AuthPage() {
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwnedPasswordChecked, setPwnedPasswordChecked] = useState(false);
   const [signupDetails, setSignupDetails] = useState<SignupDetails | null>(null);
 
   function switchMode(nextMode: AuthMode) {
@@ -100,6 +102,7 @@ function AuthPage() {
     setOtp("");
     setPassword("");
     setConfirmPassword("");
+    setPwnedPasswordChecked(false);
     setSignupDetails(null);
     setFullName("");
     setUid("");
@@ -188,6 +191,12 @@ function AuthPage() {
 
       setBusy(true);
       try {
+        const passwordCheck = await checkPasswordAgainstBreaches(result.value.password);
+        if (passwordCheck.status !== "SAFE") {
+          setError(passwordCheckMessage(passwordCheck));
+          return;
+        }
+        setPwnedPasswordChecked(true);
         // Avoid a public UID-existence pre-check. The database unique constraint
         // and signup trigger are authoritative; this prevents account enumeration.
         const details = { uid: result.value.uid, fullName: result.value.fullName };
@@ -275,11 +284,21 @@ function AuthPage() {
           setError("This phone number is already linked to another CampusFind account. Switch to Sign in or use another number.");
           return;
         }
+        if (!pwnedPasswordChecked) {
+          const passwordCheck = await checkPasswordAgainstBreaches(password);
+          if (passwordCheck.status !== "SAFE") {
+            setStep("password");
+            setError(passwordCheckMessage(passwordCheck));
+            return;
+          }
+          setPwnedPasswordChecked(true);
+        }
         const { error: updateError } = await supabase.auth.updateUser({ password });
         if (updateError) {
           // Account is verified and signed in; let the student retry setting a password.
           setPassword("");
           setConfirmPassword("");
+          setPwnedPasswordChecked(false);
           setStep("password");
           setError("Your phone is verified, but we couldn't save your password. Please choose a password again.");
           return;
@@ -320,6 +339,14 @@ function AuthPage() {
     }
     setBusy(true);
     try {
+      if (!pwnedPasswordChecked) {
+        const passwordCheck = await checkPasswordAgainstBreaches(password);
+        if (passwordCheck.status !== "SAFE") {
+          setError(passwordCheckMessage(passwordCheck));
+          return;
+        }
+        setPwnedPasswordChecked(true);
+      }
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
         setError(
@@ -331,6 +358,7 @@ function AuthPage() {
       }
       setPassword("");
       setConfirmPassword("");
+      setPwnedPasswordChecked(false);
       navigate({ to: redirect, replace: true });
     } catch {
       setError("We couldn't save your password. Please try again.");
@@ -350,7 +378,7 @@ function AuthPage() {
   const messages = (
     <>
       {notice && (
-        <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">{notice}</p>
+        <p role="status" className="cf-success-surface cf-success-text mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-bold leading-6 text-emerald-900">{notice}</p>
       )}
       {error && (
         <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm font-bold leading-6 text-destructive">{error}</p>
@@ -362,7 +390,7 @@ function AuthPage() {
     <>
       <label className="mt-4 block text-sm font-extrabold text-foreground">
         Password
-        <input required name="password" type="password" autoComplete={autoComplete} minLength={withConfirm ? PASSWORD_MIN_LENGTH : undefined} maxLength={PASSWORD_MAX_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={withConfirm ? `At least ${PASSWORD_MIN_LENGTH} characters` : "Your password"} className={field} />
+        <input required name="password" type="password" autoComplete={autoComplete} minLength={withConfirm ? PASSWORD_MIN_LENGTH : undefined} maxLength={PASSWORD_MAX_LENGTH} value={password} onChange={(e) => { setPassword(e.target.value); setPwnedPasswordChecked(false); }} placeholder={withConfirm ? `At least ${PASSWORD_MIN_LENGTH} characters` : "Your password"} className={field} />
       </label>
       {withConfirm && (
         <label className="mt-4 block text-sm font-extrabold text-foreground">

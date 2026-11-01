@@ -979,7 +979,7 @@ function AdminPage() {
       )}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${report.type === "Lost" ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-800"}`}>{report.type}</span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${report.type === "Lost" ? "bg-destructive/10 text-destructive" : "cf-found-state bg-emerald-50 text-emerald-800"}`}>{report.type}</span>
           <h3 className="text-lg font-extrabold">{report.name}</h3>
           <span className="text-sm text-muted-foreground">· {report.category}</span>
         </div>
@@ -1061,7 +1061,7 @@ function AdminPage() {
     <div className="rounded-xl border border-border bg-background p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase ${label === "Lost item" ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-800"}`}>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase ${label === "Lost item" ? "bg-destructive/10 text-destructive" : "cf-found-state bg-emerald-50 text-emerald-800"}`}>
           {label === "Lost item" ? "Lost" : "Found"}
         </span>
       </div>
@@ -1094,6 +1094,8 @@ function AdminPage() {
           <h2 className="mt-2 text-2xl font-extrabold">Suggested Lost/Found pairs</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">CampusFind compares active opposite-type reports using item text and details. Photos are available for administrators to inspect, but the AI service does not receive or analyse images. Each suggestion is shown here for administrator review.</p>
           {aiStatusMessage && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${aiStatus === "ready" ? "bg-emerald-50 text-emerald-900" : aiStatus === "missing" || aiStatus === "unreachable" ? "bg-amber-50 text-amber-950" : "bg-secondary text-muted-foreground"}`}>{aiStatusMessage}</p>}
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">CampusFind compares active opposite-type reports, ranks likely pairs using item details and available photos, and sends each suggestion here for one administrator return approval.</p>
+          {aiStatusMessage && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${aiStatus === "ready" ? "cf-success-surface cf-success-text bg-emerald-50 text-emerald-900" : aiStatus === "missing" || aiStatus === "unreachable" ? "bg-amber-50 text-amber-950" : "bg-secondary text-muted-foreground"}`}>{aiStatusMessage}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void testAiEngine()} disabled={aiStatus === "checking"} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
@@ -1117,7 +1119,7 @@ function AdminPage() {
             return (
               <article key={match.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "bg-emerald-50 text-emerald-900" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-amber-50 text-amber-900"}`}>
+                  <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "cf-success-surface cf-success-text bg-emerald-50 text-emerald-900" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-amber-50 text-amber-900"}`}>
                     {match.review_status === "confirmed" ? "Approved for return" : match.review_status === "rejected" ? "Dismissed" : "Pending review"}
                   </span>
                   <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Detected {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
@@ -1149,7 +1151,7 @@ function AdminPage() {
                   </div>
                 )}
                 {match.review_status === "confirmed" && (
-                  <p className="mt-4 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">Approved for return. CampusFind created the claimant’s handover record and sent a one-time code. Verify that code in the Claims section only when the item is physically handed over.</p>
+                  <p className="cf-success-surface cf-success-border cf-success-text mt-4 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">Approved for return. CampusFind created the claimant’s handover record and sent a one-time code. Verify that code in the Claims section only when the item is physically handed over.</p>
                 )}
               </article>
             );

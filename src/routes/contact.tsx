@@ -224,6 +224,11 @@ function ContactPage() {
           </div>
 
           {notice && <p role="status" className="mt-6 flex items-start gap-2 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-900"><CheckCircle2 size={18} className="mt-0.5 shrink-0" />{notice}</p>}
+          {success && (
+            <p role="status" className="cf-success-surface cf-success-border cf-success-text mt-6 flex items-start gap-3 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-900">
+              <CheckCircle2 size={19} className="mt-0.5 shrink-0" /> Your message was received. Please do not include passwords, one-time codes, or private proof-of-ownership details in contact messages.
+            </p>
+          )}
           {error && <p role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold leading-6 text-destructive">{error}</p>}
 
           <form onSubmit={submitTicket} className="mt-8 rounded-2xl border border-border bg-background p-5 sm:p-6">

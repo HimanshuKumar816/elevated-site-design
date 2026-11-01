@@ -563,6 +563,13 @@ main section:has(> section[aria-labelledby="account-notifications-title"]) h2 { 
 .cf-report-step.is-current span:first-child { border-color: #b52d38; background: #b52d38; color: #fff; }
 .cf-report-step.is-complete { color: #17633a; }
 .cf-report-step.is-complete span:first-child { border-color: #b7dfc5; background: #e5f5eb; color: #17633a; }
+
+/* Keep success and Found states distinct from the red brand color overrides above. */
+.cf-success-surface { background-color: #e8f5eb !important; }
+.cf-success-border { border-color: #b7dfc5 !important; }
+.cf-success-text { color: #17633a !important; }
+.cf-success-icon { background-color: #e5f5eb !important; color: #17633a !important; }
+.cf-found-state { background-color: #e5f5eb !important; color: #17633a !important; }
 .cf-report-step:disabled { cursor: default; opacity: 1; }
 .cf-report-panel[hidden], .cf-report-wizard [hidden] { display: none !important; }
 .cf-photo-drop { transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease; }

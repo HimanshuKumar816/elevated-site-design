@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
 import { supabase } from "@/integrations/supabase/client";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateNewPassword } from "@/lib/auth-validation";
+import { checkPasswordAgainstBreaches, passwordCheckMessage } from "@/lib/pwned-password";
 
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
@@ -36,6 +37,11 @@ function ResetPasswordPage() {
 
     setBusy(true);
     try {
+      const passwordCheck = await checkPasswordAgainstBreaches(password);
+      if (passwordCheck.status !== "SAFE") {
+        setError(passwordCheckMessage(passwordCheck));
+        return;
+      }
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) {
         setError("This reset link is invalid or expired. Request a new one from the sign-in page.");
@@ -46,6 +52,8 @@ function ResetPasswordPage() {
         setError("We couldn't update your password. Please request a new reset link and try again.");
         return;
       }
+      setPassword("");
+      setConfirm("");
       setDone(true);
       window.setTimeout(() => {
         void supabase.auth.signOut().finally(() => navigate({ to: "/auth", search: { redirect: "/browse" }, replace: true }));

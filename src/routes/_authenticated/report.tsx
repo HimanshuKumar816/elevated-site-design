@@ -266,8 +266,8 @@ function Report() {
           <div className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><p className="kicker text-primary">Account access</p><h2 className="mt-3 text-2xl font-extrabold">{accountState === "signed-out" ? "Sign in to report an item" : "Sign-in check unavailable"}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{accountState === "signed-out" ? "Sign in to CampusFind to submit a lost or found item. No student identity verification or special account role is required." : "CampusFind could not confirm your sign-in. Refresh the page and try again."}</p><Link to={accountState === "signed-out" ? "/auth" : "/browse"} className="mt-6 inline-flex w-fit rounded-xl border border-border px-4 py-3 text-sm font-extrabold text-primary hover:bg-secondary">{accountState === "signed-out" ? "Sign in" : "Back to reports"}</Link></div>
         ) : done ? (
           <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10">
-            <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
-            <p className="mt-6 kicker text-emerald-800">Submission complete</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Report received.</h2>
+            <span className="cf-success-icon grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
+            <p className="cf-success-text mt-6 kicker text-emerald-800">Submission complete</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Report received.</h2>
             <p className="mt-4 max-w-xl leading-7 text-muted-foreground">Your report has been saved. You can track its progress in My Reports. CampusFind checks similar reports and may create alerts when a likely match is found.</p>
             <div className="cf-report-reference mt-6">
               <div className="min-w-0">

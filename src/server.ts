@@ -12,7 +12,7 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 const CANONICAL_ORIGIN = "https://campusfind-uir0.onrender.com";
 const DUPLICATE_HOSTS = new Set(["campusfind-fs6c.onrender.com"]);
 const PRIVATE_PATHS = new Set([
-  "/auth", "/reset-password", "/admin-login", "/admin", "/browse", "/report",
+  "/auth", "/reset-password", "/admin-login", "/admin", "/browse", "/report", "/my-reports",
 ]);
 
 const PAGE_META: Record<string, { title: string; description: string; indexable: boolean }> = {
@@ -232,7 +232,7 @@ function applySecurityHeaders(response: Response, nonce: string, url: URL): Resp
       "style-src-attr 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://www.vidyavision.com",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://*.tile.openstreetmap.org",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.pwnedpasswords.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://*.tile.openstreetmap.org",
       "frame-src https://www.openstreetmap.org",
       "form-action 'self' https://*.supabase.co",
       "base-uri 'self'",
@@ -244,7 +244,7 @@ function applySecurityHeaders(response: Response, nonce: string, url: URL): Resp
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Frame-Options", "DENY");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  headers.set("Permissions-Policy", "geolocation=(self), camera=(self), microphone=(), payment=()");
+  headers.set("Permissions-Policy", "geolocation=(), camera=(), microphone=(), payment=()");
   headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   headers.set("Cross-Origin-Opener-Policy", "same-origin");
   headers.set("X-DNS-Prefetch-Control", "off");
