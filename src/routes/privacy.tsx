@@ -5,9 +5,9 @@ export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
       { title: "Privacy Policy — CampusFind" },
-      { name: "description", content: "Learn how CampusFind handles account details, lost-and-found reports, private campus pins, and contact messages." },
+      { name: "description", content: "Learn how CampusFind handles account details, lost-and-found reports, private campus pins, and in-site support conversations." },
       { property: "og:title", content: "Privacy Policy — CampusFind" },
-      { property: "og:description", content: "How CampusFind handles account details, reports, private location pins and contact messages." },
+      { property: "og:description", content: "How CampusFind handles account details, reports, private location pins and in-site support conversations." },
     ],
     links: [{ rel: "canonical", href: "https://campusfind-fs6c.onrender.com/privacy" }],
   }),
@@ -41,17 +41,17 @@ function PrivacyPage() {
               <li>Campus pin coordinates attached to reports. Exact coordinates are restricted to the report owner and authorised administrators; the public report board does not intentionally display those coordinates.</li>
               <li>Account activity, such as recorded successful sign-ins, and notification preferences or alerts you use.</li>
               <li>One-time handover codes issued when an administrator approves an item claim. The code is delivered in the claimant’s private in-app notification; a verification hash is stored for completion checks.</li>
-              <li>Contact-form messages, including the name, email address, subject, message, and submission time you provide.</li>
+              <li>In-site support conversations, including the subject, messages, replies, sender account, timestamps, and conversation status. Support requests do not require an email address.</li>
               <li>Basic technical request information processed by the website, hosting provider, and backend service to operate and protect the application.</li>
             </ul>
           </section>
           <section>
             <h2 className="text-xl font-extrabold text-foreground">3. How information is used</h2>
-            <p className="mt-3">Information is used to authenticate accounts, display campus reports to signed-in users, show private information to authorised administrators, deliver configured notifications, respond to contact requests, maintain service reliability, and investigate misuse or security incidents.</p>
+            <p className="mt-3">Information is used to authenticate accounts, display campus reports to signed-in users, show private information to authorised administrators, deliver configured notifications, respond to support conversations, deliver in-app reply notifications, maintain service reliability, and investigate misuse or security incidents.</p>
           </section>
           <section>
             <h2 className="text-xl font-extrabold text-foreground">4. Who can see information</h2>
-            <p className="mt-3">Basic report details from verified student accounts are visible to signed-in CampusFind users so they can identify possible matches. Unverified accounts can browse but cannot submit reports or ownership claims. Your profile details, claim proof, handover code and notifications are access-controlled. Exact report pins and administrator sign-in activity are restricted through database access policies. Contact messages are stored in an administrator-only inbox. Do not include passwords, one-time codes, private proof-of-ownership details, or other sensitive information in public report descriptions.</p>
+            <p className="mt-3">Basic report details from verified student accounts are visible to signed-in CampusFind users so they can identify possible matches. Report submissions are available to signed-in accounts; claims and secure handovers have additional verification requirements. Your profile details, claim proof, handover code and notifications are access-controlled. Exact report pins and administrator sign-in activity are restricted through database access policies. Support conversations are visible only to the account that opened them and authorised administrators. Administrator replies stay in CampusFind and create an in-app notification for the user. Do not include passwords, one-time codes, private proof-of-ownership details, or other sensitive information in public report descriptions.</p>
           </section>
           <section>
             <h2 className="text-xl font-extrabold text-foreground">5. Service providers and security</h2>
@@ -59,7 +59,7 @@ function PrivacyPage() {
           </section>
           <section>
             <h2 className="text-xl font-extrabold text-foreground">6. Retention and requests</h2>
-            <p className="mt-3">Reports, contact messages, and activity records are kept for as long as they are needed to operate the service, resolve requests, maintain security, or meet applicable requirements. For a correction, deletion request, or privacy concern, use the <Link to="/contact" className="font-bold text-primary hover:underline">Contact page</Link>. Please do not send passwords or one-time codes.</p>
+            <p className="mt-3">Reports, support conversations, and activity records are kept for as long as they are needed to operate the service, resolve requests, maintain security, or meet applicable requirements. For a correction, deletion request, or privacy concern, use the <Link to="/contact" className="font-bold text-primary hover:underline">Help & Support page</Link>. Please do not send passwords or one-time codes.</p>
           </section>
           <section>
             <h2 className="text-xl font-extrabold text-foreground">7. Cookies, sessions, and analytics</h2>
