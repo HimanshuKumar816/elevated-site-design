@@ -1151,7 +1151,7 @@ function AdminPage() {
 
 
         <nav aria-label="Administrator sections" className="mt-6 flex flex-wrap gap-2">
-          {[["Overview", "#admin-overview"], ["Lost reports", "#admin-reports"], ["Found reports", "#admin-found-reports"], ["Students", "#admin-students"], ["Sign-ins", "#admin-activity"], ["Matches", "#admin-matches"], ["Claims", "#admin-claims"], ["Contact", "#admin-contact"]].map(([label, href]) => <a key={href} href={href} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary">{label}</a>)}
+          {[["Overview", "#admin-overview"], ["Lost reports", "#admin-reports"], ["Found reports", "#admin-found-reports"], ["Students", "#admin-students"], ["Sign-ins", "#admin-activity"], ["Matches", "#admin-matches"], ["Claims", "#admin-claims"], ["Support inbox", "#admin-contact"]].map(([label, href]) => <a key={href} href={href} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary">{label}</a>)}
         </nav>
 
         <div className="mt-6 flex flex-wrap gap-3">
