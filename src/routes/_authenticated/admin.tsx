@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, LogOut, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
@@ -51,13 +51,27 @@ type Row = AdminReport & {
   moderated_by: string | null;
 };
 
+type SupportMessage = {
+  id: string;
+  ticket_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+  sender_name: string | null;
+  sender_uid: string | null;
+  sender_role: string | null;
+};
+
 type ContactMessage = {
   id: string;
-  name: string;
-  email: string;
+  user_id: string;
   subject: string;
-  message: string;
+  status: "open" | "resolved";
   created_at: string;
+  updated_at: string;
+  user_name: string | null;
+  user_uid: string | null;
+  messages: SupportMessage[];
 };
 
 type LoginActivity = {
@@ -176,6 +190,8 @@ function AdminPage() {
   const [contactError, setContactError] = useState("");
   const [contactQuery, setContactQuery] = useState("");
   const [contactPage, setContactPage] = useState(1);
+  const [contactReplyDrafts, setContactReplyDrafts] = useState<Record<string, string>>({});
+  const [contactReplyBusyId, setContactReplyBusyId] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [studentsError, setStudentsError] = useState("");
@@ -535,22 +551,66 @@ function AdminPage() {
     setContactLoading(true);
     setContactError("");
     try {
-      const getMessagesPage = (offset: number) => supabase
-        .from("contact_messages")
-        .select("id,name,email,subject,message,created_at")
-        .order("created_at", { ascending: false })
-        .range(offset, offset + 99);
-      const messages: NonNullable<Awaited<ReturnType<typeof getMessagesPage>>["data"]> = [];
-      for (let offset = 0; ; offset += 100) {
-        const { data: page, error: messagesError } = await getMessagesPage(offset);
-        if (messagesError) throw messagesError;
-        messages.push(...(page ?? []));
-        if (!page || page.length < 100) break;
+      const { data: ticketRows, error: ticketsError } = await supabase
+        .from("support_tickets")
+        .select("id,user_id,subject,status,created_at,updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(500);
+      if (ticketsError) throw ticketsError;
+      const tickets = ticketRows ?? [];
+      if (!tickets.length) {
+        setContactMessages([]);
+        setContactPage(1);
+        return;
       }
-      setContactMessages(messages as ContactMessage[]);
+
+      const ticketIds = tickets.map((ticket) => ticket.id);
+      const { data: messageRows, error: messagesError } = await supabase
+        .from("support_messages")
+        .select("id,ticket_id,sender_id,body,created_at")
+        .in("ticket_id", ticketIds)
+        .order("created_at", { ascending: true })
+        .limit(5000);
+      if (messagesError) throw messagesError;
+
+      const senderIds = [...new Set([
+        ...tickets.map((ticket) => ticket.user_id),
+        ...(messageRows ?? []).map((message) => message.sender_id),
+      ])];
+      const { data: profileRows, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,full_name,uid,role")
+        .in("id", senderIds);
+      if (profilesError) throw profilesError;
+      const profilesById = new Map((profileRows ?? []).map((profile) => [profile.id, profile]));
+
+      const messagesByTicket = new Map<string, SupportMessage[]>();
+      for (const message of messageRows ?? []) {
+        const profile = profilesById.get(message.sender_id);
+        const entry: SupportMessage = {
+          ...message,
+          sender_name: profile?.full_name ?? null,
+          sender_uid: profile?.uid ?? null,
+          sender_role: profile?.role ?? null,
+        };
+        const entries = messagesByTicket.get(message.ticket_id) ?? [];
+        entries.push(entry);
+        messagesByTicket.set(message.ticket_id, entries);
+      }
+
+      setContactMessages(tickets.map((ticket) => {
+        const profile = profilesById.get(ticket.user_id);
+        return {
+          ...ticket,
+          status: ticket.status as ContactMessage["status"],
+          user_name: profile?.full_name ?? null,
+          user_uid: profile?.uid ?? null,
+          messages: messagesByTicket.get(ticket.id) ?? [],
+        };
+      }));
       setContactPage(1);
     } catch {
-      setContactError("We couldn't load contact messages. Please retry.");
+      setContactError("We couldn't load support conversations. Please retry.");
     } finally {
       setContactLoading(false);
     }
@@ -559,6 +619,46 @@ function AdminPage() {
   useEffect(() => {
     void loadContactMessages();
   }, [loadContactMessages]);
+
+  async function sendContactReply(ticket: ContactMessage) {
+    const body = (contactReplyDrafts[ticket.id] ?? "").trim();
+    if (!body || contactReplyBusyId) return;
+    setContactError("");
+    setContactReplyBusyId(ticket.id);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Administrator session expired.");
+      const { error: insertError } = await supabase.from("support_messages").insert({
+        ticket_id: ticket.id,
+        sender_id: authData.user.id,
+        body,
+      });
+      if (insertError) throw insertError;
+      setContactReplyDrafts((current) => ({ ...current, [ticket.id]: "" }));
+      await loadContactMessages();
+    } catch {
+      setContactError("We couldn't send the reply. Please refresh and try again.");
+    } finally {
+      setContactReplyBusyId(null);
+    }
+  }
+
+  async function setContactTicketStatus(ticket: ContactMessage, status: "open" | "resolved") {
+    setContactError("");
+    setContactReplyBusyId(ticket.id);
+    try {
+      const { error: updateError } = await supabase
+        .from("support_tickets")
+        .update({ status })
+        .eq("id", ticket.id);
+      if (updateError) throw updateError;
+      await loadContactMessages();
+    } catch {
+      setContactError("We couldn't update this conversation. Please retry.");
+    } finally {
+      setContactReplyBusyId(null);
+    }
+  }
 
   async function adminActorId() {
     const { data: userData, error: authError } = await supabase.auth.getUser();
@@ -763,7 +863,13 @@ function AdminPage() {
   const filteredContactMessages = useMemo(() => {
     const query = contactQuery.trim().toLowerCase();
     if (!query) return contactMessages;
-    return contactMessages.filter((message) => [message.name, message.email, message.subject, message.message].some((value) => value.toLowerCase().includes(query)));
+    return contactMessages.filter((ticket) => [
+      ticket.user_name ?? "",
+      ticket.user_uid ?? "",
+      ticket.subject,
+      ticket.status,
+      ...ticket.messages.map((entry) => entry.body),
+    ].some((value) => value.toLowerCase().includes(query)));
   }, [contactMessages, contactQuery]);
   const contactPageCount = Math.max(1, Math.ceil(filteredContactMessages.length / 25));
   const pageContactMessages = filteredContactMessages.slice((contactPage - 1) * 25, contactPage * 25);
@@ -1188,38 +1294,58 @@ function AdminPage() {
         <section id="admin-contact" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
-              <p className="kicker text-emerald-800">Contact inbox</p>
-              <h2 className="mt-2 text-2xl font-extrabold">Messages from the website</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Search and review all messages in the administrator inbox.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Only authenticated administrators can read these messages.</p>
+              <p className="kicker text-emerald-800">In-site support</p>
+              <h2 className="mt-2 text-2xl font-extrabold">Student support conversations</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Reply to issues directly in CampusFind. Students see your reply in their own Help & Support inbox.</p>
+              <p className="mt-1 text-sm text-muted-foreground">No email address or external email is used.</p>
             </div>
             <button type="button" onClick={() => void loadContactMessages()} disabled={contactLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {contactLoading ? "Refreshing…" : "Refresh inbox"}
             </button>
           </div>
           {contactError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{contactError}</p>}
-          <div className="border-t border-border p-4 sm:p-5"><label className="block max-w-xl text-xs font-extrabold text-muted-foreground">SEARCH MESSAGES<input value={contactQuery} onChange={(event) => setContactQuery(event.target.value)} placeholder="Search name, email, subject or message…" className={input + " mt-2 w-full"} /></label></div>
+          <div className="border-t border-border p-4 sm:p-5"><label className="block max-w-xl text-xs font-extrabold text-muted-foreground">SEARCH CONVERSATIONS<input value={contactQuery} onChange={(event) => setContactQuery(event.target.value)} placeholder="Search student, UID, subject or message…" className={input + " mt-2 w-full"} /></label></div>
           {contactLoading ? (
-            <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading contact messages…</p>
+            <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading support conversations…</p>
           ) : filteredContactMessages.length === 0 ? (
-            <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">{contactMessages.length === 0 ? "No contact messages have been received yet." : "No messages match this search."}</p>
+            <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">{contactMessages.length === 0 ? "No support conversations have been received yet." : "No conversations match this search."}</p>
           ) : (
             <div className="grid gap-3 border-t border-border p-4 sm:p-5">
-              {pageContactMessages.map((message) => (
-                <article key={message.id} className="interactive-card rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+              {pageContactMessages.map((ticket) => (
+                <article key={ticket.id} className="overflow-hidden rounded-xl border border-border bg-white">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
                     <div>
-                      <h3 className="font-extrabold text-foreground">{message.subject}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">From {message.name} · <a className="font-bold text-primary underline-offset-2 hover:underline" href={"mailto:" + message.email}>{message.email}</a></p>
+                      <h3 className="font-extrabold text-foreground">{ticket.subject}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">From {ticket.user_name ?? "CampusFind user"} · UID {ticket.user_uid ?? "—"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Received {new Date(ticket.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })} · Updated {new Date(ticket.updated_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
                     </div>
-                    <time className="text-xs text-muted-foreground" dateTime={message.created_at}>{new Date(message.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
+                    <div className="flex items-center gap-2">
+                      <span className={ticket.status === "open" ? "rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-extrabold text-emerald-800" : "rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-secondary-foreground"}>{ticket.status === "open" ? "Open" : "Resolved"}</span>
+                      <button type="button" disabled={contactReplyBusyId === ticket.id} onClick={() => void setContactTicketStatus(ticket, ticket.status === "open" ? "resolved" : "open")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{ticket.status === "open" ? "Mark resolved" : "Reopen"}</button>
+                    </div>
                   </div>
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{message.message}</p>
+                  <div className="grid gap-3 bg-background p-4 sm:p-5">
+                    {ticket.messages.map((entry) => (
+                      <div key={entry.id} className={entry.sender_role === "admin" ? "ml-0 mr-6 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 sm:mr-16" : "ml-6 rounded-xl border border-border bg-white p-4 sm:ml-16"}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs font-extrabold text-foreground">{entry.sender_role === "admin" ? "CampusFind Administrator" : entry.sender_name ?? "Student"}{entry.sender_role !== "admin" && entry.sender_uid ? " · " + entry.sender_uid : ""}</p>
+                          <time className="text-[11px] text-muted-foreground" dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
+                        </div>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{entry.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-border p-4 sm:p-5">
+                    <label className="block text-xs font-extrabold text-muted-foreground">REPLY TO STUDENT
+                      <textarea rows={3} maxLength={5000} value={contactReplyDrafts[ticket.id] ?? ""} onChange={(event) => setContactReplyDrafts((current) => ({ ...current, [ticket.id]: event.target.value }))} placeholder="Write your response…" className={input + " mt-2 w-full resize-y"} />
+                    </label>
+                    <button type="button" disabled={contactReplyBusyId === ticket.id || !(contactReplyDrafts[ticket.id] ?? "").trim()} onClick={() => void sendContactReply(ticket)} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{contactReplyBusyId === ticket.id ? "Sending…" : "Send reply"} <Send size={14} /></button>
+                  </div>
                 </article>
               ))}
             </div>
           )}
-          {!contactLoading && filteredContactMessages.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {contactPage} of {contactPageCount} · {filteredContactMessages.length} messages</span><div className="flex gap-2"><button type="button" disabled={contactPage <= 1} onClick={() => setContactPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={contactPage >= contactPageCount} onClick={() => setContactPage((page) => Math.min(contactPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
+          {!contactLoading && filteredContactMessages.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {contactPage} of {contactPageCount} · {filteredContactMessages.length} conversations</span><div className="flex gap-2"><button type="button" disabled={contactPage <= 1} onClick={() => setContactPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={contactPage >= contactPageCount} onClick={() => setContactPage((page) => Math.min(contactPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
         </section>
 
 
