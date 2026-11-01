@@ -9,7 +9,6 @@ import { compressItemImage, validateItemImage } from "@/lib/item-image";
 import { CAMPUS_LOCATIONS, buildCampusLocation, type CampusLocation } from "@/lib/campus-locations";
 import { buildNotificationPreferencePayload, validateNotificationPreference } from "@/lib/notification-preferences";
 import { supabase } from "@/integrations/supabase/client";
-import { isVerifiedStudent } from "@/lib/access";
 
 export const Route = createFileRoute("/_authenticated/report")({
   head: () => ({
@@ -39,30 +38,30 @@ function Report() {
   const [preferencesLoading, setPreferencesLoading] = useState(true);
   const [preferencesAvailable, setPreferencesAvailable] = useState(true);
   const [preferencesDirty, setPreferencesDirty] = useState(false);
-  const [verificationState, setVerificationState] = useState<"checking" | "verified" | "unverified" | "unavailable">("checking");
+  const [accountState, setAccountState] = useState<"checking" | "student" | "not-student" | "unavailable">("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkStudentAccount() {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) throw new Error("Sign-in required.");
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
+        if (profileError || !profile) throw new Error("Could not check this account.");
+        if (!cancelled) setAccountState(profile.role === "student" ? "student" : "not-student");
+      } catch {
+        if (!cancelled) setAccountState("unavailable");
+      }
+    }
+    void checkStudentAccount();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!imagePreview) return;
     return () => URL.revokeObjectURL(imagePreview);
   }, [imagePreview]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function checkStudentVerification() {
-      try {
-        const { data: authData, error: authError } = await supabase.auth.getUser();
-        if (authError || !authData.user) throw new Error("Sign-in required.");
-        const { data: profile, error: profileError } = await supabase.from("profiles")
-          .select("role,verification_status").eq("id", authData.user.id).maybeSingle();
-        if (profileError || !profile) throw new Error("Could not verify this account.");
-        if (!cancelled) setVerificationState(isVerifiedStudent(profile) ? "verified" : "unverified");
-      } catch {
-        if (!cancelled) setVerificationState("unavailable");
-      }
-    }
-    void checkStudentVerification();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,16 +219,14 @@ function Report() {
         setError("Please sign in again.");
         return;
       }
-      const { data: profile, error: profileError } = await supabase.from("profiles")
-        .select("role,verification_status").eq("id", u.user.id).maybeSingle();
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles").select("role").eq("id", u.user.id).maybeSingle();
       if (profileError || !profile) {
-        setVerificationState("unavailable");
-        setError("We couldn't check your student verification. Refresh the page and try again.");
+        setError("We couldn't check this student account. Refresh the page and try again.");
         return;
       }
-      if (!isVerifiedStudent(profile)) {
-        setVerificationState("unverified");
-        setError("Administrator verification is required before you can submit a report.");
+      if (profile.role !== "student") {
+        setError("Only student accounts can submit reports.");
         return;
       }
       if (preferencesDirty && preferencesAvailable) {
@@ -321,10 +318,10 @@ function Report() {
             <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5 text-xs font-bold text-white/60"><CheckCircle2 size={16} className="text-emerald-200" /> Your report helps someone start looking.</div>
           </div>
         </aside>
-        {verificationState === "checking" ? (
-          <div role="status" className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><h2 className="text-2xl font-extrabold">Checking student verification</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">CampusFind checks your account before enabling report submission.</p></div>
-        ) : verificationState !== "verified" ? (
-          <div className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><p className="kicker text-emerald-800">Student access</p><h2 className="mt-3 text-2xl font-extrabold">{verificationState === "unverified" ? "Student verification required" : "Verification temporarily unavailable"}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{verificationState === "unverified" ? "You can browse campus reports, but submitting reports and claiming found items is available only after an administrator verifies your Chandigarh University student identity." : "CampusFind could not confirm your student status. Refresh the page or contact the administrator before trying again."}</p><Link to="/contact" className="mt-6 inline-flex w-fit rounded-xl border border-border px-4 py-3 text-sm font-extrabold text-primary hover:bg-secondary">Contact CampusFind</Link></div>
+        {accountState === "checking" ? (
+          <div role="status" className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><h2 className="text-2xl font-extrabold">Checking student account</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">This check confirms you are signed in with a student account. Administrator identity verification is not required to report an item.</p></div>
+        ) : accountState !== "student" ? (
+          <div className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><p className="kicker text-primary">Student access</p><h2 className="mt-3 text-2xl font-extrabold">{accountState === "not-student" ? "A student account is required" : "Student account check unavailable"}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{accountState === "not-student" ? "Sign in with your student account to report a lost or found item. Student identity verification is not required for reporting." : "CampusFind could not check your student account. Refresh the page and try again."}</p><Link to="/browse" className="mt-6 inline-flex w-fit rounded-xl border border-border px-4 py-3 text-sm font-extrabold text-primary hover:bg-secondary">Back to reports</Link></div>
         ) : done ? (
           <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10">
             <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
