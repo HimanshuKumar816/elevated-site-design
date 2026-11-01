@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 );
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+REVOKE ALL PRIVILEGES ON TABLE public.notifications FROM authenticated;
+REVOKE UPDATE (read_at) ON TABLE public.notifications FROM authenticated;
 GRANT SELECT ON TABLE public.notifications TO authenticated;
 GRANT UPDATE (read_at) ON TABLE public.notifications TO authenticated;
 
@@ -64,6 +66,9 @@ ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 
 GRANT USAGE ON SCHEMA public, private TO authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.support_tickets FROM authenticated;
+REVOKE UPDATE (status) ON TABLE public.support_tickets FROM authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.support_messages FROM authenticated;
 GRANT SELECT ON TABLE public.support_tickets TO authenticated;
 GRANT UPDATE (status) ON TABLE public.support_tickets TO authenticated;
 GRANT SELECT, INSERT ON TABLE public.support_messages TO authenticated;
