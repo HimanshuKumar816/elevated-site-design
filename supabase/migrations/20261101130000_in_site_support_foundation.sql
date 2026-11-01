@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 );
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-GRANT SELECT, UPDATE ON TABLE public.notifications TO authenticated;
+GRANT SELECT ON TABLE public.notifications TO authenticated;
+GRANT UPDATE (read_at) ON TABLE public.notifications TO authenticated;
 
 DROP POLICY IF EXISTS campusfind_notifications_owner_read
   ON public.notifications;
@@ -63,7 +64,8 @@ ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 
 GRANT USAGE ON SCHEMA public, private TO authenticated;
-GRANT SELECT, UPDATE ON TABLE public.support_tickets TO authenticated;
+GRANT SELECT ON TABLE public.support_tickets TO authenticated;
+GRANT UPDATE (status) ON TABLE public.support_tickets TO authenticated;
 GRANT SELECT, INSERT ON TABLE public.support_messages TO authenticated;
 
 CREATE OR REPLACE FUNCTION private.is_campusfind_admin()
