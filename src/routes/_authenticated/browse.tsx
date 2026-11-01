@@ -350,7 +350,7 @@ function Browse() {
               ) : (
                 <p className="mt-1 text-[11px] font-semibold text-muted-foreground">Identity verification not completed</p>
               )}
-              {profile.verification_status !== "verified" && <p className="mt-2 text-[11px] leading-5 text-muted-foreground">You can browse reports now. Reporting and claiming unlock after administrator verification.</p>}
+              {profile.verification_status !== "verified" && <p className="mt-2 text-[11px] leading-5 text-muted-foreground">You can report lost and found items now. Student verification is still required before claiming a found item.</p>}
             </div>
             <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
               My reports <ArrowUpRight size={14} />
