@@ -12,7 +12,7 @@ GRANT UPDATE (status) ON TABLE public.support_tickets TO authenticated;
 
 -- SMS delivery is not implemented. Remove previously collected phone numbers
 -- and disable SMS preferences now that the app no longer offers SMS alerts.
-DO $
+DO $sms_cleanup$
 BEGIN
   IF to_regclass('public.notification_preferences') IS NOT NULL THEN
     EXECUTE $cleanup$
@@ -25,7 +25,7 @@ BEGIN
     $cleanup$;
   END IF;
 END;
-$;
+$sms_cleanup$;
 
 CREATE INDEX IF NOT EXISTS support_tickets_user_updated_at_idx
   ON public.support_tickets (user_id, updated_at DESC);
