@@ -46,7 +46,7 @@ BEGIN
     ticket.id,
     ticket.user_id,
     ticket.subject,
-    ticket.status,
+    ticket.status::text,
     ticket.created_at,
     ticket.updated_at,
     owner_profile.full_name,
@@ -113,7 +113,7 @@ BEGIN
   END IF;
 
   IF v_role IS DISTINCT FROM 'student' THEN
-    RAISE EXCEPTION 'A verified CampusFind student account is required to contact support.'
+    RAISE EXCEPTION 'A CampusFind student account is required to contact support.'
       USING ERRCODE = '42501';
   END IF;
 
