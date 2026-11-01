@@ -54,6 +54,7 @@ type OwnNotification = {
 type OwnClaim = {
   id: string;
   item_id: string;
+  source_match_id: string | null;
   proof: string;
   status: "pending" | "approved" | "rejected" | "completed";
   admin_note: string | null;
@@ -174,7 +175,7 @@ function MyReportsPage() {
           .order("created_at", { ascending: false }),
         supabase
           .from("item_claims")
-          .select("id,item_id,proof,status,admin_note,created_at,reviewed_at,item_name_snapshot,item_location_snapshot,item_category_snapshot")
+          .select("id,item_id,source_match_id,proof,status,admin_note,created_at,reviewed_at,item_name_snapshot,item_location_snapshot,item_category_snapshot")
           .eq("claimant_id", userId)
           .order("created_at", { ascending: false }),
       ]);
@@ -422,8 +423,9 @@ function MyReportsPage() {
                     <span className={`cf-claim-pill cf-claim-${claim.status}`}>{claimLabels[claim.status]}</span>
                   </div>
                   <div className="mt-4 rounded-lg bg-secondary/60 p-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Your private proof</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">{claim.source_match_id ? "AI match handover record" : "Your private proof"}</p>
                     <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p>
+                    {claim.source_match_id && <p className="mt-2 text-xs leading-5 text-muted-foreground">An administrator approved the AI-suggested pair. Your one-time handover code is in the approval notification. Show it only during the physical handover.</p>}
                   </div>
                   {claim.status === "approved" && <p className="mt-3 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900">Your approval notification contains a one-time 12-character handover code. Show it to a CampusFind administrator in person when the item is handed over. Do not share it in advance.</p>}
                   {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900">Admin update: {claim.admin_note}</p>}

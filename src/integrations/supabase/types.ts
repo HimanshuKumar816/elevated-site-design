@@ -117,6 +117,7 @@ export type Database = {
           proof: string
           reviewed_at: string | null
           reviewed_by: string | null
+          source_match_id: string | null
           status: string
           updated_at: string
         }
@@ -133,6 +134,7 @@ export type Database = {
           proof: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source_match_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -149,6 +151,7 @@ export type Database = {
           proof?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          source_match_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -529,6 +532,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_item_match_for_return: {
+        Args: { p_admin_note?: string; p_match_id: string }
+        Returns: string
+      }
+      admin_reject_item_match: {
+        Args: { p_admin_note?: string; p_match_id: string }
+        Returns: undefined
+      }
       admin_review_item_claim: {
         Args: {
           p_admin_note?: string
