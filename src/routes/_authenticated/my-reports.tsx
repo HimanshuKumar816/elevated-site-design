@@ -142,6 +142,7 @@ function MyReportsPage() {
   const [notifications, setNotifications] = useState<OwnNotification[]>([]);
   const [notificationError, setNotificationError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"reports" | "claims" | "notifications">("reports");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -292,7 +293,13 @@ function MyReportsPage() {
 
         {error && <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">{error}</div>}
 
-        <section aria-labelledby="account-notifications-title" className="mt-8 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <div className="cf-workspace-tabs mt-7" role="tablist" aria-label="Your CampusFind workspace">
+          <button type="button" role="tab" aria-selected={activeTab === "reports"} aria-controls="my-reports-panel" onClick={() => setActiveTab("reports")} className={activeTab === "reports" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ClipboardList size={16} /> Reports <span>{reports.length}</span></button>
+          <button type="button" role="tab" aria-selected={activeTab === "claims"} aria-controls="my-claims-panel" onClick={() => setActiveTab("claims")} className={activeTab === "claims" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ShieldCheck size={16} /> Claims <span>{claims.length}</span></button>
+          <button type="button" role="tab" aria-selected={activeTab === "notifications"} aria-controls="my-notifications-panel" onClick={() => setActiveTab("notifications")} className={activeTab === "notifications" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><Bell size={16} /> Notifications <span>{unreadNotifications > 0 ? unreadNotifications : "✓"}</span></button>
+        </div>
+
+        <section id="my-notifications-panel" role="tabpanel" aria-labelledby="account-notifications-title" tabIndex={0} hidden={activeTab !== "notifications"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary"><Bell size={19} /></span>
@@ -328,11 +335,11 @@ function MyReportsPage() {
           )}
         </section>
 
-        <section className="mt-8 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <section id="my-reports-panel" role="tabpanel" aria-labelledby="my-reports-title" tabIndex={0} hidden={activeTab !== "reports"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Your submissions</p>
-              <h2 className="mt-2 text-2xl font-extrabold">Lost and found reports</h2>
+              <h2 id="my-reports-title" className="mt-2 text-2xl font-extrabold">Lost and found reports</h2>
               <p className="mt-1 text-sm text-muted-foreground">Each report has its own status and review history.</p>
             </div>
             <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{reports.length} reports</span>
@@ -350,11 +357,11 @@ function MyReportsPage() {
                 <article key={report.id} className="rounded-xl border border-border p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${report.type === "Lost" ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-800"}`}>{report.type}</span>
+                      <span className={report.type === "Lost" ? "cf-badge-lost" : "cf-badge-found"}>{report.type}</span>
                       <h3 className="text-lg font-extrabold text-foreground">{report.name}</h3>
                       <span className="text-sm text-muted-foreground">· {report.category}</span>
                     </div>
-                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{statusLabels[report.report_status] ?? report.report_status}</span>
+                    <span className={`cf-status-pill cf-status-${report.report_status}`}>{statusLabels[report.report_status] ?? report.report_status}</span>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{report.location} · Item date {report.item_date}{report.item_time ? ` · ${report.item_time}` : ""}</p>
                   {(report.brand || report.color || report.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[report.brand, report.color, report.model].filter(Boolean).join(" · ")}</p>}
@@ -369,11 +376,11 @@ function MyReportsPage() {
           )}
         </section>
 
-        <section className="mt-8 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <section id="my-claims-panel" role="tabpanel" aria-labelledby="my-claims-title" tabIndex={0} hidden={activeTab !== "claims"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div>
               <p className="kicker text-emerald-800">Ownership requests</p>
-              <h2 className="mt-2 text-2xl font-extrabold">My item claims</h2>
+              <h2 id="my-claims-title" className="mt-2 text-2xl font-extrabold">My item claims</h2>
               <p className="mt-1 text-sm text-muted-foreground">Claims are reviewed by an administrator. Your proof is private.</p>
             </div>
             <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{claims.length} claims</span>
@@ -392,7 +399,7 @@ function MyReportsPage() {
                       <p className="mt-1 text-sm text-muted-foreground">{claim.item_location}{claim.item_category ? ` · ${claim.item_category}` : ""}</p>
                       <p className="mt-2 text-xs text-muted-foreground">Submitted {dateLabel(claim.created_at)}</p>
                     </div>
-                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{claimLabels[claim.status]}</span>
+                    <span className={`cf-claim-pill cf-claim-${claim.status}`}>{claimLabels[claim.status]}</span>
                   </div>
                   <div className="mt-4 rounded-lg bg-secondary/60 p-3">
                     <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Your private proof</p>

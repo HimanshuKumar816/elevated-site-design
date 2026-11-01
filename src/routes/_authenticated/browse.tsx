@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import {
   ArrowUpDown,
   ArrowUpRight,
+  Eye,
   Bell,
   Bookmark,
   BookmarkCheck,
@@ -103,6 +104,7 @@ function Browse() {
   const [claimError, setClaimError] = useState("");
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState("");
+  const [detailTarget, setDetailTarget] = useState<BoardItem | null>(null);
 
   const fetchPage = useCallback(async (reset: boolean) => {
     const requestSequence = reset ? fetchSequenceRef.current + 1 : fetchSequenceRef.current;
@@ -288,6 +290,23 @@ function Browse() {
     }
   }
 
+  useEffect(() => {
+    if (!detailTarget && !claimTarget) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function handleDialogKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setDetailTarget(null);
+        setClaimTarget(null);
+      }
+    }
+    window.addEventListener("keydown", handleDialogKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleDialogKey);
+    };
+  }, [detailTarget, claimTarget]);
+
   const unreadCount = alerts.filter((alert) => !alert.read_at).length;
   const lostCount = items.filter((item) => item.type === "Lost").length;
   const foundCount = items.filter((item) => item.type === "Found").length;
@@ -441,6 +460,20 @@ function Browse() {
               <input aria-label="Filter reports to date" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold normal-case tracking-normal text-foreground" />
             </label>
           </div>
+          {(q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly) && (
+            <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Active filters">
+              <span className="text-xs font-bold text-muted-foreground">Active:</span>
+              {q && <button type="button" onClick={() => setQ("")} className="cf-filter-chip">Search: {q} <X size={12} /></button>}
+              {type !== "All" && <button type="button" onClick={() => setType("All")} className="cf-filter-chip">{type} items <X size={12} /></button>}
+              {cat !== "All" && <button type="button" onClick={() => setCat("All")} className="cf-filter-chip">{cat} <X size={12} /></button>}
+              {locationFilter !== "All" && <button type="button" onClick={() => setLocationFilter("All")} className="cf-filter-chip">{locationFilter} <X size={12} /></button>}
+              {statusFilter !== "All" && <button type="button" onClick={() => setStatusFilter("All")} className="cf-filter-chip">{statusLabels[statusFilter as ReportStatus]} <X size={12} /></button>}
+              {dateFrom && <button type="button" onClick={() => setDateFrom("")} className="cf-filter-chip">From {dateFrom} <X size={12} /></button>}
+              {dateTo && <button type="button" onClick={() => setDateTo("")} className="cf-filter-chip">To {dateTo} <X size={12} /></button>}
+              {savedOnly && <button type="button" onClick={() => setSavedOnly(false)} className="cf-filter-chip">Saved only <X size={12} /></button>}
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={pill(savedOnly)}>
               {savedOnly ? "Showing saved items" : "Show saved items only"} · {savedItemIds.length}
@@ -470,7 +503,7 @@ function Browse() {
                 <article key={item.id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
                   <div className="relative aspect-[16/10] overflow-hidden bg-secondary">
                     {item.image_url ? <img src={item.image_url} alt={item.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-primary/70"><PackageSearch size={38} strokeWidth={1.5} /><span className="text-[10px] font-extrabold uppercase tracking-[0.2em]">Campus report</span></div>}
-                    <span className={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] shadow-sm ${item.type === "Found" ? "bg-emerald-300 text-emerald-950" : "bg-white text-primary"}`}>{item.type}</span>
+                    <span className={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] shadow-sm ${item.type === "Found" ? "cf-badge-found" : "cf-badge-lost"}`}>{item.type}</span>
                     <span className="absolute bottom-3 right-3 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-foreground shadow-sm">{item.category}</span>
                   </div>
                   <div className="flex flex-1 flex-col p-5 sm:p-6">
@@ -484,7 +517,8 @@ function Browse() {
                     {item.note && <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.note}</p>}
                     <div className="mt-auto pt-5">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-                        <span className="text-xs font-bold text-muted-foreground">{statusLabels[reportStatus]}</span>
+                        <span className={`cf-status-pill cf-status-${reportStatus}`}>{statusLabels[reportStatus]}</span>
+                        <button type="button" onClick={() => setDetailTarget(item)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-foreground hover:bg-secondary"><Eye size={14} /> Details</button>
                         <button type="button" aria-pressed={savedItemIds.includes(item.id)} aria-label={savedItemIds.includes(item.id) ? "Remove saved item" : "Save item"} onClick={() => void toggleSavedItem(item)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
                           {savedItemIds.includes(item.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
                           {savedItemIds.includes(item.id) ? "Saved" : "Save"}
@@ -521,6 +555,46 @@ function Browse() {
           </div>
         )}
       </section>
+
+      {detailTarget && (
+        <div className="cf-dialog-backdrop fixed inset-0 z-[75] flex items-center justify-center p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setDetailTarget(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="item-detail-title" className="cf-item-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={detailTarget.type === "Found" ? "cf-badge-found" : "cf-badge-lost"}>{detailTarget.type}</span>
+                  <span className="cf-category-chip">{detailTarget.category}</span>
+                  <span className={`cf-status-pill cf-status-${detailTarget.report_status ?? "new"}`}>{statusLabels[detailTarget.report_status ?? "new"]}</span>
+                </div>
+                <h2 id="item-detail-title" className="mt-3 text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">{detailTarget.name}</h2>
+                <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground"><MapPin size={15} className="shrink-0 text-primary" /> {detailTarget.location}</p>
+              </div>
+              <button type="button" onClick={() => setDetailTarget(null)} className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close item details"><X size={18} /></button>
+            </div>
+            <div className="grid gap-5 p-5 sm:grid-cols-[.9fr_1.1fr] sm:p-6">
+              <div className="overflow-hidden rounded-xl bg-secondary">
+                {detailTarget.image_url ? <img src={detailTarget.image_url} alt={detailTarget.name} className="max-h-[360px] min-h-48 w-full object-contain" /> : <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-muted-foreground"><PackageSearch size={42} strokeWidth={1.5} /><span className="text-xs font-bold">No photograph was added</span></div>}
+              </div>
+              <div className="min-w-0">
+                <dl className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-background p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Item date</dt><dd className="mt-1 text-sm font-bold text-foreground">{dateLabel(detailTarget.item_date)}</dd></div>
+                  <div className="rounded-lg bg-background p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Approx. time</dt><dd className="mt-1 text-sm font-bold text-foreground">{detailTarget.item_time || "Not provided"}</dd></div>
+                  <div className="rounded-lg bg-background p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Brand</dt><dd className="mt-1 text-sm font-bold text-foreground">{detailTarget.brand || "Not provided"}</dd></div>
+                  <div className="rounded-lg bg-background p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Colour</dt><dd className="mt-1 text-sm font-bold text-foreground">{detailTarget.color || "Not provided"}</dd></div>
+                  <div className="rounded-lg bg-background p-3 sm:col-span-2"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Model</dt><dd className="mt-1 text-sm font-bold text-foreground">{detailTarget.model || "Not provided"}</dd></div>
+                </dl>
+                <div className="mt-4"><p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Public description</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-foreground">{detailTarget.note || "The reporter did not add a public description."}</p></div>
+                <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">A possible match is not proof of ownership. Keep unique identifying details private and let the administrator review claims.</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border p-5 sm:p-6">
+              <button type="button" onClick={() => setDetailTarget(null)} className="rounded-lg border border-border px-4 py-2.5 text-sm font-extrabold hover:bg-secondary">Close</button>
+              {canClaimFoundReport(profile, { ...detailTarget, report_status: detailTarget.report_status ?? "new" }, me) && <button type="button" onClick={() => { openClaim(detailTarget); setDetailTarget(null); }} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-extrabold text-white">Submit ownership claim</button>}
+              {detailTarget.user_id === me && <Link to="/my-reports" onClick={() => setDetailTarget(null)} className="rounded-lg bg-secondary px-4 py-2.5 text-sm font-extrabold text-foreground">Track my report</Link>}
+            </div>
+          </section>
+        </div>
+      )}
 
       {claimTarget && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/65 p-4" role="presentation">

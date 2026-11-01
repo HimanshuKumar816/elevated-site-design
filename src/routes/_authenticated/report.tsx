@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, BellRing, Camera, CheckCircle2, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
 import { CATEGORIES, type Item } from "@/lib/items";
@@ -116,6 +116,22 @@ function Report() {
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [reportStep, setReportStep] = useState(1);
+  const reportFormRef = useRef<HTMLFormElement>(null);
+
+  function continueToNextStep() {
+    const panel = reportFormRef.current?.querySelector<HTMLElement>(`[data-report-panel="${reportStep}"]`);
+    const requiredFields = panel?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("[required]") ?? [];
+    for (const fieldElement of requiredFields) {
+      if (!fieldElement.checkValidity()) {
+        fieldElement.reportValidity();
+        fieldElement.focus();
+        return;
+      }
+    }
+    setError("");
+    setReportStep((current) => Math.min(4, current + 1));
+  }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -304,33 +320,75 @@ function Report() {
             </div>
           </div>
         ) : (
-          <form onSubmit={submit} className="rounded-[2rem] border border-border bg-white p-5 shadow-xl shadow-primary/5 sm:p-8 lg:p-10">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-6"><div><p className="kicker text-emerald-800">New report</p><h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">Tell us what happened</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Fields marked with * are required.</p></div><span className="rounded-xl bg-secondary px-3 py-2 text-xs font-extrabold text-secondary-foreground">Step 1 of 1</span></div>
-            <fieldset className="mt-6"><legend className="mb-3 text-sm font-extrabold text-foreground">Are you reporting something lost or found?</legend><div className="grid grid-cols-2 gap-3">{(["Lost", "Found"] as const).map((t) => <button type="button" key={t} aria-pressed={type === t} onClick={() => setType(t)} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-extrabold transition ${type === t ? "border-primary bg-primary text-white shadow-md shadow-primary/10" : "border-border bg-background text-muted-foreground hover:bg-secondary"}`}>{t === "Lost" ? "I lost an item" : "I found an item"}{type === t && <CheckCircle2 size={16} />}</button>)}</div></fieldset>
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Item name <span className="text-emerald-800">*</span><input required name="name" maxLength={120} placeholder="e.g. Black leather wallet" className={field} /></label>
-              <label className="block text-sm font-extrabold text-foreground">Category <span className="text-emerald-800">*</span><select required name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
-              <label className="block text-sm font-extrabold text-foreground">Date <span className="text-emerald-800">*</span><input required type="date" name="date" className={field} /></label>
-              <label className="block text-sm font-extrabold text-foreground">Approximate time <span className="font-semibold text-muted-foreground">(optional)</span><input type="time" name="item_time" className={field} /></label>
-              <label className="block text-sm font-extrabold text-foreground">Brand <span className="font-semibold text-muted-foreground">(optional)</span><input name="brand" maxLength={80} placeholder="e.g. Samsung" className={field} /></label>
-              <label className="block text-sm font-extrabold text-foreground">Colour <span className="font-semibold text-muted-foreground">(optional)</span><input name="color" maxLength={50} placeholder="e.g. Navy blue" className={field} /></label>
-              <label className="block text-sm font-extrabold text-foreground">Model <span className="font-semibold text-muted-foreground">(optional)</span><input name="model" maxLength={80} placeholder="e.g. Galaxy Buds FE" className={field} /></label>
-              <div className="block text-sm font-extrabold text-foreground sm:col-span-2">
-                <label htmlFor="location-zone">Where was it lost or found? <span className="text-emerald-800">*</span></label>
-                <select id="location-zone" required name="location_zone" defaultValue="" className={field}>
-                  <option value="" disabled>Select a campus area</option>
-                  {CAMPUS_LOCATIONS.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
-                </select>
-                <label htmlFor="location-detail" className="mt-3 block text-xs font-bold text-muted-foreground">More detail (optional, such as floor, room, or nearby landmark)</label>
-                <input id="location-detail" name="location_detail" maxLength={80} placeholder="e.g. Ground floor, near the help desk" className={field} />
-                <span className="mt-2 block text-xs font-medium text-muted-foreground">Choose a campus area first. Add a floor or landmark to help narrow the search.</span>
+          <form ref={reportFormRef} noValidate onSubmit={submit} className="cf-report-wizard rounded-[2rem] border border-border bg-white p-5 shadow-xl shadow-primary/5 sm:p-8 lg:p-10">
+            <div className="border-b border-border pb-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><p className="kicker text-primary">New report</p><h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">Tell us what happened</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Complete four quick steps. Your entries stay here as you move between them.</p></div>
+                <span className="rounded-lg bg-secondary px-3 py-2 text-xs font-extrabold text-secondary-foreground">Step {reportStep} of 4</span>
               </div>
-              <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Public description <span className="font-semibold text-muted-foreground">(optional)</span><textarea name="note" rows={4} maxLength={500} placeholder="Color, brand, general appearance. Keep one proof-of-ownership detail private." className={`${field} resize-y leading-6`} /><span className="mt-1 block text-xs font-semibold text-muted-foreground">Up to 500 characters. Don't include sensitive or unique identifying information.</span></label>
+              <ol className="cf-report-steps mt-6" aria-label="Report progress">
+                {["Item", "Location", "Photo & alerts", "Review"].map((label, index) => (
+                  <li key={label}><button type="button" disabled={index + 1 > reportStep} aria-current={reportStep === index + 1 ? "step" : undefined} onClick={() => setReportStep(index + 1)} className={reportStep === index + 1 ? "cf-report-step is-current" : reportStep > index + 1 ? "cf-report-step is-complete" : "cf-report-step"}><span>{reportStep > index + 1 ? "✓" : `0${index + 1}`}</span><span>{label}</span></button></li>
+                ))}
+              </ol>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={reportStep} aria-label="Report completion"><div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${reportStep * 25}%` }} /></div>
             </div>
-            <div className="mt-6 rounded-2xl border border-dashed border-border bg-background p-4 sm:p-5"><label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">JPG, PNG, or WebP · 5 MB max · photos are resized and compressed before upload</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>{imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div>}</div>
-            <div className="mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><BellRing size={18} /></span><div><p className="text-sm font-extrabold text-foreground">SMS match alerts <span className="font-semibold text-muted-foreground">(optional)</span></p><p className="mt-1 text-xs leading-5 text-muted-foreground">Your number is stored privately and only used for alerts when you explicitly consent.</p></div></div>{preferencesLoading && <p className="mt-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}{!preferencesLoading && !preferencesAvailable && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">SMS settings are temporarily unavailable. You can still submit this report; saved preferences haven't been changed.</p>}<label className="mt-4 block text-sm font-extrabold text-foreground">Mobile number<input name="phone_number" type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => { setPhoneNumber(e.target.value); setPreferencesDirty(true); }} disabled={preferencesLoading || !preferencesAvailable} placeholder="+919876543210" className={field} /></label><label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white p-3 text-sm"><input type="checkbox" name="sms_notifications_enabled" checked={smsEnabled} onChange={(e) => { const enabled = e.target.checked; setSmsEnabled(enabled); setPreferencesDirty(true); if (!enabled) setPhoneNumber(""); }} disabled={preferencesLoading || !preferencesAvailable} className="mt-1 size-4 accent-emerald-700" /><span><span className="block font-extrabold text-foreground">I consent to SMS alerts</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">You can opt out by unchecking this at any time.</span></span></label></div>
+
+            <div data-report-panel="1" hidden={reportStep !== 1} className="cf-report-panel">
+              <fieldset className="mt-6"><legend className="mb-3 text-sm font-extrabold text-foreground">Are you reporting something lost or found?</legend><div className="grid grid-cols-2 gap-3">{(["Lost", "Found"] as const).map((t) => <button type="button" key={t} aria-pressed={type === t} onClick={() => setType(t)} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-extrabold transition ${type === t ? "border-primary bg-primary text-white shadow-md shadow-primary/10" : "border-border bg-background text-muted-foreground hover:bg-secondary"}`}>{t === "Lost" ? "I lost an item" : "I found an item"}{type === t && <CheckCircle2 size={16} />}</button>)}</div></fieldset>
+              <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                <label className="block text-sm font-extrabold text-foreground sm:col-span-2">Item name <span className="text-primary">*</span><input required name="name" maxLength={120} placeholder="e.g. Black leather wallet" className={field} /></label>
+                <label className="block text-sm font-extrabold text-foreground">Category <span className="text-primary">*</span><select required name="category" className={field}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
+                <label className="block text-sm font-extrabold text-foreground">Date <span className="text-primary">*</span><input required type="date" name="date" className={field} /></label>
+              </div>
+            </div>
+
+            <div data-report-panel="2" hidden={reportStep !== 2} className="cf-report-panel">
+              <div className="mt-6 rounded-xl border border-border bg-background p-4 sm:p-5">
+                <h3 className="text-sm font-extrabold text-foreground">Where and when was it last seen?</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">A precise campus area and approximate time help other students narrow their search.</p>
+                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                  <label className="block text-sm font-extrabold text-foreground">Approximate time <span className="font-semibold text-muted-foreground">(optional)</span><input type="time" name="item_time" className={field} /></label>
+                  <label className="block text-sm font-extrabold text-foreground">Brand <span className="font-semibold text-muted-foreground">(optional)</span><input name="brand" maxLength={80} placeholder="e.g. Samsung" className={field} /></label>
+                  <label className="block text-sm font-extrabold text-foreground">Colour <span className="font-semibold text-muted-foreground">(optional)</span><input name="color" maxLength={50} placeholder="e.g. Navy blue" className={field} /></label>
+                  <label className="block text-sm font-extrabold text-foreground">Model <span className="font-semibold text-muted-foreground">(optional)</span><input name="model" maxLength={80} placeholder="e.g. Galaxy Buds FE" className={field} /></label>
+                  <div className="block text-sm font-extrabold text-foreground sm:col-span-2">
+                    <label htmlFor="location-zone">Campus area <span className="text-primary">*</span></label>
+                    <select id="location-zone" required name="location_zone" defaultValue="" className={field}><option value="" disabled>Select a campus area</option>{CAMPUS_LOCATIONS.map((zone) => <option key={zone} value={zone}>{zone}</option>)}</select>
+                    <label htmlFor="location-detail" className="mt-3 block text-xs font-bold text-muted-foreground">More detail (optional, such as floor, room or nearby landmark)</label>
+                    <input id="location-detail" name="location_detail" maxLength={80} placeholder="e.g. Ground floor, near the help desk" className={field} />
+                    <span className="mt-2 block text-xs font-medium text-muted-foreground">Choose a campus area first. Add a floor or landmark to help narrow the search.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div data-report-panel="3" hidden={reportStep !== 3} className="cf-report-panel">
+              <label className="mt-6 block text-sm font-extrabold text-foreground">Public description <span className="font-semibold text-muted-foreground">(optional)</span><textarea name="note" rows={4} maxLength={500} placeholder="Colour, brand and general appearance. Keep one proof-of-ownership detail private." className={`${field} resize-y leading-6`} /><span className="mt-1 block text-xs font-semibold text-muted-foreground">Up to 500 characters. Don't include sensitive or unique identifying information.</span></label>
+              <div className="cf-photo-drop mt-6 rounded-2xl border border-dashed border-border bg-background p-4 sm:p-5" role="region" aria-label="Item photograph upload" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("is-dragging"); }} onDragLeave={(event) => { event.currentTarget.classList.remove("is-dragging"); }} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("is-dragging"); handleImageChange(event.dataTransfer.files?.[0] ?? null); }}>
+                <label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Drop an image here or choose a file · JPG, PNG or WebP · 5 MB max</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>
+                {imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div>}
+              </div>
+              <div className="mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><BellRing size={18} /></span><div><p className="text-sm font-extrabold text-foreground">SMS match alerts <span className="font-semibold text-muted-foreground">(optional)</span></p><p className="mt-1 text-xs leading-5 text-muted-foreground">Your number is stored privately and only used for alerts when you explicitly consent.</p></div></div>{preferencesLoading && <p className="mt-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}{!preferencesLoading && !preferencesAvailable && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">SMS settings are temporarily unavailable. You can still submit this report; saved preferences haven't been changed.</p>}<label className="mt-4 block text-sm font-extrabold text-foreground">Mobile number<input name="phone_number" type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => { setPhoneNumber(e.target.value); setPreferencesDirty(true); }} disabled={preferencesLoading || !preferencesAvailable} placeholder="+919876543210" className={field} /></label><label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white p-3 text-sm"><input type="checkbox" name="sms_notifications_enabled" checked={smsEnabled} onChange={(e) => { const enabled = e.target.checked; setSmsEnabled(enabled); setPreferencesDirty(true); if (!enabled) setPhoneNumber(""); }} disabled={preferencesLoading || !preferencesAvailable} className="mt-1 size-4 accent-primary" /><span><span className="block font-extrabold text-foreground">I consent to SMS alerts</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">You can opt out by unchecking this at any time.</span></span></label></div>
+            </div>
+
+            <div data-report-panel="4" hidden={reportStep !== 4} className="cf-report-panel mt-6">
+              <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 sm:p-5">
+                <p className="kicker text-primary">Final check</p><h3 className="mt-2 text-xl font-extrabold text-foreground">Review your report before sending</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">Make sure the item, date and campus area are correct. Keep one identifying detail private.</p>
+                <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg bg-white p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Report type</dt><dd className="mt-1 text-sm font-bold">{type}</dd></div>
+                  <div className="rounded-lg bg-white p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Item</dt><dd className="mt-1 text-sm font-bold">{reportFormRef.current?.querySelector<HTMLInputElement>('[name="name"]')?.value || "Not entered"}</dd></div>
+                  <div className="rounded-lg bg-white p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Category</dt><dd className="mt-1 text-sm font-bold">{reportFormRef.current?.querySelector<HTMLSelectElement>('[name="category"]')?.value || "Not selected"}</dd></div>
+                  <div className="rounded-lg bg-white p-3"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Date</dt><dd className="mt-1 text-sm font-bold">{reportFormRef.current?.querySelector<HTMLInputElement>('[name="date"]')?.value || "Not selected"}</dd></div>
+                  <div className="rounded-lg bg-white p-3 sm:col-span-2"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Campus area</dt><dd className="mt-1 text-sm font-bold">{reportFormRef.current?.querySelector<HTMLSelectElement>('[name="location_zone"]')?.value || "Not selected"}{reportFormRef.current?.querySelector<HTMLInputElement>('[name="location_detail"]')?.value ? ` · ${reportFormRef.current?.querySelector<HTMLInputElement>('[name="location_detail"]')?.value}` : ""}</dd></div>
+                </dl>
+              </div>
+            </div>
             {error && <p role="alert" className="mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold leading-6 text-destructive">{error}</p>}
-            <button disabled={busy} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Saving your report…" : "Submit report"}{!busy && <ArrowRight size={17} />}</button>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              {reportStep > 1 ? <button type="button" onClick={() => { setError(""); setReportStep((step) => Math.max(1, step - 1)); }} className="rounded-lg border border-border px-4 py-3 text-sm font-extrabold text-foreground hover:bg-secondary">Back</button> : <span />}
+              {reportStep < 4 ? <button type="button" onClick={continueToNextStep} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-primary/90">Continue <ArrowRight size={17} /></button> : <button type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Saving your report…" : "Submit report"}{!busy && <ArrowRight size={17} />}</button>}
+            </div>
             <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">By submitting, you agree to share these details with other CampusFind students.</p>
           </form>
         )}

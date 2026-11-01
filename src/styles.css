@@ -529,3 +529,64 @@ main section:has(> section[aria-labelledby="account-notifications-title"]) h2 { 
   .student-workspace article.group:hover,
   .admin-shell .admin-panel button:not(:disabled):hover { transform: none; }
 }
+
+
+/* CampusFind journey refinements: semantic status, tabs, wizard and details view. */
+.cf-badge-lost, .cf-badge-found, .cf-category-chip, .cf-status-pill, .cf-claim-pill {
+  display: inline-flex; align-items: center; gap: .35rem; width: fit-content; max-width: 100%;
+  border-radius: 999px; padding: .35rem .65rem; font-size: .68rem; font-weight: 800; line-height: 1.25; letter-spacing: .015em;
+}
+.cf-badge-lost { background: #fbe9eb; color: #982630; }
+.cf-badge-found { background: #e5f5eb; color: #17633a; }
+.cf-category-chip { background: #f0f1ee; color: #46504b; }
+.cf-status-new { background: #eef0ef; color: #46504b; }
+.cf-status-under_review { background: #fff3d9; color: #87530a; }
+.cf-status-matched { background: #e8f2fb; color: #1e5b88; }
+.cf-status-claimed { background: #f0ebfb; color: #61449a; }
+.cf-status-returned { background: #e5f5eb; color: #17633a; }
+.cf-status-closed { background: #eceeec; color: #68716d; }
+.cf-claim-pending { background: #fff3d9; color: #87530a; }
+.cf-claim-approved { background: #e8f2fb; color: #1e5b88; }
+.cf-claim-rejected { background: #fbe9eb; color: #982630; }
+.cf-claim-completed { background: #e5f5eb; color: #17633a; }
+
+.cf-filter-chip { display: inline-flex; min-height: 30px; align-items: center; gap: .35rem; border: 1px solid #e4c6c9; border-radius: 999px; background: #fff8f8; padding: .3rem .65rem; color: #8f2731; font-size: .72rem; font-weight: 750; }
+.cf-filter-chip:hover { background: #f8e9ea; border-color: #d8aeb2; }
+.cf-dialog-backdrop { background: rgba(20, 25, 24, .72); backdrop-filter: blur(5px); }
+.cf-item-dialog { animation: cf-dialog-in 160ms ease-out both; }
+@keyframes cf-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.cf-report-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+.cf-report-step { display: flex; min-width: 0; align-items: center; gap: .45rem; color: #7a837f; font-size: .72rem; font-weight: 750; }
+.cf-report-step span:first-child { display: grid; width: 27px; height: 27px; flex: 0 0 auto; place-items: center; border: 1px solid #d9ddda; border-radius: 999px; background: #f7f7f4; color: #68716d; font-size: .63rem; }
+.cf-report-step.is-current { color: #982630; }
+.cf-report-step.is-current span:first-child { border-color: #b52d38; background: #b52d38; color: #fff; }
+.cf-report-step.is-complete { color: #17633a; }
+.cf-report-step.is-complete span:first-child { border-color: #b7dfc5; background: #e5f5eb; color: #17633a; }
+.cf-report-step:disabled { cursor: default; opacity: 1; }
+.cf-report-panel[hidden], .cf-report-wizard [hidden] { display: none !important; }
+.cf-photo-drop { transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease; }
+.cf-photo-drop.is-dragging { border-color: #b52d38; background: #fff5f5; box-shadow: 0 0 0 3px rgba(181,45,56,.1); }
+
+.cf-workspace-tabs { display: flex; flex-wrap: wrap; gap: .5rem; border-bottom: 1px solid #d9ddda; padding-bottom: .65rem; }
+.cf-workspace-tab { display: inline-flex; min-height: 42px; align-items: center; gap: .55rem; border: 1px solid transparent; border-radius: 9px; padding: .6rem .85rem; color: #626b68; font-size: .82rem; font-weight: 800; }
+.cf-workspace-tab span { min-width: 21px; border-radius: 999px; background: #e9eae7; padding: .15rem .4rem; color: #46504b; font-size: .67rem; text-align: center; }
+.cf-workspace-tab.is-active { border-color: #e7c9cc; background: #fff7f7; color: #982630; }
+.cf-workspace-tab.is-active span { background: #f2dfe1; color: #982630; }
+
+.cf-skeleton-card { overflow: hidden; border: 1px solid #e2e5e2; border-radius: 14px; background: linear-gradient(90deg, #f1f2ef 20%, #fafaf8 38%, #f1f2ef 58%); background-size: 220% 100%; animation: cf-skeleton-shimmer 1.35s ease-in-out infinite; }
+@keyframes cf-skeleton-shimmer { to { background-position-x: -220%; } }
+
+@media (min-width: 1200px) {
+  .admin-shell nav[aria-label="Administrator sections"] { float: left; display: grid; width: 190px; max-height: calc(100vh - 112px); align-content: start; gap: 7px; overflow-y: auto; border: 1px solid #d9ddda; border-radius: 12px; padding: 10px; top: 94px; background: rgba(255,255,255,.96); box-shadow: 0 5px 18px rgba(32,35,35,.045); }
+  .admin-shell nav[aria-label="Administrator sections"] a { display: flex; align-items: center; min-height: 40px; white-space: normal; line-height: 1.35; }
+  .admin-shell nav[aria-label="Administrator sections"] ~ * { margin-left: 220px; }
+}
+@media (max-width: 767px) {
+  .cf-report-steps { gap: .25rem; }
+  .cf-report-step { flex-direction: column; justify-content: center; gap: .25rem; font-size: .62rem; text-align: center; }
+  .cf-report-step span:first-child { width: 25px; height: 25px; }
+  .cf-workspace-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cf-workspace-tab { justify-content: center; gap: .3rem; padding: .55rem .35rem; font-size: .7rem; }
+}
+@media (prefers-reduced-motion: reduce) { .cf-item-dialog, .cf-skeleton-card { animation: none; } }
