@@ -38,6 +38,25 @@ function Report() {
   const [preferencesLoading, setPreferencesLoading] = useState(true);
   const [preferencesAvailable, setPreferencesAvailable] = useState(true);
   const [preferencesDirty, setPreferencesDirty] = useState(false);
+  const [accountState, setAccountState] = useState<"checking" | "student" | "not-student" | "unavailable">("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkStudentAccount() {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) throw new Error("Sign-in required.");
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
+        if (profileError || !profile) throw new Error("Could not check this account.");
+        if (!cancelled) setAccountState(profile.role === "student" ? "student" : "not-student");
+      } catch {
+        if (!cancelled) setAccountState("unavailable");
+      }
+    }
+    void checkStudentAccount();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!imagePreview) return;
@@ -200,6 +219,16 @@ function Report() {
         setError("Please sign in again.");
         return;
       }
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles").select("role").eq("id", u.user.id).maybeSingle();
+      if (profileError || !profile) {
+        setError("We couldn't check this student account. Refresh the page and try again.");
+        return;
+      }
+      if (profile.role !== "student") {
+        setError("Only student accounts can submit reports.");
+        return;
+      }
       if (preferencesDirty && preferencesAvailable) {
         const { error: preferenceSaveError } = await supabase
           .from("notification_preferences")
@@ -289,7 +318,11 @@ function Report() {
             <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5 text-xs font-bold text-white/60"><CheckCircle2 size={16} className="text-emerald-200" /> Your report helps someone start looking.</div>
           </div>
         </aside>
-        {done ? (
+        {accountState === "checking" ? (
+          <div role="status" className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><h2 className="text-2xl font-extrabold">Checking student account</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">This check confirms you are signed in with a student account. Administrator identity verification is not required to report an item.</p></div>
+        ) : accountState !== "student" ? (
+          <div className="flex min-h-64 flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10"><p className="kicker text-primary">Student access</p><h2 className="mt-3 text-2xl font-extrabold">{accountState === "not-student" ? "A student account is required" : "Student account check unavailable"}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{accountState === "not-student" ? "Sign in with your student account to report a lost or found item. Student identity verification is not required for reporting." : "CampusFind could not check your student account. Refresh the page and try again."}</p><Link to="/browse" className="mt-6 inline-flex w-fit rounded-xl border border-border px-4 py-3 text-sm font-extrabold text-primary hover:bg-secondary">Back to reports</Link></div>
+        ) : done ? (
           <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10">
             <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
             <p className="mt-6 kicker text-emerald-800">Submission complete</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Report received.</h2>
