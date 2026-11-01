@@ -188,6 +188,7 @@ function AdminPage() {
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState("");
+  const [supportAlertCount, setSupportAlertCount] = useState(0);
   const [contactQuery, setContactQuery] = useState("");
   const [contactPage, setContactPage] = useState(1);
   const [contactReplyDrafts, setContactReplyDrafts] = useState<Record<string, string>>({});
@@ -551,6 +552,24 @@ function AdminPage() {
     setContactLoading(true);
     setContactError("");
     try {
+      const { data: adminSession, error: adminSessionError } = await supabase.auth.getUser();
+      if (!adminSessionError && adminSession.user) {
+        const { data: alerts, error: alertsError } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("user_id", adminSession.user.id)
+          .eq("title", "New CampusFind support message")
+          .is("read_at", null)
+          .limit(100);
+        if (alertsError) {
+          console.warn("[CampusFind] Support alert count could not be loaded", {
+            code: alertsError.code,
+            message: alertsError.message,
+          });
+        } else {
+          setSupportAlertCount(alerts?.length ?? 0);
+        }
+      }
       // The admin-only RPC reads the private support thread under an explicit
       // role check. Fall back to the direct RLS-protected queries until its
       // migration has been applied to an existing environment.
@@ -671,6 +690,25 @@ function AdminPage() {
       void supabase.removeChannel(channel);
     };
   }, [loadContactMessages]);
+
+  async function markSupportAlertsRead() {
+    const { data: session, error: sessionError } = await supabase.auth.getUser();
+    if (sessionError || !session.user) {
+      setContactError("Your administrator session has expired. Sign in again.");
+      return;
+    }
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", session.user.id)
+      .eq("title", "New CampusFind support message")
+      .is("read_at", null);
+    if (error) {
+      setContactError("We couldn't mark the support alerts as read. Please retry.");
+      return;
+    }
+    setSupportAlertCount(0);
+  }
 
   async function sendContactReply(ticket: ContactMessage) {
     const body = (contactReplyDrafts[ticket.id] ?? "").trim();
@@ -1356,6 +1394,16 @@ function AdminPage() {
             </button>
           </div>
           {contactError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{contactError}</p>}
+          {supportAlertCount > 0 && (
+            <div role="status" className="mx-5 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-900/10 bg-emerald-50 p-3 sm:mx-6">
+              <p className="text-sm font-semibold text-emerald-950">
+                {supportAlertCount} new student support {supportAlertCount === 1 ? "message" : "messages"} need attention.
+              </p>
+              <button type="button" onClick={() => void markSupportAlertsRead()} className="rounded-lg border border-emerald-900/20 bg-white px-3 py-2 text-xs font-extrabold text-emerald-950 hover:bg-emerald-100">
+                Mark alerts read
+              </button>
+            </div>
+          )}
           <div className="border-t border-border p-4 sm:p-5"><label className="block max-w-xl text-xs font-extrabold text-muted-foreground">SEARCH CONVERSATIONS<input value={contactQuery} onChange={(event) => setContactQuery(event.target.value)} placeholder="Search student, UID, subject or message…" className={input + " mt-2 w-full"} /></label></div>
           {contactLoading ? (
             <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading support conversations…</p>

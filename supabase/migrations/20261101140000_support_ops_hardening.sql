@@ -3,9 +3,29 @@
 -- protects public support writes from abuse, and alerts admins in-app.
 
 GRANT USAGE ON SCHEMA public TO authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.support_tickets FROM authenticated;
+REVOKE UPDATE (status) ON TABLE public.support_tickets FROM authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.support_messages FROM authenticated;
 GRANT SELECT ON TABLE public.support_tickets, public.support_messages TO authenticated;
 GRANT INSERT ON TABLE public.support_messages TO authenticated;
-GRANT UPDATE ON TABLE public.support_tickets TO authenticated;
+GRANT UPDATE (status) ON TABLE public.support_tickets TO authenticated;
+
+-- SMS delivery is not implemented. Remove previously collected phone numbers
+-- and disable SMS preferences now that the app no longer offers SMS alerts.
+DO $sms_cleanup$
+BEGIN
+  IF to_regclass('public.notification_preferences') IS NOT NULL THEN
+    EXECUTE $cleanup$
+      UPDATE public.notification_preferences
+      SET phone_number = NULL,
+          sms_notifications_enabled = false,
+          updated_at = now()
+      WHERE phone_number IS NOT NULL
+         OR sms_notifications_enabled IS DISTINCT FROM false
+    $cleanup$;
+  END IF;
+END;
+$sms_cleanup$;
 
 CREATE INDEX IF NOT EXISTS support_tickets_user_updated_at_idx
   ON public.support_tickets (user_id, updated_at DESC);

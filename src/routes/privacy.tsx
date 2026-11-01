@@ -9,7 +9,7 @@ export const Route = createFileRoute("/privacy")({
       { property: "og:title", content: "Privacy Policy — CampusFind" },
       { property: "og:description", content: "How CampusFind handles account details, reports, private location pins and in-site support conversations." },
     ],
-    links: [{ rel: "canonical", href: "https://campusfind-fs6c.onrender.com/privacy" }],
+    links: [{ rel: "canonical", href: "https://campusfind-uir0.onrender.com/privacy" }],
   }),
   component: PrivacyPage,
 });
