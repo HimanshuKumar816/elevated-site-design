@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Page } from "@/components/site";
@@ -8,6 +9,10 @@ export const Route = createFileRoute("/reset-password")({
   ssr: false,
   head: () => ({
     meta: [
+      { property: "og:title", content: "Reset password — CampusFind" },
+      { property: "og:description", content: "Choose a new password for your CampusFind account." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Reset password — CampusFind" },
       { name: "description", content: "Choose a new password for your CampusFind account." },
     ],
@@ -59,10 +64,10 @@ function ResetPasswordPage() {
 
   return (
     <Page>
-      <section className="mx-auto max-w-xl px-6 py-20">
+      <section className="mx-auto max-w-xl px-5 py-10 sm:py-16">
         <div className="rounded-3xl border border-border bg-card p-8 shadow-soft">
           <p className="kicker text-muted-foreground">Account security</p>
-          <h1 className="mt-4 text-5xl">Choose a new password.</h1>
+          <h1 className="mt-4 text-3xl sm:text-4xl">Choose a new password.</h1>
           {done ? (
             <div role="status" className="mt-6">
               <p>Your password has been updated. Returning you to sign in…</p>
@@ -75,10 +80,10 @@ function ResetPasswordPage() {
               <label className="mt-4 block text-sm font-medium">Confirm new password
                 <input required type="password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} />
               </label>
-              {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
-              <button disabled={busy} className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground disabled:opacity-60">
+              {error && <p role="alert" className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+              <Button variant="plain" disabled={busy} className="mt-6 w-full rounded-full bg-primary py-3 font-medium text-primary-foreground disabled:opacity-60">
                 {busy ? "Updating password…" : "Update password"}
-              </button>
+              </Button>
             </form>
           )}
         </div>

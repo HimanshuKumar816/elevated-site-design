@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,6 +33,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
   },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Administrator dashboard — CampusFind" },
       { name: "description", content: "Review student verification, lost and found reports, claims, possible matches, and campus recovery activity." },
       { property: "og:title", content: "Administrator dashboard — CampusFind" },
@@ -729,7 +732,7 @@ function AdminPage() {
       )}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${report.type === "Lost" ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-800"}`}>{report.type}</span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${report.type === "Lost" ? "bg-destructive/10 text-destructive" : "bg-success-soft text-success-foreground"}`}>{report.type}</span>
           <h3 className="text-lg font-extrabold">{report.name}</h3>
           <span className="text-sm text-muted-foreground">· {report.category}</span>
         </div>
@@ -757,11 +760,11 @@ function AdminPage() {
             <label className="block text-xs font-extrabold text-muted-foreground">PRIVATE MODERATION NOTE
               <textarea rows={2} maxLength={1000} value={moderationDrafts[report.id] ?? ""} onChange={(event) => setModerationDrafts((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Reason for moderation or follow-up note (admin only)" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
             </label>
-            <button type="button" disabled={actionBusyId === report.id || !moderationHasChanges || (selectedFlag !== "none" && (moderationNote.length < 3 || moderationNote.length > 1000))} onClick={() => void updateReportModeration(report, selectedFlag)} className="mt-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save moderation"}</button>
-            {selectedFlag !== "none" && <p className="mt-2 text-xs font-semibold text-amber-800">A private reason is required. Flagged reports are removed from student search, claims and automatic matching.</p>}
+            <Button variant="plain" type="button" disabled={actionBusyId === report.id || !moderationHasChanges || (selectedFlag !== "none" && (moderationNote.length < 3 || moderationNote.length > 1000))} onClick={() => void updateReportModeration(report, selectedFlag)} className="mt-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">{actionBusyId === report.id ? "Saving…" : "Save moderation"}</Button>
+            {selectedFlag !== "none" && <p className="mt-2 text-xs font-semibold text-warning-foreground">A private reason is required. Flagged reports are removed from student search, claims and automatic matching.</p>}
           </div>
           {moderationNotes.filter((note) => note.item_id === report.id).slice(0, 2).map((note) => (
-            <p key={note.id} className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950"><span className="font-extrabold">Admin note · {new Date(note.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}:</span> {note.note}</p>
+            <p key={note.id} className="sm:col-span-2 rounded-lg bg-warning-soft p-3 text-xs leading-5 text-warning-foreground"><span className="font-extrabold">Admin note · {new Date(note.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}:</span> {note.note}</p>
           ))}
         </div>
       </div>
@@ -779,7 +782,7 @@ function AdminPage() {
     <section id={isLost ? "admin-reports" : "admin-found-reports"} className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
         <div>
-          <p className="kicker text-emerald-800">Report management</p>
+          <p className="kicker text-success-foreground">Report management</p>
           <h2 className="mt-2 text-2xl font-extrabold">{title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">Separate from student login activity.</p>
         </div>
@@ -798,8 +801,8 @@ function AdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6">
           <p className="text-xs font-semibold text-muted-foreground">Page {currentPage} of {pageCount} · {reports.length} matching reports</p>
           <div className="flex gap-2">
-            <button type="button" disabled={currentPage <= 1} onClick={() => setPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button>
-            <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage((page) => Math.min(pageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button>
+            <Button variant="plain" type="button" disabled={currentPage <= 1} onClick={() => setPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</Button>
+            <Button variant="plain" type="button" disabled={currentPage >= pageCount} onClick={() => setPage((page) => Math.min(pageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</Button>
           </div>
         </div>
       )}
@@ -810,8 +813,8 @@ function AdminPage() {
   const renderMatchItem = (label: "Lost item" | "Found item", item: MatchItem) => (
     <div className="rounded-xl border border-border bg-background p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-        <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase ${label === "Lost item" ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-800"}`}>
+        <p className="text-xs font-extrabold uppercase tracking-normal text-muted-foreground">{label}</p>
+        <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase ${label === "Lost item" ? "bg-destructive/10 text-destructive" : "bg-success-soft text-success-foreground"}`}>
           {label === "Lost item" ? "Lost" : "Found"}
         </span>
       </div>
@@ -840,13 +843,13 @@ function AdminPage() {
     <section id="admin-matches" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
         <div>
-          <p className="kicker text-emerald-800">Matching system</p>
+          <p className="kicker text-success-foreground">Matching system</p>
           <h2 className="mt-2 text-2xl font-extrabold">Item matches found</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Review system suggestions. Confirm or dismiss a pair; after a confirmed handover, mark it returned.</p>
         </div>
-        <button type="button" onClick={() => void loadMatches()} disabled={matchesLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
+        <Button variant="plain" type="button" onClick={() => void loadMatches()} disabled={matchesLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-extrabold disabled:opacity-60">
           {matchesLoading ? "Refreshing…" : "Refresh matches"}
-        </button>
+        </Button>
       </div>
       {matchesError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{matchesError}</p>}
       {matchesLoading ? (
@@ -858,7 +861,7 @@ function AdminPage() {
           {matches.map((match) => (
             <article key={match.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "bg-emerald-50 text-emerald-900" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-amber-50 text-amber-900"}`}>{match.review_status === "confirmed" ? "Confirmed match" : match.review_status === "rejected" ? "Dismissed" : "Pending review"}</span>
+                <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "bg-success-soft text-success-foreground" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-warning-soft text-warning-foreground"}`}>{match.review_status === "confirmed" ? "Confirmed match" : match.review_status === "rejected" ? "Dismissed" : "Pending review"}</span>
                 <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Detected {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -877,10 +880,10 @@ function AdminPage() {
                   </label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {match.review_status === "pending" && <>
-                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "confirmed")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Confirm match</button>
-                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject match</button>
+                      <Button variant="plain" type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "confirmed")} className="rounded-lg bg-success px-3 py-2 text-xs font-extrabold text-ink-foreground hover:bg-success disabled:opacity-50">Confirm match</Button>
+                      <Button variant="plain" type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject match</Button>
                     </>}
-                    {match.review_status === "confirmed" && <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "resolved")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Mark item returned</button>}
+                    {match.review_status === "confirmed" && <Button variant="plain" type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "resolved")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-ink-foreground hover:bg-primary/90 disabled:opacity-50">Mark item returned</Button>}
                     {actionBusyId === match.id && <span className="self-center text-xs text-muted-foreground">Saving decision…</span>}
                   </div>
                 </div>
@@ -901,18 +904,18 @@ function AdminPage() {
               <ShieldCheck size={22} />
             </span>
             <span className="min-w-0">
-              <span className="admin-brand-title block font-display text-lg font-extrabold leading-tight tracking-tight">CampusFind</span>
-              <span className="admin-brand-subtitle mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.16em]">Administrator console</span>
+              <span className="admin-brand-title block font-display text-lg font-extrabold leading-tight tracking-normal">CampusFind</span>
+              <span className="admin-brand-subtitle mt-0.5 block text-[10px] font-extrabold uppercase tracking-normal">Administrator console</span>
             </span>
           </Link>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <span className="admin-access-pill hidden rounded-full px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] sm:inline-flex">Restricted access</span>
+            <span className="admin-access-pill hidden rounded-full px-3 py-2 text-[10px] font-extrabold uppercase tracking-normal sm:inline-flex">Restricted access</span>
             <Link to="/browse" className="admin-utility-link inline-flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition sm:text-sm">
               Student site <ArrowUpRight size={15} />
             </Link>
-            <button type="button" onClick={() => void signOut()} className="admin-signout inline-flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-extrabold transition sm:px-4 sm:text-sm">
+            <Button variant="plain" type="button" onClick={() => void signOut()} className="admin-signout inline-flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-extrabold transition sm:px-4 sm:text-sm">
               <LogOut size={15} /> Sign out
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -921,10 +924,10 @@ function AdminPage() {
         <div className="admin-dashboard-header flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="kicker admin-kicker">Administrator workspace</p>
-            <h1 className="admin-dashboard-title mt-2 text-4xl font-extrabold tracking-tight">Control room</h1>
+            <h1 className="admin-dashboard-title mt-2 text-4xl font-extrabold tracking-normal">Control room</h1>
             <p className="admin-dashboard-subtitle mt-2 text-sm leading-6">Lost and found reports, student sign-ins and possible item matches are shown in separate sections.</p>
           </div>
-          <button
+          <Button variant="plain"
             type="button"
             onClick={() => {
               void load();
@@ -939,7 +942,7 @@ function AdminPage() {
             className="admin-refresh-button inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-extrabold disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
-          </button>
+          </Button>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -953,7 +956,7 @@ function AdminPage() {
 
         <section id="admin-overview" className="admin-panel mt-6 rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="kicker text-emerald-800">Campus insights</p><h2 className="mt-2 text-2xl font-extrabold">Recovery and activity overview</h2><p className="mt-1 text-sm text-muted-foreground">Calculated from all reports, matches and claims currently stored.</p></div>
+            <div><p className="kicker text-success-foreground">Campus insights</p><h2 className="mt-2 text-2xl font-extrabold">Recovery and activity overview</h2><p className="mt-1 text-sm text-muted-foreground">Calculated from all reports, matches and claims currently stored.</p></div>
             <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{recoveryRate}% reports returned</span>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -967,14 +970,14 @@ function AdminPage() {
           <div className="mt-5">
             <h3 className="text-sm font-extrabold">Most reported campus areas</h3>
             {topLocations.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No location data yet.</p> : <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {topLocations.map(([location, count]) => <div key={location} className="rounded-xl bg-background p-3"><div className="flex items-center justify-between gap-3 text-sm"><span className="font-bold">{location}</span><span className="text-xs text-muted-foreground">{count} reports</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-emerald-700" style={{ width: `${Math.round((count / Math.max(1, topLocations[0]?.[1] ?? 1)) * 100)}%` }} /></div></div>)}
+              {topLocations.map(([location, count]) => <div key={location} className="rounded-xl bg-background p-3"><div className="flex items-center justify-between gap-3 text-sm"><span className="font-bold">{location}</span><span className="text-xs text-muted-foreground">{count} reports</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-success" style={{ width: `${Math.round((count / Math.max(1, topLocations[0]?.[1] ?? 1)) * 100)}%` }} /></div></div>)}
             </div>}
           </div>
         </section>
 
 
         <nav aria-label="Administrator sections" className="mt-6 flex flex-wrap gap-2">
-          {[["Overview", "#admin-overview"], ["Lost reports", "#admin-reports"], ["Found reports", "#admin-found-reports"], ["Students", "#admin-students"], ["Sign-ins", "#admin-activity"], ["Matches", "#admin-matches"], ["Claims", "#admin-claims"], ["Contact", "#admin-contact"]].map(([label, href]) => <a key={href} href={href} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary">{label}</a>)}
+          {[["Overview", "#admin-overview"], ["Lost reports", "#admin-reports"], ["Found reports", "#admin-found-reports"], ["Students", "#admin-students"], ["Sign-ins", "#admin-activity"], ["Matches", "#admin-matches"], ["Claims", "#admin-claims"], ["Contact", "#admin-contact"]].map(([label, href]) => <a key={href} href={href} className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary">{label}</a>)}
         </nav>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -999,8 +1002,8 @@ function AdminPage() {
 
         <section id="admin-students" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
-            <div><p className="kicker text-emerald-800">Student identity controls</p><h2 className="mt-2 text-2xl font-extrabold">Student verification</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only mark a student verified after checking their UID and identity against an authorised Chandigarh University roster or physical student ID. This manual status is not an automatic CU directory check.</p></div>
-            <button type="button" onClick={() => void loadStudents()} disabled={studentsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{studentsLoading ? "Refreshing…" : "Refresh students"}</button>
+            <div><p className="kicker text-success-foreground">Student identity controls</p><h2 className="mt-2 text-2xl font-extrabold">Student verification</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Only mark a student verified after checking their UID and identity against an authorised Chandigarh University roster or physical student ID. This manual status is not an automatic CU directory check.</p></div>
+            <Button variant="plain" type="button" onClick={() => void loadStudents()} disabled={studentsLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-extrabold disabled:opacity-60">{studentsLoading ? "Refreshing…" : "Refresh students"}</Button>
           </div>
           <div className="flex flex-wrap items-center gap-3 border-t border-border p-4 sm:p-5">
             <label className="min-w-56 flex-1"><span className="sr-only">Search students by name or UID</span><input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Search student name or UID…" className={`${input} w-full`} /></label>
@@ -1011,9 +1014,9 @@ function AdminPage() {
             <div className="grid gap-3 border-t border-border p-4 sm:p-5">
               {pageStudents.map((student) => <article key={student.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
                 <div><p className="font-extrabold">{student.full_name || "Unnamed student"}</p><p className="mt-1 text-xs text-muted-foreground">UID {student.uid}</p><p className="mt-1 text-xs text-muted-foreground">{student.verification_status === "verified" ? `Verified ${student.verified_at ? new Date(student.verified_at).toLocaleDateString("en-IN") : ""}` : "Identity not yet verified"}</p></div>
-                {student.verification_status === "verified" ? <button type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, false)} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Revoke verification"}</button> : <button type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, true)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Mark verified"}</button>}
+                {student.verification_status === "verified" ? <Button variant="plain" type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, false)} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Revoke verification"}</Button> : <Button variant="plain" type="button" disabled={verificationBusyId === student.id} onClick={() => void updateStudentVerification(student, true)} className="rounded-lg bg-success px-3 py-2 text-xs font-extrabold text-ink-foreground hover:bg-success disabled:opacity-50">{verificationBusyId === student.id ? "Saving…" : "Mark verified"}</Button>}
               </article>)}
-              {visibleStudents.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><span className="text-xs text-muted-foreground">Page {studentPage} of {studentPageCount} · {visibleStudents.length} students</span><div className="flex gap-2"><button type="button" disabled={studentPage <= 1} onClick={() => setStudentPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={studentPage >= studentPageCount} onClick={() => setStudentPage((page) => Math.min(studentPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
+              {visibleStudents.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"><span className="text-xs text-muted-foreground">Page {studentPage} of {studentPageCount} · {visibleStudents.length} students</span><div className="flex gap-2"><Button variant="plain" type="button" disabled={studentPage <= 1} onClick={() => setStudentPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</Button><Button variant="plain" type="button" disabled={studentPage >= studentPageCount} onClick={() => setStudentPage((page) => Math.min(studentPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</Button></div></div>}
             </div>
           )}
         </section>
@@ -1022,7 +1025,7 @@ function AdminPage() {
         {error && (
           <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">
             <p>{error}</p>
-            <button type="button" onClick={() => void load()} className="mt-2 underline underline-offset-4">Try again</button>
+            <Button variant="plain" type="button" onClick={() => void load()} className="mt-2 underline underline-offset-4">Try again</Button>
           </div>
         )}
 
@@ -1033,13 +1036,13 @@ function AdminPage() {
         <section id="admin-activity" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
-              <p className="kicker text-emerald-800">Account activity</p>
+              <p className="kicker text-success-foreground">Account activity</p>
               <h2 className="mt-2 text-2xl font-extrabold">Recent sign-ins</h2>
               <p className="mt-1 text-sm text-muted-foreground">All recorded successful student sign-ins. Administrator sign-ins are kept separate.</p>
             </div>
-            <button type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
+            <Button variant="plain" type="button" onClick={() => void loadLoginActivity()} disabled={activityLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {activityLoading ? "Refreshing…" : "Refresh activity"}
-            </button>
+            </Button>
           </div>
           {activityError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{activityError}</p>}
           {activityLoading ? (
@@ -1071,15 +1074,15 @@ function AdminPage() {
               </table>
             </div>
           )}
-          {!activityLoading && loginEvents.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {activityPage} of {activityPageCount} · {loginEvents.length} sign-ins</span><div className="flex gap-2"><button type="button" disabled={activityPage <= 1} onClick={() => setActivityPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={activityPage >= activityPageCount} onClick={() => setActivityPage((page) => Math.min(activityPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
+          {!activityLoading && loginEvents.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {activityPage} of {activityPageCount} · {loginEvents.length} sign-ins</span><div className="flex gap-2"><Button variant="plain" type="button" disabled={activityPage <= 1} onClick={() => setActivityPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</Button><Button variant="plain" type="button" disabled={activityPage >= activityPageCount} onClick={() => setActivityPage((page) => Math.min(activityPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</Button></div></div>}
         </section>
 
         {renderMatchesSection}
 
         <section id="admin-claims" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
-            <div><p className="kicker text-emerald-800">Ownership verification</p><h2 className="mt-2 text-2xl font-extrabold">Item claims</h2><p className="mt-1 text-sm text-muted-foreground">Private ownership proof is visible to authorised administrators and the claimant only. Approvals issue a one-time handover code to the claimant.</p></div>
-            <button type="button" onClick={() => void loadClaims()} disabled={claimsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{claimsLoading ? "Refreshing…" : "Refresh claims"}</button>
+            <div><p className="kicker text-success-foreground">Ownership verification</p><h2 className="mt-2 text-2xl font-extrabold">Item claims</h2><p className="mt-1 text-sm text-muted-foreground">Private ownership proof is visible to authorised administrators and the claimant only. Approvals issue a one-time handover code to the claimant.</p></div>
+            <Button variant="plain" type="button" onClick={() => void loadClaims()} disabled={claimsLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-extrabold disabled:opacity-60">{claimsLoading ? "Refreshing…" : "Refresh claims"}</Button>
           </div>
           {claimsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{claimsError}</p>}
           {claimsLoading ? <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading claims…</p> : claims.length === 0 ? <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No item claims have been submitted.</p> : (
@@ -1090,8 +1093,8 @@ function AdminPage() {
                     <div><h3 className="font-extrabold text-foreground">{claim.item_name}</h3><p className="mt-1 text-sm text-muted-foreground">{claim.item_location}</p><p className="mt-2 text-xs text-muted-foreground">Claimed by {claim.claimant_name ?? "Unknown"} · UID {claim.claimant_uid ?? "—"}</p><p className="mt-1 text-xs text-muted-foreground">Found report submitted by {claim.item_owner_name ?? "Unknown"} · UID {claim.item_owner_uid ?? "—"}</p></div>
                     <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{claim.status.toUpperCase()}</span>
                   </div>
-                  <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Private ownership proof</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p></div>
-                  {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">Previous review note: {claim.admin_note}</p>}
+                  <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="text-[10px] font-extrabold uppercase tracking-normal text-muted-foreground">Private ownership proof</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p></div>
+                  {claim.admin_note && <p className="mt-3 rounded-lg bg-warning-soft p-3 text-xs leading-5 text-warning-foreground">Previous review note: {claim.admin_note}</p>}
                   {claim.status !== "rejected" && claim.status !== "completed" && (
                     <div className="mt-4 border-t border-border pt-4">
                       <label className="block text-xs font-extrabold text-muted-foreground">DECISION NOTE
@@ -1099,10 +1102,10 @@ function AdminPage() {
                       </label>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {claim.status === "pending" && <>
-                          <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "approved")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Approve claim</button>
-                          <button type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject claim</button>
+                          <Button variant="plain" type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "approved")} className="rounded-lg bg-success px-3 py-2 text-xs font-extrabold text-ink-foreground hover:bg-success disabled:opacity-50">Approve claim</Button>
+                          <Button variant="plain" type="button" disabled={actionBusyId === claim.id} onClick={() => void reviewClaim(claim, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject claim</Button>
                         </>}
-                        {claim.status === "approved" && <div className="w-full max-w-md"><label className="block text-xs font-extrabold text-muted-foreground">CLAIMANT HANDOVER CODE<input inputMode="text" autoComplete="off" maxLength={12} value={claimHandoverCodeDrafts[claim.id] ?? ""} onChange={(event) => setClaimHandoverCodeDrafts((current) => ({ ...current, [claim.id]: event.target.value.toUpperCase().replace(/[^A-F0-9]/g, "") }))} placeholder="12-character code shown by claimant" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 font-mono text-sm tracking-widest" /></label><p className="mt-1 text-xs leading-5 text-muted-foreground">Enter the code only when the claimant shows it to you during the physical handover.</p><button type="button" disabled={actionBusyId === claim.id || !/^[A-F0-9]{12}$/.test(claimHandoverCodeDrafts[claim.id] ?? "")} onClick={() => void reviewClaim(claim, "completed")} className="mt-3 rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Verify handover and mark returned</button></div>}
+                        {claim.status === "approved" && <div className="w-full max-w-md"><label className="block text-xs font-extrabold text-muted-foreground">CLAIMANT HANDOVER CODE<input inputMode="text" autoComplete="off" maxLength={12} value={claimHandoverCodeDrafts[claim.id] ?? ""} onChange={(event) => setClaimHandoverCodeDrafts((current) => ({ ...current, [claim.id]: event.target.value.toUpperCase().replace(/[^A-F0-9]/g, "") }))} placeholder="12-character code shown by claimant" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 font-mono text-sm tracking-widest" /></label><p className="mt-1 text-xs leading-5 text-muted-foreground">Enter the code only when the claimant shows it to you during the physical handover.</p><Button variant="plain" type="button" disabled={actionBusyId === claim.id || !/^[A-F0-9]{12}$/.test(claimHandoverCodeDrafts[claim.id] ?? "")} onClick={() => void reviewClaim(claim, "completed")} className="mt-3 rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-ink-foreground hover:bg-primary/90 disabled:opacity-50">Verify handover and mark returned</Button></div>}
                       </div>
                     </div>
                   )}
@@ -1117,14 +1120,14 @@ function AdminPage() {
         <section id="admin-contact" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
             <div>
-              <p className="kicker text-emerald-800">Contact inbox</p>
+              <p className="kicker text-success-foreground">Contact inbox</p>
               <h2 className="mt-2 text-2xl font-extrabold">Messages from the website</h2>
               <p className="mt-1 text-sm text-muted-foreground">Search and review all messages in the administrator inbox.</p>
               <p className="mt-1 text-sm text-muted-foreground">Only authenticated administrators can read these messages.</p>
             </div>
-            <button type="button" onClick={() => void loadContactMessages()} disabled={contactLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
+            <Button variant="plain" type="button" onClick={() => void loadContactMessages()} disabled={contactLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-extrabold disabled:opacity-60">
               {contactLoading ? "Refreshing…" : "Refresh inbox"}
-            </button>
+            </Button>
           </div>
           {contactError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{contactError}</p>}
           <div className="border-t border-border p-4 sm:p-5"><label className="block max-w-xl text-xs font-extrabold text-muted-foreground">SEARCH MESSAGES<input value={contactQuery} onChange={(event) => setContactQuery(event.target.value)} placeholder="Search name, email, subject or message…" className={input + " mt-2 w-full"} /></label></div>
@@ -1148,7 +1151,7 @@ function AdminPage() {
               ))}
             </div>
           )}
-          {!contactLoading && filteredContactMessages.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {contactPage} of {contactPageCount} · {filteredContactMessages.length} messages</span><div className="flex gap-2"><button type="button" disabled={contactPage <= 1} onClick={() => setContactPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</button><button type="button" disabled={contactPage >= contactPageCount} onClick={() => setContactPage((page) => Math.min(contactPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</button></div></div>}
+          {!contactLoading && filteredContactMessages.length > 25 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6"><span className="text-xs text-muted-foreground">Page {contactPage} of {contactPageCount} · {filteredContactMessages.length} messages</span><div className="flex gap-2"><Button variant="plain" type="button" disabled={contactPage <= 1} onClick={() => setContactPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Previous</Button><Button variant="plain" type="button" disabled={contactPage >= contactPageCount} onClick={() => setContactPage((page) => Math.min(contactPageCount, page + 1))} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold disabled:opacity-40">Next</Button></div></div>}
         </section>
 
 

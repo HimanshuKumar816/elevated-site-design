@@ -4,6 +4,8 @@ import { Page } from "@/components/site";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Privacy Policy — CampusFind" },
       { name: "description", content: "Learn how CampusFind handles account details, lost-and-found reports, private campus pins, and contact messages." },
       { property: "og:title", content: "Privacy Policy — CampusFind" },
@@ -17,18 +19,18 @@ export const Route = createFileRoute("/privacy")({
 function PrivacyPage() {
   return (
     <Page>
-      <article className="mx-auto max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
+      <article className="cf-privacy mx-auto max-w-3xl px-5 py-12 sm:px-8 sm:py-16">
         <nav aria-label="Breadcrumb" className="mb-7 text-sm text-muted-foreground">
           <Link to="/" className="font-bold text-primary hover:underline">Home</Link>
           <span className="px-2" aria-hidden="true">/</span>
           <span aria-current="page">Privacy Policy</span>
         </nav>
         <header className="mb-8">
-          <p className="kicker text-emerald-800">Privacy and safety</p>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">CampusFind Privacy Policy</h1>
+          <p className="kicker text-primary">Privacy and safety</p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-normal text-foreground sm:text-4xl">CampusFind Privacy Policy</h1>
           <p className="mt-3 text-sm text-muted-foreground">Last updated: 1 November 2026</p>
         </header>
-        <div className="space-y-8 rounded-[2rem] border border-border bg-white p-6 leading-7 text-muted-foreground shadow-sm sm:p-10">
+        <div className="cf-policy-content space-y-10 leading-7 text-muted-foreground">
           <section>
             <h2 className="text-xl font-extrabold text-foreground">1. What CampusFind does</h2>
             <p className="mt-3">CampusFind is a campus lost-and-found service designed for Chandigarh University. It helps signed-in users publish reports, browse reports, and arrange safer returns. This policy describes the information handled by the current website.</p>
