@@ -423,7 +423,10 @@ function Browse() {
             {!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-white px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}
             {q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}
           </div>
-          <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2 xl:grid-cols-4 md:items-end">
+          <details className="cf-filter-details mt-3 md:mt-4">
+            <summary className="cf-filter-summary"><span className="inline-flex items-center gap-2"><SlidersHorizontal size={15} /> Filters and sorting</span><span className="text-xs font-bold text-muted-foreground">Show / hide</span></summary>
+            <div className="cf-filter-controls">
+<div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2 xl:grid-cols-4 md:items-end">
             <div>
               <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Item type</span>
               <div className="flex flex-wrap items-center gap-2">
@@ -462,6 +465,9 @@ function Browse() {
               <input aria-label="Filter reports to date" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold normal-case tracking-normal text-foreground" />
             </label>
           </div>
+            </div>
+          </details>
+
           {(q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly) && (
             <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Active filters">
               <span className="text-xs font-bold text-muted-foreground">Active:</span>

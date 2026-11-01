@@ -590,3 +590,32 @@ main section:has(> section[aria-labelledby="account-notifications-title"]) h2 { 
   .cf-workspace-tab { justify-content: center; gap: .3rem; padding: .55rem .35rem; font-size: .7rem; }
 }
 @media (prefers-reduced-motion: reduce) { .cf-item-dialog, .cf-skeleton-card { animation: none; } }
+
+
+/* Native collapsible filters on narrow screens; persistent controls on desktop. */
+.cf-filter-summary {
+  display: none;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  border: 1px solid #d9ddda;
+  border-radius: 9px;
+  background: #f7f7f4;
+  padding: .65rem .85rem;
+  color: #202323;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 800;
+  list-style: none;
+}
+.cf-filter-summary::-webkit-details-marker { display: none; }
+.cf-filter-summary::after { content: "+"; color: #b52d38; font-size: 1.1rem; }
+.cf-filter-details[open] .cf-filter-summary::after { content: "−"; }
+.cf-filter-controls { display: block; }
+@media (max-width: 767px) {
+  .cf-filter-summary { display: flex; }
+  .cf-filter-controls { display: none; }
+  .cf-filter-details[open] .cf-filter-controls { display: block; }
+  .cf-filter-details[open] .cf-filter-summary { border-color: #d8aeb2; background: #fff8f8; }
+}
