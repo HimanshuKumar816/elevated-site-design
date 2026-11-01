@@ -116,10 +116,10 @@ async function consumeLimit(admin: ReturnType<typeof createClient>, key: string,
 
 function redactForFreeInference(value: string | null | undefined, maxLength = 400): string {
   return (value ?? "")
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[redacted]")
-    .replace(/(?:\\+?\\d[\\d .()/-]{7,}\\d)/g, "[redacted]")
-    .replace(/\\b(?:uid|roll(?:\\s*no)?|enrol(?:ment)?|enroll(?:ment)?|student\\s*id|phone|mobile)\\s*[:#-]?\\s*[A-Z0-9/-]{4,}\\b/gi, "[redacted]")
-    .replace(/\\b\\d{8,}\\b/g, "[redacted]")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted]")
+    .replace(/(?:\+?\d[\d .()/-]{7,}\d)/g, "[redacted]")
+    .replace(/\b(?:uid|roll(?:\s*no)?|enrol(?:ment)?|enroll(?:ment)?|student\s*id|phone|mobile)\s*[:#-]?\s*[A-Z0-9/-]{4,}\b/gi, "[redacted]")
+    .replace(/\b\d{8,}\b/g, "[redacted]")
     .slice(0, maxLength);
 }
 
