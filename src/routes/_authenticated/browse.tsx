@@ -1,3 +1,4 @@
+import { AccessibleModal } from "@/components/accessible-modal";
 import { Button } from "@/components/ui/button";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -369,7 +370,7 @@ function Browse() {
               <h1 className="mt-4 text-4xl font-extrabold leading-tight text-ink-foreground sm:text-5xl">Lost something? Start here.</h1>
               <p className="mt-4 max-w-xl leading-7 text-ink-foreground/70">Search campus reports with common item names and spelling variations. Keep one identifying detail private until ownership is verified.</p>
             </div>
-            <Link to="/report" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-success px-5 py-3 text-sm font-extrabold text-primary transition hover:bg-success-soft">
+            <Link to="/report" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground transition hover:bg-primary-hover">
               Add a report <ArrowUpRight size={17} />
             </Link>
           </div>
@@ -531,7 +532,7 @@ function Browse() {
           </div>
         </div>
 
-        {loading && <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="cf-skeleton-card p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
+        {loading && <div role="status" aria-label="Loading campus reports" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="cf-skeleton-card p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
 
         {!loading && shown.length > 0 && (
           <div className={viewMode === "grid" ? "mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" : "cf-browse-list mt-5 grid gap-3"}>
@@ -596,8 +597,8 @@ function Browse() {
       </section>
 
       {detailTarget && (
-        <div className="cf-dialog-backdrop fixed inset-0 z-[75] flex items-center justify-center p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setDetailTarget(null); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="item-detail-title" className="cf-item-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl">
+        <AccessibleModal labelledBy="item-detail-title" onClose={() => setDetailTarget(null)}>
+          <section className="cf-item-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -632,21 +633,21 @@ function Browse() {
               {detailTarget.user_id === me && <Link to="/my-reports" onClick={() => setDetailTarget(null)} className="rounded-lg bg-secondary px-4 py-2.5 text-sm font-extrabold text-foreground">Track my report</Link>}
             </div>
           </section>
-        </div>
+        </AccessibleModal>
       )}
 
       {lightboxImage && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-ink/95 p-3 sm:p-8" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setLightboxImage(null); }}>
-          <section role="dialog" aria-modal="true" aria-label="Full-size item photograph" className="relative flex h-full w-full items-center justify-center">
+        <AccessibleModal label="Full-size item photograph" className="cf-lightbox" onClose={() => setLightboxImage(null)}>
+          <section className="relative flex h-full w-full items-center justify-center">
             <Button variant="plain" type="button" onClick={() => setLightboxImage(null)} className="absolute right-1 top-1 z-10 inline-flex items-center gap-2 rounded-lg border border-ink-foreground/20 bg-ink/50 px-3 py-2 text-sm font-bold text-ink-foreground hover:bg-ink/70" aria-label="Close full-size image"><X size={17} /> Close</Button>
             <img src={lightboxImage} alt="Full-size item photograph" className="max-h-full max-w-full object-contain" />
           </section>
-        </div>
+        </AccessibleModal>
       )}
 
       {claimTarget && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/65 p-4" role="presentation">
-          <section role="dialog" aria-modal="true" aria-labelledby="claim-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-5 shadow-2xl sm:p-7">
+        <AccessibleModal labelledBy="claim-title" className="cf-claim-dialog" onClose={() => { setClaimTarget(null); setClaimError(""); }}>
+          <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-5 shadow-2xl sm:p-7">
             <div className="flex items-start justify-between gap-3">
               <div><p className="kicker text-success-foreground">Private ownership claim</p><h2 id="claim-title" className="mt-2 text-2xl font-extrabold">Claim {claimTarget.name}</h2><p className="mt-2 text-sm text-muted-foreground">{claimTarget.location} · {claimTarget.category}</p></div>
               <Button variant="plain" type="button" onClick={() => { setClaimTarget(null); setClaimError(""); }} className="grid size-9 place-items-center rounded-lg hover:bg-secondary" aria-label="Close claim form"><X size={18} /></Button>
@@ -663,7 +664,7 @@ function Browse() {
               </div>
             </form>
           </section>
-        </div>
+        </AccessibleModal>
       )}
     </Page>
   );

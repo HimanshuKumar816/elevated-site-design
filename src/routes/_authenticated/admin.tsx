@@ -980,8 +980,8 @@ function AdminPage() {
           {[["Overview", "#admin-overview"], ["Lost reports", "#admin-reports"], ["Found reports", "#admin-found-reports"], ["Students", "#admin-students"], ["Sign-ins", "#admin-activity"], ["Matches", "#admin-matches"], ["Claims", "#admin-claims"], ["Contact", "#admin-contact"]].map(([label, href]) => <a key={href} href={href} className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-extrabold text-foreground transition hover:bg-secondary">{label}</a>)}
         </nav>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <label className="relative min-w-56 flex-1">
+        <div className="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <label className="relative min-w-0 flex-1">
             <span className="sr-only">Search reports</span>
             <Search size={16} className="absolute left-3 top-3 text-muted-foreground" />
             <input value={filter.query} onChange={(event) => setFilter((current) => ({ ...current, query: event.target.value }))} placeholder="Search item, location, student, UID…" className={`${input} w-full pl-9`} />
@@ -1006,7 +1006,7 @@ function AdminPage() {
             <Button variant="plain" type="button" onClick={() => void loadStudents()} disabled={studentsLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-extrabold disabled:opacity-60">{studentsLoading ? "Refreshing…" : "Refresh students"}</Button>
           </div>
           <div className="flex flex-wrap items-center gap-3 border-t border-border p-4 sm:p-5">
-            <label className="min-w-56 flex-1"><span className="sr-only">Search students by name or UID</span><input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Search student name or UID…" className={`${input} w-full`} /></label>
+            <label className="min-w-0 flex-1"><span className="sr-only">Search students by name or UID</span><input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Search student name or UID…" className={`${input} w-full`} /></label>
             <span className="rounded-full bg-secondary px-3 py-2 text-xs font-extrabold">{students.filter((student) => student.verification_status === "verified").length} verified · {students.filter((student) => student.verification_status !== "verified").length} awaiting</span>
           </div>
           {studentsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{studentsError}</p>}
@@ -1050,13 +1050,13 @@ function AdminPage() {
           ) : loginEvents.length === 0 ? (
             <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No successful sign-ins have been recorded yet. New logins will appear here.</p>
           ) : (
-            <div className="overflow-x-auto border-t border-border">
+            <div className="admin-table-scroll border-t border-border">
               <table className="w-full min-w-[560px] text-left text-sm">
                 <thead className="bg-secondary/70 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-5 py-3 font-extrabold sm:px-6">Person</th>
-                    <th className="px-5 py-3 font-extrabold">Method</th>
-                    <th className="px-5 py-3 font-extrabold">Signed in</th>
+                    <th scope="col" className="px-5 py-3 font-extrabold sm:px-6">Person</th>
+                    <th scope="col" className="px-5 py-3 font-extrabold">Method</th>
+                    <th scope="col" className="px-5 py-3 font-extrabold">Signed in</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1091,7 +1091,7 @@ function AdminPage() {
                 <article key={claim.id} className="rounded-xl border border-border bg-card p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div><h3 className="font-extrabold text-foreground">{claim.item_name}</h3><p className="mt-1 text-sm text-muted-foreground">{claim.item_location}</p><p className="mt-2 text-xs text-muted-foreground">Claimed by {claim.claimant_name ?? "Unknown"} · UID {claim.claimant_uid ?? "—"}</p><p className="mt-1 text-xs text-muted-foreground">Found report submitted by {claim.item_owner_name ?? "Unknown"} · UID {claim.item_owner_uid ?? "—"}</p></div>
-                    <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{claim.status.toUpperCase()}</span>
+                    <span className={`cf-claim-pill cf-claim-${claim.status}`}>{claim.status.toUpperCase()}</span>
                   </div>
                   <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="text-[10px] font-extrabold uppercase tracking-normal text-muted-foreground">Private ownership proof</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p></div>
                   {claim.admin_note && <p className="mt-3 rounded-lg bg-warning-soft p-3 text-xs leading-5 text-warning-foreground">Previous review note: {claim.admin_note}</p>}

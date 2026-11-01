@@ -1,3 +1,4 @@
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -318,13 +319,13 @@ function MyReportsPage() {
           </Button>
         )}
 
-        <div className="cf-workspace-tabs mt-7" role="tablist" aria-label="Your CampusFind workspace">
-          <Button variant="plain" type="button" role="tab" aria-selected={activeTab === "reports"} aria-controls="my-reports-panel" onClick={() => setActiveTab("reports")} className={activeTab === "reports" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ClipboardList size={16} /> Reports <span>{reports.length}</span></Button>
-          <Button variant="plain" type="button" role="tab" aria-selected={activeTab === "claims"} aria-controls="my-claims-panel" onClick={() => setActiveTab("claims")} className={activeTab === "claims" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ShieldCheck size={16} /> Claims <span>{claims.length}</span></Button>
-          <Button variant="plain" type="button" role="tab" aria-selected={activeTab === "notifications"} aria-controls="my-notifications-panel" onClick={() => setActiveTab("notifications")} className={activeTab === "notifications" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><Bell size={16} /> Notifications <span>{unreadNotifications > 0 ? unreadNotifications : "✓"}</span></Button>
-        </div>
+        <Tabs value={activeTab} onValueChange={(value) => { if (value === "reports" || value === "claims" || value === "notifications") setActiveTab(value); }}><TabsList className="cf-workspace-tabs mt-7 h-auto w-full justify-start bg-transparent" aria-label="Your CampusFind workspace">
+          <TabsTrigger value="reports" className={activeTab === "reports" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ClipboardList size={16} /> Reports <span>{reports.length}</span></TabsTrigger>
+          <TabsTrigger value="claims" className={activeTab === "claims" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ShieldCheck size={16} /> Claims <span>{claims.length}</span></TabsTrigger>
+          <TabsTrigger value="notifications" className={activeTab === "notifications" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><Bell size={16} /> Notifications <span>{unreadNotifications > 0 ? unreadNotifications : "✓"}</span></TabsTrigger>
+        </TabsList>
 
-        <section id="my-notifications-panel" role="tabpanel" aria-labelledby="account-notifications-title" tabIndex={0} hidden={activeTab !== "notifications"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <TabsContent value="notifications" forceMount hidden={activeTab !== "notifications"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary"><Bell size={19} /></span>
@@ -358,9 +359,9 @@ function MyReportsPage() {
               ))}
             </div>
           )}
-        </section>
+        </TabsContent>
 
-        <section id="my-reports-panel" role="tabpanel" aria-labelledby="my-reports-title" tabIndex={0} hidden={activeTab !== "reports"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <TabsContent value="reports" forceMount hidden={activeTab !== "reports"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div>
               <p className="kicker text-primary">Your submissions</p>
@@ -399,9 +400,9 @@ function MyReportsPage() {
               ))}
             </div>
           )}
-        </section>
+        </TabsContent>
 
-        <section id="my-claims-panel" role="tabpanel" aria-labelledby="my-claims-title" tabIndex={0} hidden={activeTab !== "claims"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <TabsContent value="claims" forceMount hidden={activeTab !== "claims"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div>
               <p className="kicker text-primary">Ownership requests</p>
@@ -437,7 +438,9 @@ function MyReportsPage() {
               ))}
             </div>
           )}
-        </section>
+        </TabsContent>
+
+        </Tabs>
 
         <div className="mt-7">
           <Link to="/browse" className="inline-flex items-center gap-2 text-sm font-extrabold text-primary hover:underline"><ArrowLeft size={16} /> Back to campus reports</Link>

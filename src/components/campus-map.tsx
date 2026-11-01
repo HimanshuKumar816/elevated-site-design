@@ -122,7 +122,7 @@ function popupContent(title: string, detail?: string, href?: string): HTMLElemen
     const link = document.createElement("a");
     link.href = href;
     link.textContent = "View report";
-    link.style.color = "#047857";
+    link.style.color = "var(--primary)";
     link.style.fontWeight = "700";
     link.style.textDecoration = "underline";
     linkRow.appendChild(link);
@@ -242,21 +242,22 @@ export function CampusMap({
       <div
         ref={elementRef}
         className="h-[340px] w-full sm:h-[390px]"
+        role="region"
         aria-label={mode === "picker" ? "Choose a location on the Chandigarh University campus map" : "Lost and found item locations on the Chandigarh University campus map"}
         aria-busy={!ready && !mapError}
       />
       {mapError && (
-        <p role="alert" className="border-t border-border bg-white p-3 text-sm text-destructive">
+        <p role="alert" className="border-t border-border bg-card p-3 text-sm text-destructive">
           The campus map could not load. Check your internet connection and refresh this page.
         </p>
       )}
       {mode === "picker" && (
-        <p className="border-t border-border bg-white px-4 py-3 text-xs leading-5 text-muted-foreground">
+        <p className="border-t border-border bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
           Tap or click the exact spot on the campus map. The map is locked to the Chandigarh University, Mohali campus area.
         </p>
       )}
       {mode === "viewer" && markers.length === 0 && (
-        <p className="border-t border-border bg-white px-4 py-3 text-xs leading-5 text-muted-foreground">
+        <p className="border-t border-border bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
           No reports have a pinned location yet. New reports with campus map pins will appear here.
         </p>
       )}
