@@ -5,6 +5,39 @@
 
 CREATE SCHEMA IF NOT EXISTS private;
 
+-- Notifications are part of the support reply experience. Keep them scoped
+-- to their recipient; background triggers write them as the table owner.
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  body text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  item_id uuid REFERENCES public.items(id) ON DELETE SET NULL,
+  matched_item_id uuid REFERENCES public.items(id) ON DELETE SET NULL,
+  read_at timestamptz
+);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, UPDATE ON TABLE public.notifications TO authenticated;
+
+DROP POLICY IF EXISTS campusfind_notifications_owner_read
+  ON public.notifications;
+CREATE POLICY campusfind_notifications_owner_read
+  ON public.notifications
+  FOR SELECT
+  TO authenticated
+  USING (user_id = (SELECT auth.uid()));
+
+DROP POLICY IF EXISTS campusfind_notifications_owner_update
+  ON public.notifications;
+CREATE POLICY campusfind_notifications_owner_update
+  ON public.notifications
+  FOR UPDATE
+  TO authenticated
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
 CREATE TABLE IF NOT EXISTS public.support_tickets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
