@@ -1,7 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isEligibleForMatching } from "./matching.ts";
 
-const OPENAI_MODEL = "gpt-4o-mini";
+const GROQ_MODEL = "openai/gpt-oss-20b";
+const GROQ_PROVIDER = "Groq Free Plan";
 const MAX_CANDIDATES = 500;
 const AI_CANDIDATES = 12;
 const MIN_AI_SCORE = 55;
@@ -113,28 +114,63 @@ async function consumeLimit(admin: ReturnType<typeof createClient>, key: string,
   });
 }
 
-async function testOpenAiConnection(apiKey: string) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+function redactForFreeInference(value: string | null | undefined, maxLength = 400): string {
+  return (value ?? "")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted]")
+    .replace(/(?:\+?\d[\d .()/-]{7,}\d)/g, "[redacted]")
+    .replace(/\b(?:uid|roll(?:\s*no)?|enrol(?:ment)?|enroll(?:ment)?|student\s*id|phone|mobile)\s*[:#-]?\s*[A-Z0-9/-]{4,}\b/gi, "[redacted]")
+    .replace(/\b\d{8,}\b/g, "[redacted]")
+    .slice(0, maxLength);
+}
+
+async function readGroqError(response: Response) {
+  const payload = await response.json().catch(() => null);
+  const apiError = payload && typeof payload.error === "object" && payload.error !== null
+    ? payload.error as Record<string, unknown>
+    : {};
+  const errorCode = typeof apiError.code === "string"
+    ? apiError.code
+    : typeof apiError.type === "string"
+      ? apiError.type
+      : `groq_http_${response.status}`;
+  const errorMessage = typeof apiError.message === "string"
+    ? apiError.message.slice(0, 220)
+    : `Groq API returned HTTP ${response.status}.`;
+  return {
+    error_code: errorCode,
+    error_message: errorMessage,
+    retry_after: response.headers.get("retry-after"),
+  };
+}
+
+async function testGroqConnection(apiKey: string) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: OPENAI_MODEL,
-      temperature: 0,
-      max_tokens: 30,
+      model: GROQ_MODEL,
+      temperature: 0.6,
+      max_completion_tokens: 64,
+      reasoning_effort: "low",
+      reasoning_format: "hidden",
       response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: 'Return only JSON: {"ready":true}.' },
-        { role: "user", content: "Check whether the matching model is reachable." },
-      ],
+      messages: [{
+        role: "user",
+        content: 'Return only this JSON object and nothing else: {"ready":true}. This is a connectivity test.',
+      }],
     }),
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) return { reachable: false, error_code: `openai_http_${response.status}` };
-  const body = await response.json();
-  const parsed = JSON.parse(body.choices?.[0]?.message?.content ?? "{}");
-  return { reachable: parsed.ready === true, error_code: parsed.ready === true ? null : "unexpected_model_response" };
+  if (!response.ok) return { reachable: false, ...await readGroqError(response) };
+  const result = await response.json();
+  const parsed = JSON.parse(result.choices?.[0]?.message?.content ?? "{}");
+  return {
+    reachable: parsed.ready === true,
+    error_code: parsed.ready === true ? null : "unexpected_model_response",
+    error_message: null,
+    retry_after: null,
+  };
 }
-
 Deno.serve(async (request) => {
   const origin = request.headers.get("origin");
   if (origin && !allowedOrigins.has(origin)) return json({ error: "Origin not allowed" }, 403, origin);
@@ -167,8 +203,8 @@ Deno.serve(async (request) => {
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
   const userId = authData.user.id;
-  const openAiKey = Deno.env.get("OPENAI_API_KEY");
-  const aiConfigured = Boolean(openAiKey);
+  const groqKey = Deno.env.get("GROQ_API_KEY");
+  const aiConfigured = Boolean(groqKey);
 
   if (body.action === "health") {
     const { data: profile, error: profileError } = await admin
@@ -179,20 +215,30 @@ Deno.serve(async (request) => {
     if (rateError) return json({ error: "AI health check is temporarily unavailable." }, 503, origin);
     if (rateAllowed !== true) return json({ error: "Please wait before testing the AI engine again." }, 429, origin);
 
-    if (!openAiKey) {
-      return json({ ok: true, ai_configured: false, ai_reachable: false, model: OPENAI_MODEL }, 200, origin);
+    if (!groqKey) {
+      return json({ ok: true, ai_configured: false, ai_reachable: false, model: GROQ_MODEL, provider: GROQ_PROVIDER }, 200, origin);
     }
     try {
-      const result = await testOpenAiConnection(openAiKey);
+      const result = await testGroqConnection(groqKey);
       return json({
         ok: true,
         ai_configured: true,
         ai_reachable: result.reachable,
-        model: OPENAI_MODEL,
+        model: GROQ_MODEL,
+        provider: GROQ_PROVIDER,
         error_code: result.error_code,
+        error_message: result.error_message ?? null,
+        retry_after: result.retry_after ?? null,
       }, 200, origin);
-    } catch {
-      return json({ ok: true, ai_configured: true, ai_reachable: false, model: OPENAI_MODEL, error_code: "connection_test_failed" }, 200, origin);
+    } catch (error) {
+      return json({
+        ok: true,
+        ai_configured: true,
+        ai_reachable: false,
+        model: GROQ_MODEL,
+        provider: GROQ_PROVIDER,
+        error_code: error instanceof Error && error.name === "TimeoutError" ? "groq_timeout" : "groq_connection_failed",
+      }, 200, origin);
     }
   }
 
@@ -266,81 +312,90 @@ Deno.serve(async (request) => {
   let aiUsed = false;
   let aiErrorCode: string | null = null;
 
-  if (openAiKey) {
+  if (groqKey) {
     try {
-      const aiContent: Array<Record<string, unknown>> = [{
-        type: "text",
-        text: JSON.stringify({
-          report: {
-            id: item.id, type: item.type, name: item.name, category: item.category,
-            location: item.location, item_date: item.item_date, item_time: item.item_time,
-            brand: item.brand, color: item.color, model: item.model, note: item.note,
-          },
-          candidates: selected.map(({ item: candidate }) => ({
-            id: candidate.id, type: candidate.type, name: candidate.name, category: candidate.category,
-            location: candidate.location, item_date: candidate.item_date, item_time: candidate.item_time,
-            brand: candidate.brand, color: candidate.color, model: candidate.model, note: candidate.note,
-          })),
-          instruction: "The new report image, if present, is labelled first. Candidate images are labelled with their candidate IDs. Use photo evidence and report details together. Missing images are not evidence against a match.",
-        }),
-      }];
+      // Send only item attributes and a redacted description to the free provider.
+      // Photos stay in Supabase Storage because they may contain student IDs or other private details.
+      const providerPayload = {
+        report: {
+          type: item.type,
+          name: redactForFreeInference(item.name, 120),
+          category: redactForFreeInference(item.category, 80),
+          location: redactForFreeInference(item.location, 100),
+          item_date: item.item_date ?? null,
+          item_time: item.item_time ?? null,
+          brand: redactForFreeInference(item.brand, 80),
+          color: redactForFreeInference(item.color, 60),
+          model: redactForFreeInference(item.model, 80),
+          description: redactForFreeInference(item.note, 400),
+        },
+        candidates: selected.map(({ item: candidate }, index) => ({
+          candidate_index: index + 1,
+          type: candidate.type,
+          name: redactForFreeInference(candidate.name, 120),
+          category: redactForFreeInference(candidate.category, 80),
+          location: redactForFreeInference(candidate.location, 100),
+          item_date: candidate.item_date ?? null,
+          item_time: candidate.item_time ?? null,
+          brand: redactForFreeInference(candidate.brand, 80),
+          color: redactForFreeInference(candidate.color, 60),
+          model: redactForFreeInference(candidate.model, 80),
+          description: redactForFreeInference(candidate.note, 400),
+          photo_available: Boolean(candidate.image_path),
+        })),
+      };
 
-      if (item.image_path) {
-        const { data: image } = await admin.storage.from("item-images").createSignedUrl(item.image_path, 300);
-        if (image?.signedUrl) aiContent.push(
-          { type: "text", text: "Photo of the newly reported item:" },
-          { type: "image_url", image_url: { url: image.signedUrl } },
-        );
-      }
+      const prompt = [
+        "You are matching one Lost or Found campus item report against the numbered opposite-type candidates.",
+        "Decide whether each candidate is very likely to be the exact same physical item, not merely the same category.",
+        "Compare item identity, distinctive details, brand, model, colour, date/time, campus location, and descriptions.",
+        "A photo may exist, but it is not provided to you; never claim to have inspected a photo.",
+        "Do not invent evidence or use personal identity, account details, student IDs, or private ownership proof.",
+        'Return JSON only in this shape: {"matches":[{"candidate_index":1,"score":0,"reason":"short evidence-based explanation"}]}.',
+        "Use only candidate_index values in the supplied list. Include only plausible same-item matches with score >= 55. Return an empty array if none qualifies.",
+        "",
+        JSON.stringify(providerPayload),
+      ].join("\n");
 
-      for (const { item: candidate } of selected) {
-        if (!candidate.image_path) continue;
-        const { data: image } = await admin.storage.from("item-images").createSignedUrl(candidate.image_path, 300);
-        if (image?.signedUrl) aiContent.push(
-          { type: "text", text: `Photo for candidate ${candidate.id}:` },
-          { type: "image_url", image_url: { url: image.signedUrl } },
-        );
-      }
-
-      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: OPENAI_MODEL,
-          temperature: 0,
-          max_tokens: 1200,
+          model: GROQ_MODEL,
+          temperature: 0.6,
+          max_completion_tokens: 1600,
+          reasoning_effort: "low",
+          reasoning_format: "hidden",
           response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: 'You compare one Lost/Found report with opposite-type candidate reports to determine whether they refer to the same physical item. Consider item identity, distinctive description details, brand, model, colour, date/time context, campus location, and photos. Category similarity alone is never enough. Do not infer serial numbers, passwords, or private ownership proof. Return JSON only: {"matches":[{"id":"candidate UUID","score":0-100,"reason":"short evidence-based explanation"}]}. Include only plausible same-item candidates with score >= 55. Return an empty array when no credible match exists.',
-            },
-            { role: "user", content: aiContent },
-          ],
+          messages: [{ role: "user", content: prompt }],
         }),
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(20_000),
       });
 
       if (!aiResponse.ok) {
-        aiErrorCode = `openai_http_${aiResponse.status}`;
-        console.warn("[item matches] AI request failed; using text fallback", { status: aiResponse.status });
+        const failure = await readGroqError(aiResponse);
+        aiErrorCode = failure.error_code;
+        console.warn("[item matches] Groq AI request failed; using text fallback", {
+          status: aiResponse.status,
+          errorCode: failure.error_code,
+        });
       } else {
         const aiBody = await aiResponse.json();
         const parsed = JSON.parse(aiBody.choices?.[0]?.message?.content ?? "{}");
-        const selectedById = new Map(selected.map(({ item: candidate }) => [candidate.id, candidate]));
+        const selectedByIndex = new Map(selected.map(({ item: candidate }, index) => [index + 1, candidate]));
         const aiMatches = (Array.isArray(parsed.matches) ? parsed.matches : [])
-          .filter((entry: { id?: string; score?: number; reason?: string }) =>
-            typeof entry.id === "string"
-            && selectedById.has(entry.id)
+          .filter((entry: { candidate_index?: number; score?: number; reason?: string }) =>
+            Number.isInteger(Number(entry.candidate_index))
+            && selectedByIndex.has(Number(entry.candidate_index))
             && Number.isFinite(Number(entry.score))
             && Number(entry.score) >= MIN_AI_SCORE
           )
-          .map((entry: { id: string; score: number; reason?: string }) => ({
-            item: selectedById.get(entry.id)!,
+          .map((entry: { candidate_index: number; score: number; reason?: string }) => ({
+            item: selectedByIndex.get(Number(entry.candidate_index))!,
             score: Math.max(0, Math.min(100, Math.round(Number(entry.score)))),
             reason: typeof entry.reason === "string" && entry.reason.trim()
               ? entry.reason.trim().slice(0, 500)
-              : "AI compared the item details and available photographs.",
+              : "AI compared the item details and available report attributes.",
           }))
           .sort((a: MatchResult, b: MatchResult) => b.score - a.score)
           .slice(0, 5);
@@ -349,11 +404,11 @@ Deno.serve(async (request) => {
         results = aiMatches;
       }
     } catch (error) {
-      aiErrorCode = error instanceof Error && error.name === "TimeoutError" ? "openai_timeout" : "openai_request_failed";
-      console.warn("[item matches] AI request failed; using text fallback", { reason: aiErrorCode });
+      aiErrorCode = error instanceof Error && error.name === "TimeoutError" ? "groq_timeout" : "groq_request_failed";
+      console.warn("[item matches] Groq AI request failed; using text fallback", { reason: aiErrorCode });
     }
   } else {
-    aiErrorCode = "openai_key_not_configured";
+    aiErrorCode = "groq_key_not_configured";
   }
 
   if (!aiUsed) {

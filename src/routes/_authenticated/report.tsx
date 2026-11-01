@@ -281,7 +281,7 @@ function Report() {
         } else {
           setMatchingCount(Number(matchingData.match_count ?? 0));
           setMatchingDetail(
-            matchingData.ai_error_code === "openai_key_not_configured"
+            matchingData.ai_error_code === "groq_key_not_configured"
               ? "AI is not configured, so the text-similarity fallback was used."
               : matchingData.ai_error_code
                 ? "The AI service did not respond, so the text-similarity fallback was used."
