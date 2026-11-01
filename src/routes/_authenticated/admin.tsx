@@ -762,7 +762,7 @@ function AdminPage() {
     return userData.user.id;
   }
 
-  async function updateReportStatus(report: Row, status: ReportStatus) {
+  async function updateReportStatus(report: Row, status: Extract<ReportStatus, "new" | "under_review" | "closed" | "returned">) {
     setReportActionError("");
     setActionBusyId(report.id);
     try {
@@ -994,8 +994,8 @@ function AdminPage() {
 
         <div className="mt-4 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-2">
           <label className="block text-xs font-extrabold text-muted-foreground">REPORT STATUS
-            <select value={report.report_status} disabled={actionBusyId === report.id} onChange={(event) => void updateReportStatus(report, event.target.value as ReportStatus)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
-              <option value="new">New</option><option value="under_review">Under review</option><option value="matched">Matched</option><option value="claimed">Claimed</option><option value="returned">Returned</option><option value="closed">Closed</option>
+            <select value={report.report_status} disabled={actionBusyId === report.id} onChange={(event) => void updateReportStatus(report, event.target.value as Extract<ReportStatus, "new" | "under_review" | "closed" | "returned">)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-bold text-foreground">
+              {!["new", "under_review", "closed"].includes(report.report_status) && <option value={report.report_status} disabled>{report.report_status === "matched" ? "Matched — managed by matching" : report.report_status === "claimed" ? "Claimed — managed by claim review" : "Returned — verified handover"}</option>}<option value="new">New</option><option value="under_review">Under review</option>{report.type === "Lost" && <option value="returned">Returned — owner update</option>}<option value="closed">Closed</option>
             </select>
           </label>
           <label className="block text-xs font-extrabold text-muted-foreground">MODERATION FLAG
@@ -1173,7 +1173,7 @@ function AdminPage() {
             </span>
           </Link>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <span className="admin-access-pill hidden rounded-full px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] sm:inline-flex">Restricted access</span>
+            <span className="admin-access-pill hidden rounded-full px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] sm:inline-flex">Admin only</span>
             <Link to="/browse" className="admin-utility-link inline-flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition sm:text-sm">
               Student site <ArrowUpRight size={15} />
             </Link>
