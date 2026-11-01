@@ -28,7 +28,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 BEGIN
   IF auth.uid() IS NULL OR NOT EXISTS (
@@ -87,7 +87,7 @@ CREATE OR REPLACE FUNCTION public.campusfind_guard_support_ticket_rate()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
@@ -117,6 +117,8 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtextextended(v_user_id::text, 0));
+
   SELECT count(*) INTO v_recent_count
   FROM public.support_tickets AS ticket
   WHERE ticket.user_id = v_user_id
@@ -145,7 +147,7 @@ CREATE OR REPLACE FUNCTION public.campusfind_guard_support_message_rate()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
@@ -180,6 +182,8 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtextextended(v_user_id::text, 1));
+
   SELECT count(*) INTO v_recent_count
   FROM public.support_messages AS message
   WHERE message.sender_id = v_user_id
@@ -208,7 +212,7 @@ CREATE OR REPLACE FUNCTION public.campusfind_support_message_after_insert()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = ''
 AS $$
 DECLARE
   v_ticket_owner uuid;
