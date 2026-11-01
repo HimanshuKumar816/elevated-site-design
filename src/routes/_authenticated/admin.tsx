@@ -97,6 +97,7 @@ type MatchItem = {
   image_url: string | null;
   submitter_name: string | null;
   submitter_uid: string | null;
+  submitter_verified: boolean;
 };
 
 type ItemMatch = {
@@ -115,6 +116,7 @@ type ClaimRecord = {
   id: string;
   item_id: string;
   claimant_id: string;
+  source_match_id: string | null;
   proof: string;
   status: string;
   admin_note: string | null;
@@ -154,6 +156,8 @@ function AdminPage() {
   const [matches, setMatches] = useState<ItemMatch[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [matchesError, setMatchesError] = useState("");
+  const [aiStatus, setAiStatus] = useState<"unknown" | "checking" | "ready" | "missing" | "unreachable">("unknown");
+  const [aiStatusMessage, setAiStatusMessage] = useState("");
   const [claims, setClaims] = useState<ClaimRecord[]>([]);
   const [claimsLoading, setClaimsLoading] = useState(true);
   const [claimsError, setClaimsError] = useState("");
@@ -361,14 +365,20 @@ function AdminPage() {
         .in("id", itemIds);
       if (itemsError) throw itemsError;
       const profilesIds = [...new Set((itemRows ?? []).map((item) => item.user_id))];
-      const profilesById = new Map<string, { full_name: string; uid: string }>();
+      const profilesById = new Map<string, { full_name: string; uid: string; verified: boolean }>();
       if (profilesIds.length) {
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id,full_name,uid")
+          .select("id,full_name,uid,verification_status")
           .in("id", profilesIds);
         if (profilesError) throw profilesError;
-        for (const profile of profiles ?? []) profilesById.set(profile.id, { full_name: profile.full_name, uid: profile.uid });
+        for (const profile of profiles ?? []) {
+          profilesById.set(profile.id, {
+            full_name: profile.full_name,
+            uid: profile.uid,
+            verified: profile.verification_status === "verified",
+          });
+        }
       }
 
       const enriched = await Promise.all((itemRows ?? []).map(async (item) => {
@@ -391,6 +401,7 @@ function AdminPage() {
           image_url,
           submitter_name: profile?.full_name ?? null,
           submitter_uid: profile?.uid ?? null,
+          submitter_verified: profile?.verified ?? false,
         } satisfies MatchItem;
       }));
       const itemsById = new Map(enriched.map((item) => [item.id, item]));
@@ -426,7 +437,7 @@ function AdminPage() {
     try {
       const getClaimsPage = (offset: number) => supabase
         .from("item_claims")
-        .select("id,item_id,claimant_id,proof,status,admin_note,created_at,reviewed_at,item_name_snapshot,item_location_snapshot,item_category_snapshot")
+        .select("id,item_id,claimant_id,source_match_id,proof,status,admin_note,created_at,reviewed_at,item_name_snapshot,item_location_snapshot,item_category_snapshot")
         .order("created_at", { ascending: false })
         .range(offset, offset + 99);
       const claimRows: NonNullable<Awaited<ReturnType<typeof getClaimsPage>>["data"]> = [];
@@ -609,23 +620,63 @@ function AdminPage() {
     }
   }
 
-  async function reviewMatch(match: ItemMatch, status: "confirmed" | "rejected" | "resolved") {
+  async function testAiEngine() {
+    setAiStatus("checking");
+    setAiStatusMessage("");
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke("notify-item-matches", {
+        body: { action: "health" },
+      });
+      if (invokeError || !data?.ok) throw invokeError ?? new Error("AI health check failed");
+      if (data.ai_configured && data.ai_reachable) {
+        setAiStatus("ready");
+        setAiStatusMessage(`Connected to ${data.model ?? "the AI matching model"}.`);
+      } else if (!data.ai_configured) {
+        setAiStatus("missing");
+        setAiStatusMessage("OPENAI_API_KEY is not configured. Matching will use the text-similarity fallback.");
+      } else {
+        setAiStatus("unreachable");
+        setAiStatusMessage(`The OpenAI key is configured, but the model check failed (${data.error_code ?? "connection error"}).`);
+      }
+    } catch {
+      setAiStatus("unreachable");
+      setAiStatusMessage("The AI matching service could not be reached. Check the function deployment and try again.");
+    }
+  }
+
+  async function reviewMatch(match: ItemMatch, status: "rejected") {
     setReportActionError("");
     setActionBusyId(match.id);
     try {
-      const actorId = await adminActorId();
       const adminNote = (matchDrafts[match.id] ?? "").trim();
-      const { error: updateError } = await supabase.from("item_matches").update({
-        review_status: status,
-        admin_note: adminNote || null,
-        reviewed_by: actorId,
-        reviewed_at: new Date().toISOString(),
-      }).eq("id", match.id);
+      const { error: updateError } = await supabase.rpc("admin_reject_item_match", {
+        p_match_id: match.id,
+        ...(adminNote ? { p_admin_note: adminNote } : {}),
+      });
       if (updateError) throw updateError;
       setMatchDrafts((current) => ({ ...current, [match.id]: "" }));
       await Promise.all([loadMatches(), load()]);
     } catch {
-      setReportActionError("We couldn't save that match decision. A report may already be closed or moderated.");
+      setReportActionError("We couldn't dismiss that match. It may already have been reviewed or the reports may no longer be active.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function approveMatchForReturn(match: ItemMatch) {
+    setReportActionError("");
+    setActionBusyId(match.id);
+    try {
+      const adminNote = (matchDrafts[match.id] ?? "").trim();
+      const { error: approvalError } = await supabase.rpc("admin_approve_item_match_for_return", {
+        p_match_id: match.id,
+        ...(adminNote ? { p_admin_note: adminNote } : {}),
+      });
+      if (approvalError) throw approvalError;
+      setMatchDrafts((current) => ({ ...current, [match.id]: "" }));
+      await Promise.all([loadMatches(), loadClaims(), load()]);
+    } catch {
+      setReportActionError("We couldn't approve this match for return. Confirm that both report owners are verified, the reports are still active, and neither report is already paired with another approved match.");
     } finally {
       setActionBusyId(null);
     }
@@ -839,54 +890,70 @@ function AdminPage() {
   const renderMatchesSection = (
     <section id="admin-matches" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
-        <div>
-          <p className="kicker text-emerald-800">Matching system</p>
-          <h2 className="mt-2 text-2xl font-extrabold">Item matches found</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Review system suggestions. Confirm or dismiss a pair; after a confirmed handover, mark it returned.</p>
+        <div className="min-w-0">
+          <p className="kicker text-emerald-800">AI matching system</p>
+          <h2 className="mt-2 text-2xl font-extrabold">Suggested Lost/Found pairs</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">CampusFind compares active opposite-type reports, ranks likely pairs using item details and available photos, and sends each suggestion here for one administrator return approval.</p>
+          {aiStatusMessage && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${aiStatus === "ready" ? "bg-emerald-50 text-emerald-900" : aiStatus === "missing" || aiStatus === "unreachable" ? "bg-amber-50 text-amber-950" : "bg-secondary text-muted-foreground"}`}>{aiStatusMessage}</p>}
         </div>
-        <button type="button" onClick={() => void loadMatches()} disabled={matchesLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
-          {matchesLoading ? "Refreshing…" : "Refresh matches"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void testAiEngine()} disabled={aiStatus === "checking"} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
+            {aiStatus === "checking" ? "Testing AI…" : "Test AI engine"}
+          </button>
+          <button type="button" onClick={() => void loadMatches()} disabled={matchesLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
+            {matchesLoading ? "Refreshing…" : "Refresh matches"}
+          </button>
+        </div>
       </div>
       {matchesError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{matchesError}</p>}
       {matchesLoading ? (
-        <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Checking possible matches…</p>
+        <p role="status" className="px-5 pb-5 text-sm text-muted-foreground sm:px-6">Loading match suggestions…</p>
       ) : matches.length === 0 ? (
-        <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground sm:mx-6">No possible Lost/Found matches have been identified yet.</p>
+        <p className="mx-5 mb-5 rounded-xl border border-dashed border-border p-5 text-sm leading-6 text-muted-foreground sm:mx-6">There are no pending or approved matches to review. Each newly submitted Lost or Found report is automatically compared with active reports of the opposite type. The board needs at least one active report of each type to produce a pair.</p>
       ) : (
         <div className="grid gap-4 border-t border-border p-4 sm:p-5 lg:grid-cols-2">
-          {matches.map((match) => (
-            <article key={match.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "bg-emerald-50 text-emerald-900" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-amber-50 text-amber-900"}`}>{match.review_status === "confirmed" ? "Confirmed match" : match.review_status === "rejected" ? "Dismissed" : "Pending review"}</span>
-                <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Detected {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">Score {match.score ?? "—"}/100</span>
-                <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">{match.matching_method === "ai" ? "AI-assisted" : match.matching_method}</span>
-              </div>
-              {match.match_reason && <p className="mt-3 rounded-lg bg-secondary/60 p-3 text-xs leading-5 text-muted-foreground">Why it matched: {match.match_reason}</p>}
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {renderMatchItem("Lost item", match.lost)}
-                {renderMatchItem("Found item", match.found)}
-              </div>
-              {match.review_status !== "rejected" && (
-                <div className="mt-4 border-t border-border pt-4">
-                  <label className="block text-xs font-extrabold text-muted-foreground">ADMIN REVIEW NOTE
-                    <textarea rows={2} maxLength={1000} value={matchDrafts[match.id] ?? match.admin_note ?? ""} onChange={(event) => setMatchDrafts((current) => ({ ...current, [match.id]: event.target.value }))} placeholder="Add an internal note for review or handover context" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
-                  </label>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {match.review_status === "pending" && <>
-                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "confirmed")} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Confirm match</button>
-                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Reject match</button>
-                    </>}
-                    {match.review_status === "confirmed" && <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "resolved")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-white hover:bg-primary/90 disabled:opacity-50">Mark item returned</button>}
-                    {actionBusyId === match.id && <span className="self-center text-xs text-muted-foreground">Saving decision…</span>}
-                  </div>
+          {matches.map((match) => {
+            const ownersVerified = match.lost.submitter_verified && match.found.submitter_verified;
+            return (
+              <article key={match.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${match.review_status === "confirmed" ? "bg-emerald-50 text-emerald-900" : match.review_status === "rejected" ? "bg-secondary text-muted-foreground" : "bg-amber-50 text-amber-900"}`}>
+                    {match.review_status === "confirmed" ? "Approved for return" : match.review_status === "rejected" ? "Dismissed" : "Pending review"}
+                  </span>
+                  <time className="text-xs text-muted-foreground" dateTime={match.matched_at}>Detected {new Date(match.matched_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
                 </div>
-              )}
-            </article>
-          ))}
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">Confidence {match.score ?? "—"}/100</span>
+                  <span className="rounded-full bg-secondary px-2.5 py-1.5 font-bold">{match.matching_method === "ai" ? "AI-assisted" : match.matching_method === "text-similarity" ? "Text fallback" : match.matching_method}</span>
+                </div>
+                {match.match_reason && <p className="mt-3 rounded-lg bg-secondary/60 p-3 text-xs leading-5 text-muted-foreground">Why it matched: {match.match_reason}</p>}
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {renderMatchItem("Lost item", match.lost)}
+                  {renderMatchItem("Found item", match.found)}
+                </div>
+                <div className="mt-3 rounded-lg border border-border bg-background p-3 text-xs leading-5">
+                  <p className="font-extrabold text-foreground">Report-owner verification</p>
+                  <p className="mt-1 text-muted-foreground">Lost owner: {match.lost.submitter_verified ? "Verified" : "Not verified"} · Found owner: {match.found.submitter_verified ? "Verified" : "Not verified"}</p>
+                </div>
+                {match.review_status === "pending" && (
+                  <div className="mt-4 border-t border-border pt-4">
+                    <label className="block text-xs font-extrabold text-muted-foreground">ADMIN REVIEW NOTE
+                      <textarea rows={2} maxLength={1000} value={matchDrafts[match.id] ?? match.admin_note ?? ""} onChange={(event) => setMatchDrafts((current) => ({ ...current, [match.id]: event.target.value }))} placeholder="Optional internal note for this return" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
+                    </label>
+                    {!ownersVerified && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">Both report owners must be verified before a return can be approved. Reporting itself does not require verification.</p>}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" disabled={actionBusyId === match.id || !ownersVerified} onClick={() => void approveMatchForReturn(match)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Approve for return</button>
+                      <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Dismiss suggestion</button>
+                      {actionBusyId === match.id && <span className="self-center text-xs text-muted-foreground">Saving decision…</span>}
+                    </div>
+                  </div>
+                )}
+                {match.review_status === "confirmed" && (
+                  <p className="mt-4 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">Approved for return. CampusFind created the claimant’s handover record and sent a one-time code. Verify that code in the Claims section only when the item is physically handed over.</p>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
@@ -1078,7 +1145,7 @@ function AdminPage() {
 
         <section id="admin-claims" className="admin-panel mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3 p-5 sm:p-6">
-            <div><p className="kicker text-emerald-800">Ownership verification</p><h2 className="mt-2 text-2xl font-extrabold">Item claims</h2><p className="mt-1 text-sm text-muted-foreground">Private ownership proof is visible to authorised administrators and the claimant only. Approvals issue a one-time handover code to the claimant.</p></div>
+            <div><p className="kicker text-emerald-800">Physical handover</p><h2 className="mt-2 text-2xl font-extrabold">Claims and return codes</h2><p className="mt-1 text-sm text-muted-foreground">AI-approved matches arrive here already approved, with a one-time code sent to the claimant. Verify the code only during the physical handover. Manually submitted claims still require review.</p></div>
             <button type="button" onClick={() => void loadClaims()} disabled={claimsLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">{claimsLoading ? "Refreshing…" : "Refresh claims"}</button>
           </div>
           {claimsError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:mx-6">{claimsError}</p>}
@@ -1090,7 +1157,7 @@ function AdminPage() {
                     <div><h3 className="font-extrabold text-foreground">{claim.item_name}</h3><p className="mt-1 text-sm text-muted-foreground">{claim.item_location}</p><p className="mt-2 text-xs text-muted-foreground">Claimed by {claim.claimant_name ?? "Unknown"} · UID {claim.claimant_uid ?? "—"}</p><p className="mt-1 text-xs text-muted-foreground">Found report submitted by {claim.item_owner_name ?? "Unknown"} · UID {claim.item_owner_uid ?? "—"}</p></div>
                     <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold">{claim.status.toUpperCase()}</span>
                   </div>
-                  <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Private ownership proof</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p></div>
+                  <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">{claim.source_match_id ? "AI match handover record" : "Private ownership proof"}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p>{claim.source_match_id && <p className="mt-2 text-xs leading-5 text-muted-foreground">The AI suggestion was approved by an administrator. This record is not independent proof of ownership; verify the one-time code in person.</p>}</div>
                   {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">Previous review note: {claim.admin_note}</p>}
                   {claim.status !== "rejected" && claim.status !== "completed" && (
                     <div className="mt-4 border-t border-border pt-4">
