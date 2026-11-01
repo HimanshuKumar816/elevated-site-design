@@ -3,6 +3,9 @@
 -- protects public support writes from abuse, and alerts admins in-app.
 
 GRANT USAGE ON SCHEMA public TO authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.support_tickets FROM authenticated;
+REVOKE UPDATE (status) ON TABLE public.support_tickets FROM authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.support_messages FROM authenticated;
 GRANT SELECT ON TABLE public.support_tickets, public.support_messages TO authenticated;
 GRANT INSERT ON TABLE public.support_messages TO authenticated;
 GRANT UPDATE (status) ON TABLE public.support_tickets TO authenticated;
