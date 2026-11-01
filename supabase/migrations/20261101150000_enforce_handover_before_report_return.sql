@@ -110,6 +110,7 @@ AS $$
 DECLARE
   v_item_owner uuid;
   v_item_name text;
+  v_resolved_match_count integer := 0;
 BEGIN
   IF OLD.status IS DISTINCT FROM 'approved'
      OR NEW.status IS DISTINCT FROM 'completed' THEN
@@ -145,21 +146,27 @@ BEGIN
       admin_note = COALESCE(admin_note, 'Return recorded after the verified physical handover.')
   WHERE found_item_id = NEW.item_id
     AND review_status = 'confirmed';
+  GET DIAGNOSTICS v_resolved_match_count = ROW_COUNT;
 
-  INSERT INTO public.notifications (user_id, item_id, title, body)
-  VALUES
-    (
-      NEW.claimant_id,
-      NEW.item_id,
-      'Item return completed',
-      'CampusFind recorded this item as returned. Thank you for helping reunite it with its owner.'
-    ),
-    (
-      v_item_owner,
-      NEW.item_id,
-      'Item return completed',
-      'CampusFind recorded your found item as returned.'
-    );
+  -- The existing match-review trigger notifies both report owners when a
+  -- confirmed AI match is resolved. Manual claims have no match row, so send
+  -- their return notifications here.
+  IF v_resolved_match_count = 0 THEN
+    INSERT INTO public.notifications (user_id, item_id, title, body)
+    VALUES
+      (
+        NEW.claimant_id,
+        NEW.item_id,
+        'Item return completed',
+        'CampusFind recorded this item as returned. Thank you for helping reunite it with its owner.'
+      ),
+      (
+        v_item_owner,
+        NEW.item_id,
+        'Item return completed',
+        'CampusFind recorded your found item as returned.'
+      );
+  END IF;
 
   RETURN NEW;
 END;
