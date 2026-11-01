@@ -139,7 +139,9 @@ CREATE POLICY campusfind_support_messages_owner_or_admin_insert
     )
   );
 
-CREATE OR REPLACE FUNCTION public.create_support_ticket(
+DROP FUNCTION IF EXISTS public.create_support_ticket(text, text);
+
+CREATE FUNCTION public.create_support_ticket(
   p_subject text,
   p_message text
 )
