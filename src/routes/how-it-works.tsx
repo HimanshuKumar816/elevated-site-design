@@ -10,7 +10,7 @@ export const Route = createFileRoute("/how-it-works")({
       { property: "og:title", content: "How CampusFind works" },
       { property: "og:description", content: "A clearer process for returning belongings around campus." },
     ],
-    links: [{ rel: "canonical", href: "https://campusfind-fs6c.onrender.com/how-it-works" }],
+    links: [{ rel: "canonical", href: "https://campusfind-uir0.onrender.com/how-it-works" }],
   }),
   component: How,
 });
