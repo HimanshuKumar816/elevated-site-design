@@ -42,6 +42,7 @@ type SupportMessage = {
 
 type SupportTicket = {
   id: string;
+  user_id: string;
   subject: string;
   status: "open" | "resolved";
   created_at: string;
@@ -69,7 +70,7 @@ function ContactPage() {
 
       const { data: ticketRows, error: ticketError } = await supabase
         .from("support_tickets")
-        .select("id,subject,status,created_at,updated_at")
+        .select("id,user_id,subject,status,created_at,updated_at")
         .eq("user_id", authData.user.id)
         .order("updated_at", { ascending: false });
       if (ticketError) throw ticketError;
@@ -232,7 +233,7 @@ function ContactPage() {
                     </div>
                     <div className="grid gap-3 bg-background p-4 sm:p-5">
                       {ticket.messages.map((entry) => {
-                        const fromAdmin = entry.sender_id !== (tickets[0]?.messages.find((own) => own.sender_id === entry.sender_id)?.sender_id ?? "");
+                        const fromAdmin = entry.sender_id !== ticket.user_id;
                         return (
                           <div key={entry.id} className={fromAdmin ? "ml-0 mr-6 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 sm:mr-16" : "ml-6 rounded-xl border border-border bg-white p-4 sm:ml-16"}>
                             <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-extrabold text-foreground">{fromAdmin ? "CampusFind Administrator" : "You"}</p><time className="text-[11px] text-muted-foreground" dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time></div>
