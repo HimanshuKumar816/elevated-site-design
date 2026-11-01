@@ -2,8 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, BellRing, Camera, CheckCircle2, Copy, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
-import { CATEGORIES, type Item } from "@/lib/items";
-import { explainItemMatch, findItemMatches } from "@/lib/match-score";
+import { CATEGORIES } from "@/lib/items";
 import { isValidIsoDate } from "@/lib/date";
 import { compressItemImage, validateItemImage } from "@/lib/item-image";
 import { CAMPUS_LOCATIONS, buildCampusLocation, type CampusLocation } from "@/lib/campus-locations";
@@ -30,7 +29,9 @@ function Report() {
   const [done, setDone] = useState(false);
   const [reportId, setReportId] = useState("");
   const [copyMessage, setCopyMessage] = useState("");
-  const [matches, setMatches] = useState<Array<{ item: Item; score: number; reasons: string[] }>>([]);
+  const [matchingStatus, setMatchingStatus] = useState<"idle" | "ai" | "fallback" | "no-candidates" | "unavailable">("idle");
+  const [matchingCount, setMatchingCount] = useState(0);
+  const [matchingDetail, setMatchingDetail] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -269,18 +270,32 @@ function Report() {
 
       setReportId(insertedItem.id);
       setCopyMessage("");
-
-      // SMS is sent only when provider secrets are configured and the student opted in.
-      void supabase.functions.invoke("notify-item-matches", { body: { item_id: insertedItem.id } }).catch(() => undefined);
+      setMatchingCount(0);
+      setMatchingDetail("");
+      try {
+        const { data: matchingData, error: matchingError } = await supabase.functions.invoke("notify-item-matches", {
+          body: { item_id: insertedItem.id },
+        });
+        if (matchingError || !matchingData?.ok) {
+          setMatchingStatus("unavailable");
+        } else {
+          setMatchingCount(Number(matchingData.match_count ?? 0));
+          setMatchingDetail(
+            matchingData.ai_error_code === "openai_key_not_configured"
+              ? "AI is not configured, so the text-similarity fallback was used."
+              : matchingData.ai_error_code
+                ? "The AI service did not respond, so the text-similarity fallback was used."
+                : "",
+          );
+          if (matchingData.matching_method === "no-candidates") setMatchingStatus("no-candidates");
+          else if (matchingData.ai_used) setMatchingStatus("ai");
+          else setMatchingStatus("fallback");
+        }
+      } catch {
+        setMatchingStatus("unavailable");
+      }
       setImageFile(null);
       setImagePreview("");
-      try {
-        const { data: rows } = await supabase.from("items").select("*").eq("type", type === "Lost" ? "Found" : "Lost").neq("user_id", u.user.id).in("report_status", ["new", "under_review", "matched"]).eq("moderation_flag", "none").order("created_at", { ascending: false }).limit(150);
-        const freshItem: Item = { id: "new-report", user_id: u.user.id, type, name, category, location, item_date: date, item_time: itemTime, brand, color, model, note };
-        setMatches(findItemMatches(freshItem, (rows ?? []) as Item[]).map((match) => ({ ...match, reasons: explainItemMatch(freshItem, match.item) })));
-      } catch {
-        setMatches([]);
-      }
       setDone(true);
     } catch {
       setError("Something went wrong while saving your report. Please try again.");
@@ -323,13 +338,26 @@ function Report() {
                 <Copy size={14} /> {copyMessage || "Copy ID"}
               </button>
             </div>
-            {matches.length > 0 && <div className="mt-7 rounded-2xl border border-emerald-900/10 bg-emerald-50/60 p-5"><h3 className="text-lg font-extrabold">Possible matches</h3><ul className="mt-4 grid gap-3">{matches.map(({ item, score, reasons }) => <li key={item.id} className="rounded-xl border border-border bg-white p-4"><p className="font-extrabold text-foreground">{item.name}</p><p className="mt-1 text-sm text-muted-foreground">{item.type} · {item.category} · {item.location}</p><p className="mt-2 text-xs font-bold text-primary">Match signal: {score}%</p>{reasons.length > 0 && <p className="mt-2 text-xs leading-5 text-muted-foreground">Why it appeared: {reasons.join(" · ")}</p>}<p className="mt-2 text-xs font-semibold text-amber-800">Suggestion only — compare the details and verify ownership before arranging a return.</p></li>)}</ul></div>}
-            {matches.length === 0 && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm leading-6 text-muted-foreground">No strong match yet. If a similar report is added later, CampusFind can create a notification.</p>}
-            <p className="mt-4 text-xs leading-5 text-muted-foreground">SMS alerts require the project's SMS gateway to be configured. In-app match alerts are recorded in CampusFind.</p>
+            <div className="mt-7 rounded-2xl border border-border bg-background p-5">
+              <h3 className="text-sm font-extrabold text-foreground">Automatic matching result</h3>
+              {matchingStatus === "ai" && matchingCount > 0 ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">AI compared this report with active opposite-type reports and identified {matchingCount} possible {matchingCount === 1 ? "match" : "matches"}. The suggestion has been sent to the administrator for review. A return is never approved automatically.</p>
+              ) : matchingStatus === "ai" ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">AI checked the available active opposite-type reports and found no strong match. New reports will be compared automatically.</p>
+              ) : matchingStatus === "no-candidates" ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">There are no active {type === "Lost" ? "Found" : "Lost"} reports to compare yet. CampusFind will check this report against future opposite-type reports.</p>
+              ) : matchingStatus === "fallback" ? (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Text-based matching checked the active opposite-type reports and found {matchingCount} possible {matchingCount === 1 ? "match" : "matches"}. An administrator must review any suggestion before return.</p>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Your report is saved, but the automatic matching check could not finish. The report remains active. The administrator can refresh the matching service.</p>
+              )}
+              {matchingDetail && <p className="mt-2 text-xs leading-5 text-amber-800">{matchingDetail}</p>}
+            </div>
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">Possible matches are suggestions only. The administrator reviews the pair and verifies the one-time handover code before CampusFind marks an item returned.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground">Track my report <ArrowRight size={16} /></Link>
               <Link to="/browse" className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">View the board</Link>
-              <button type="button" onClick={() => { setError(""); setReportStep(1); setDone(false); setReportId(""); setCopyMessage(""); }} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button>
+              <button type="button" onClick={() => { setError(""); setReportStep(1); setDone(false); setReportId(""); setCopyMessage(""); setMatchingStatus("idle"); setMatchingCount(0); setMatchingDetail(""); }} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button>
             </div>
           </div>
         ) : (
