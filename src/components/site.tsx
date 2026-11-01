@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowUpRight, LogOut, Menu, PackageSearch, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -72,6 +72,25 @@ export function Header() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
 
   async function signOut() {
     setMenuOpen(false);
@@ -112,7 +131,7 @@ export function Header() {
             <Link to="/auth" search={{ redirect: "/browse" }} className="ml-2 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">Student sign in <ArrowUpRight size={16} /></Link>
           )}
         </nav>
-        <button type="button" aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={menuOpen} aria-controls="campusfind-mobile-nav" onClick={() => setMenuOpen((open) => !open)} className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-white text-foreground shadow-sm transition hover:bg-secondary md:hidden">
+        <button ref={menuButtonRef} type="button" aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={menuOpen} aria-controls="campusfind-mobile-nav" onClick={() => setMenuOpen((open) => !open)} className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-white text-foreground shadow-sm transition hover:bg-secondary md:hidden">
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
