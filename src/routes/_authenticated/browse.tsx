@@ -1,3 +1,5 @@
+import { AccessibleModal } from "@/components/accessible-modal";
+import { Button } from "@/components/ui/button";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
@@ -29,6 +31,8 @@ const PAGE_SIZE = 24;
 export const Route = createFileRoute("/_authenticated/browse")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Browse lost & found items — CampusFind" },
       { name: "description", content: "Search lost and found reports across campus by item, category and location." },
       { property: "og:title", content: "Browse lost & found items — CampusFind" },
@@ -318,7 +322,7 @@ function Browse() {
   const pill = (active: boolean) =>
     `rounded-xl border px-3 py-2 text-sm font-extrabold transition ${active
       ? "border-primary bg-primary text-primary-foreground shadow-sm"
-      : "border-border bg-white text-muted-foreground hover:bg-secondary"}`;
+      : "border-border bg-card text-muted-foreground hover:bg-secondary"}`;
 
   const shown = useMemo(() => items, [items]);
 
@@ -338,36 +342,35 @@ function Browse() {
     <Page>
       <section className="student-workspace mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
         {profile?.role === "student" && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-white px-5 py-4 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Signed in as</p>
+              <p className="text-xs font-extrabold uppercase tracking-normal text-muted-foreground">Signed in as</p>
               <p className="mt-1 text-lg font-extrabold text-foreground">{profile.full_name}</p>
             </div>
             <div className="rounded-xl bg-secondary px-4 py-2">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Student UID</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-normal text-muted-foreground">Student UID</p>
               <p className="mt-1 font-mono text-sm font-extrabold text-foreground">{profile.uid}</p>
               {profile.verification_status === "verified" ? (
-                <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-800"><ShieldCheck size={13} /> Verified CU student</p>
+                <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-extrabold text-success-foreground"><ShieldCheck size={13} /> Verified CU student</p>
               ) : (
                 <p className="mt-1 text-[11px] font-semibold text-muted-foreground">Identity verification not completed</p>
               )}
               {profile.verification_status !== "verified" && <p className="mt-2 text-[11px] leading-5 text-muted-foreground">You can browse reports now. Reporting and claiming unlock after administrator verification.</p>}
             </div>
-            <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
+            <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
               My reports <ArrowUpRight size={14} />
             </Link>
           </div>
         )}
 
         <div className="student-workspace-hero relative overflow-hidden rounded-[2rem] bg-gradient-ink px-6 py-9 text-ink-foreground sm:px-10 sm:py-12 lg:px-14 lg:py-14">
-          <div className="pointer-events-none absolute -right-10 -top-24 size-72 rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <p className="kicker text-emerald-200">Campus report board</p>
-              <h1 className="mt-4 text-4xl font-extrabold leading-tight text-white sm:text-5xl">Lost something? Start here.</h1>
-              <p className="mt-4 max-w-xl leading-7 text-white/70">Search campus reports with common item names and spelling variations. Keep one identifying detail private until ownership is verified.</p>
+              <p className="kicker text-success">Campus report board</p>
+              <h1 className="mt-4 text-4xl font-extrabold leading-tight text-ink-foreground sm:text-5xl">Lost something? Start here.</h1>
+              <p className="mt-4 max-w-xl leading-7 text-ink-foreground/70">Search campus reports with common item names and spelling variations. Keep one identifying detail private until ownership is verified.</p>
             </div>
-            <Link to="/report" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-5 py-3 text-sm font-extrabold text-primary transition hover:bg-emerald-200">
+            <Link to="/report" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground transition hover:bg-primary-hover">
               Add a report <ArrowUpRight size={17} />
             </Link>
           </div>
@@ -376,40 +379,40 @@ function Browse() {
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <div className="surface-card flex items-center gap-3 rounded-2xl p-4">
             <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary"><PackageSearch size={20} /></span>
-            <div><p className="text-2xl font-extrabold tracking-tight">{items.length}</p><p className="text-xs font-bold text-muted-foreground">Reports loaded</p></div>
+            <div><p className="text-2xl font-extrabold tracking-normal">{items.length}</p><p className="text-xs font-bold text-muted-foreground">Reports loaded</p></div>
           </div>
           <div className="surface-card flex items-center gap-3 rounded-2xl p-4">
-            <span className="grid size-10 place-items-center rounded-xl bg-amber-50 text-amber-800"><Search size={20} /></span>
-            <div><p className="text-2xl font-extrabold tracking-tight">{lostCount}</p><p className="text-xs font-bold text-muted-foreground">Lost reports loaded</p></div>
+            <span className="grid size-10 place-items-center rounded-xl bg-warning-soft text-warning-foreground"><Search size={20} /></span>
+            <div><p className="text-2xl font-extrabold tracking-normal">{lostCount}</p><p className="text-xs font-bold text-muted-foreground">Lost reports loaded</p></div>
           </div>
           <div className="surface-card flex items-center gap-3 rounded-2xl p-4">
-            <span className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-800"><Check size={20} /></span>
-            <div><p className="text-2xl font-extrabold tracking-tight">{foundCount}</p><p className="text-xs font-bold text-muted-foreground">Found reports loaded</p></div>
+            <span className="grid size-10 place-items-center rounded-xl bg-success-soft text-success-foreground"><Check size={20} /></span>
+            <div><p className="text-2xl font-extrabold tracking-normal">{foundCount}</p><p className="text-xs font-bold text-muted-foreground">Found reports loaded</p></div>
           </div>
         </div>
 
         {claimSuccess && (
-          <div role="status" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">
+          <div role="status" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-success/10 bg-success-soft p-4 text-sm font-bold text-success-foreground">
             <span>{claimSuccess}</span>
             <Link to="/my-reports" className="underline underline-offset-4">Track your claim</Link>
           </div>
         )}
 
         {alerts.length > 0 && (
-          <section aria-label="Match notifications" className="mt-8 rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-5 sm:p-6">
+          <section aria-label="Match notifications" className="mt-8 rounded-2xl border border-success/10 bg-success-soft/70 p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-white text-emerald-800 shadow-sm"><Bell size={19} /></span>
-                <div><h2 className="text-lg font-extrabold tracking-tight">Your match alerts</h2><p className="mt-1 text-sm text-muted-foreground">Updates about reports that may match yours.</p></div>
+                <span className="grid size-10 place-items-center rounded-xl bg-card text-success-foreground shadow-sm"><Bell size={19} /></span>
+                <div><h2 className="text-lg font-extrabold tracking-normal">Your match alerts</h2><p className="mt-1 text-sm text-muted-foreground">Updates about reports that may match yours.</p></div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-emerald-900 px-3 py-1.5 text-xs font-extrabold text-white">{unreadCount} unread</span>
-                {unreadCount > 0 && <button type="button" disabled={alertBusy} onClick={() => void markAllRead()} className="rounded-lg border border-emerald-900/20 bg-white px-3 py-2 text-xs font-extrabold text-emerald-900 hover:bg-emerald-50 disabled:opacity-60">{alertBusy ? "Updating…" : "Mark all read"}</button>}
+                <span className="rounded-full bg-success px-3 py-1.5 text-xs font-extrabold text-ink-foreground">{unreadCount} unread</span>
+                {unreadCount > 0 && <Button variant="plain" type="button" disabled={alertBusy} onClick={() => void markAllRead()} className="rounded-lg border border-success/20 bg-card px-3 py-2 text-xs font-extrabold text-success-foreground hover:bg-success-soft disabled:opacity-60">{alertBusy ? "Updating…" : "Mark all read"}</Button>}
               </div>
             </div>
             <ul className="mt-4 grid gap-3 md:grid-cols-2">
               {alerts.map((alert) => (
-                <li key={alert.id} className={`rounded-xl border border-emerald-900/10 bg-white p-4 ${alert.read_at ? "opacity-70" : ""}`}>
+                <li key={alert.id} className={`rounded-xl border border-success/10 bg-card p-4 ${alert.read_at ? "opacity-70" : ""}`}>
                   <div className="flex items-start gap-3">
                     <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-primary"><Bell size={15} /></span>
                     <div className="min-w-0 flex-1">
@@ -420,7 +423,7 @@ function Browse() {
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">{alert.body}</p>
                       <p className="mt-2 text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
                     </div>
-                    {!alert.read_at && <button type="button" onClick={() => void markRead(alert.id)} aria-label={`Mark alert as read: ${alert.title}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-emerald-800 transition hover:bg-emerald-50"><Check size={16} /></button>}
+                    {!alert.read_at && <Button variant="plain" type="button" onClick={() => void markRead(alert.id)} aria-label={`Mark alert as read: ${alert.title}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-success-foreground transition hover:bg-success-soft"><Check size={16} /></Button>}
                   </div>
                 </li>
               ))}
@@ -428,50 +431,50 @@ function Browse() {
           </section>
         )}
 
-        {savedMessage && <p role="status" className="mt-4 rounded-xl border border-border bg-white px-4 py-3 text-sm font-semibold text-muted-foreground">{savedMessage}</p>}
+        {savedMessage && <p role="status" className="mt-4 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-muted-foreground">{savedMessage}</p>}
 
-        <div className="mt-8 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
-          <label htmlFor="item-search" className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Search reports</label>
+        <div className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <label htmlFor="item-search" className="mb-2 block text-xs font-extrabold uppercase tracking-normal text-muted-foreground">Search reports</label>
           <div className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-ring/10">
             <Search size={19} className="shrink-0 text-muted-foreground" />
-            <input id="item-search" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Try “purse”, “mobile”, “library”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus:ring-0" />
-            {!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-white px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}
-            {q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}
+            <input id="item-search" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Try “purse”, “mobile”, “library”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground focus:ring-0" />
+            {!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-card px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}
+            {q && <Button variant="plain" type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</Button>}
           </div>
           <details className="cf-filter-details mt-3 md:mt-4">
             <summary className="cf-filter-summary"><span className="inline-flex items-center gap-2"><SlidersHorizontal size={15} /> Filters</span><span className="text-xs font-bold text-muted-foreground">Show / hide</span></summary>
             <div className="cf-filter-controls">
 <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2 md:items-end">
             <div>
-              <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Item type</span>
+              <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-normal text-muted-foreground"><SlidersHorizontal size={14} /> Item type</span>
               <div className="flex flex-wrap items-center gap-2">
                 {(["All", "Lost", "Found"] as const).map((value) => (
-                  <button type="button" key={value} onClick={() => setType(value)} aria-pressed={type === value} className={pill(type === value)}>{value === "All" ? "All reports" : value + " items"}</button>
+                  <Button variant="plain" type="button" key={value} onClick={() => setType(value)} aria-pressed={type === value} className={pill(type === value)}>{value === "All" ? "All reports" : value + " items"}</Button>
                 ))}
               </div>
             </div>
-            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Category
+            <label className="block text-xs font-extrabold uppercase tracking-normal text-muted-foreground">Category
               <select aria-label="Filter by category" value={cat} onChange={(event) => setCat(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10">
                 <option value="All">All categories</option>{CATEGORIES.map((category) => <option key={category}>{category}</option>)}
               </select>
             </label>
           </div>
           <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Campus area
+            <label className="block text-xs font-extrabold uppercase tracking-normal text-muted-foreground">Campus area
               <select aria-label="Filter by campus area" value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground">
                 <option value="All">All campus areas</option>{CAMPUS_LOCATIONS.map((location) => <option key={location}>{location}</option>)}
               </select>
             </label>
-            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Report status
+            <label className="block text-xs font-extrabold uppercase tracking-normal text-muted-foreground">Report status
               <select aria-label="Filter by report status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground">
                 <option value="All">All statuses</option>
                 <option value="new">New</option><option value="under_review">Under review</option><option value="matched">Matched</option><option value="claimed">Claim in progress</option><option value="returned">Returned</option><option value="closed">Closed</option>
               </select>
             </label>
-            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">From date
+            <label className="block text-xs font-extrabold uppercase tracking-normal text-muted-foreground">From date
               <input aria-label="Filter reports from date" type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => setDateFrom(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold normal-case tracking-normal text-foreground" />
             </label>
-            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">To date
+            <label className="block text-xs font-extrabold uppercase tracking-normal text-muted-foreground">To date
               <input aria-label="Filter reports to date" type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-semibold normal-case tracking-normal text-foreground" />
             </label>
           </div>
@@ -481,30 +484,30 @@ function Browse() {
           {(q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly) && (
             <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Active filters">
               <span className="text-xs font-bold text-muted-foreground">Active:</span>
-              {q && <button type="button" onClick={() => setQ("")} className="cf-filter-chip">Search: {q} <X size={12} /></button>}
-              {type !== "All" && <button type="button" onClick={() => setType("All")} className="cf-filter-chip">{type} items <X size={12} /></button>}
-              {cat !== "All" && <button type="button" onClick={() => setCat("All")} className="cf-filter-chip">{cat} <X size={12} /></button>}
-              {locationFilter !== "All" && <button type="button" onClick={() => setLocationFilter("All")} className="cf-filter-chip">{locationFilter} <X size={12} /></button>}
-              {statusFilter !== "All" && <button type="button" onClick={() => setStatusFilter("All")} className="cf-filter-chip">{statusLabels[statusFilter as ReportStatus]} <X size={12} /></button>}
-              {dateFrom && <button type="button" onClick={() => setDateFrom("")} className="cf-filter-chip">From {dateFrom} <X size={12} /></button>}
-              {dateTo && <button type="button" onClick={() => setDateTo("")} className="cf-filter-chip">To {dateTo} <X size={12} /></button>}
-              {savedOnly && <button type="button" onClick={() => setSavedOnly(false)} className="cf-filter-chip">Saved only <X size={12} /></button>}
+              {q && <Button variant="plain" type="button" onClick={() => setQ("")} className="cf-filter-chip">Search: {q} <X size={12} /></Button>}
+              {type !== "All" && <Button variant="plain" type="button" onClick={() => setType("All")} className="cf-filter-chip">{type} items <X size={12} /></Button>}
+              {cat !== "All" && <Button variant="plain" type="button" onClick={() => setCat("All")} className="cf-filter-chip">{cat} <X size={12} /></Button>}
+              {locationFilter !== "All" && <Button variant="plain" type="button" onClick={() => setLocationFilter("All")} className="cf-filter-chip">{locationFilter} <X size={12} /></Button>}
+              {statusFilter !== "All" && <Button variant="plain" type="button" onClick={() => setStatusFilter("All")} className="cf-filter-chip">{statusLabels[statusFilter as ReportStatus]} <X size={12} /></Button>}
+              {dateFrom && <Button variant="plain" type="button" onClick={() => setDateFrom("")} className="cf-filter-chip">From {dateFrom} <X size={12} /></Button>}
+              {dateTo && <Button variant="plain" type="button" onClick={() => setDateTo("")} className="cf-filter-chip">To {dateTo} <X size={12} /></Button>}
+              {savedOnly && <Button variant="plain" type="button" onClick={() => setSavedOnly(false)} className="cf-filter-chip">Saved only <X size={12} /></Button>}
             </div>
           )}
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={pill(savedOnly)}>
+            <Button variant="plain" type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} className={pill(savedOnly)}>
               {savedOnly ? "Showing saved items" : "Show saved items only"} · {savedItemIds.length}
-            </button>
+            </Button>
             <span className="text-xs text-muted-foreground">Saved items are private to your account.</span>
           </div>
         </div>
 
-        {error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><button type="button" onClick={() => void fetchPage(true)} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-extrabold transition hover:bg-destructive/10"><RefreshCw size={15} /> Try again</button></div>}
+        {error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><Button variant="plain" type="button" onClick={() => void fetchPage(true)} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-extrabold transition hover:bg-destructive/10"><RefreshCw size={15} /> Try again</Button></div>}
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2>
+            <h2 className="text-2xl font-extrabold tracking-normal text-foreground sm:text-3xl">Recent reports</h2>
             <p role="status" aria-live="polite" aria-atomic="true" className="mt-1 text-sm text-muted-foreground">
               {loading ? "Searching the campus board…" : `Showing ${shown.length} loaded reports`}
               {!loading && hasMore ? " · More reports are available below" : ""}
@@ -512,7 +515,7 @@ function Browse() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {(q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly) && (
-              <button type="button" onClick={clearFilters} className="rounded-xl border border-border bg-white px-3 py-2.5 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>
+              <Button variant="plain" type="button" onClick={clearFilters} className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</Button>
             )}
             <label className="cf-browse-sort">
               <span>Sort</span>
@@ -523,13 +526,13 @@ function Browse() {
               </select>
             </label>
             <div className="cf-browse-view-toggle" role="group" aria-label="Report layout">
-              <button type="button" aria-label="Grid view" title="Grid view" aria-pressed={viewMode === "grid"} onClick={() => setViewMode("grid")} className={viewMode === "grid" ? "is-active" : ""}><LayoutGrid size={16} /></button>
-              <button type="button" aria-label="List view" title="List view" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")} className={viewMode === "list" ? "is-active" : ""}><ListIcon size={17} /></button>
+              <Button variant="plain" type="button" aria-label="Grid view" title="Grid view" aria-pressed={viewMode === "grid"} onClick={() => setViewMode("grid")} className={viewMode === "grid" ? "is-active" : ""}><LayoutGrid size={16} /></Button>
+              <Button variant="plain" type="button" aria-label="List view" title="List view" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")} className={viewMode === "list" ? "is-active" : ""}><ListIcon size={17} /></Button>
             </div>
           </div>
         </div>
 
-        {loading && <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="cf-skeleton-card p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
+        {loading && <div role="status" aria-label="Loading campus reports" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="cf-skeleton-card p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
 
         {!loading && shown.length > 0 && (
           <div className={viewMode === "grid" ? "mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" : "cf-browse-list mt-5 grid gap-3"}>
@@ -537,33 +540,33 @@ function Browse() {
               const reportStatus = item.report_status ?? "new";
               const canClaim = canClaimFoundReport(profile, { ...item, report_status: reportStatus }, me);
               return (
-                <article key={item.id} className="cf-browse-card group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
+                <article key={item.id} className="cf-browse-card group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
                   <div className="cf-browse-card-media relative aspect-[16/10] overflow-hidden bg-secondary">
-                    {item.image_url ? <img src={item.image_url} alt={item.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-primary/70"><PackageSearch size={38} strokeWidth={1.5} /><span className="text-[10px] font-extrabold uppercase tracking-[0.2em]">Campus report</span></div>}
-                    <span className={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] shadow-sm ${item.type === "Found" ? "cf-badge-found" : "cf-badge-lost"}`}>{item.type}</span>
-                    <span className="absolute bottom-3 right-3 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-foreground shadow-sm">{item.category}</span>
+                    {item.image_url ? <img src={item.image_url} alt={item.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-primary/70"><PackageSearch size={38} strokeWidth={1.5} /><span className="text-[10px] font-extrabold uppercase tracking-normal">Campus report</span></div>}
+                    <span className={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-normal shadow-sm ${item.type === "Found" ? "cf-badge-found" : "cf-badge-lost"}`}>{item.type}</span>
+                    <span className="absolute bottom-3 right-3 rounded-full border border-ink-foreground/70 bg-card/90 px-3 py-1.5 text-xs font-extrabold text-foreground shadow-sm">{item.category}</span>
                   </div>
                   <div className="cf-browse-card-content flex flex-1 flex-col p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="line-clamp-2 text-xl font-extrabold leading-snug tracking-tight text-foreground">{item.name}</h3>
+                      <h3 className="line-clamp-2 text-xl font-extrabold leading-snug tracking-normal text-foreground">{item.name}</h3>
                       <span className="mt-1 shrink-0 rounded-lg bg-secondary px-2 py-1 text-[10px] font-extrabold text-muted-foreground">{dateLabel(item.item_date)}</span>
                     </div>
-                    <p className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground"><MapPin size={15} className="shrink-0 text-emerald-800" /><span className="truncate">{item.location}</span></p>
+                    <p className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground"><MapPin size={15} className="shrink-0 text-success-foreground" /><span className="truncate">{item.location}</span></p>
                     {(item.brand || item.color || item.model) && <p className="mt-2 text-xs font-semibold text-muted-foreground">{[item.brand, item.color, item.model].filter(Boolean).join(" · ")}</p>}
                     {item.item_time && <p className="mt-1 text-xs text-muted-foreground">Approx. time: {item.item_time}</p>}
                     {item.note && <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{item.note}</p>}
                     <div className="mt-auto pt-5">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
                         <span className={`cf-status-pill cf-status-${reportStatus}`}>{statusLabels[reportStatus]}</span>
-                        <button type="button" onClick={() => setDetailTarget(item)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-foreground hover:bg-secondary"><Eye size={14} /> Details</button>
-                        <button type="button" aria-pressed={savedItemIds.includes(item.id)} aria-label={savedItemIds.includes(item.id) ? "Remove saved item" : "Save item"} onClick={() => void toggleSavedItem(item)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
+                        <Button variant="plain" type="button" onClick={() => setDetailTarget(item)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-foreground hover:bg-secondary"><Eye size={14} /> Details</Button>
+                        <Button variant="plain" type="button" aria-pressed={savedItemIds.includes(item.id)} aria-label={savedItemIds.includes(item.id) ? "Remove saved item" : "Save item"} onClick={() => void toggleSavedItem(item)} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-primary hover:bg-secondary">
                           {savedItemIds.includes(item.id) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
                           {savedItemIds.includes(item.id) ? "Saved" : "Save"}
-                        </button>
-                        {canClaim && <button type="button" onClick={() => openClaim(item)} className="rounded-xl bg-primary px-3 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">This is mine — claim item</button>}
+                        </Button>
+                        {canClaim && <Button variant="plain" type="button" onClick={() => openClaim(item)} className="rounded-xl bg-primary px-3 py-2 text-xs font-extrabold text-primary-foreground hover:bg-primary/90">This is mine — claim item</Button>}
                         {item.user_id === me && <Link to="/my-reports" className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Track report <ArrowUpRight size={13} /></Link>}
                       </div>
-                      <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-emerald-700" /> Ownership claims are reviewed privately by a CampusFind administrator.</p>
+                      <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><ShieldCheck size={14} className="mt-0.5 shrink-0 text-success-foreground" /> Ownership claims are reviewed privately by a CampusFind administrator.</p>
                     </div>
                   </div>
                 </article>
@@ -573,29 +576,29 @@ function Browse() {
         )}
 
         {!loading && shown.length === 0 && !error && (
-          <div className="mt-5 rounded-3xl border border-dashed border-border bg-white px-6 py-14 text-center sm:py-20">
+          <div className="mt-5 rounded-3xl border border-dashed border-border bg-card px-6 py-14 text-center sm:py-20">
             <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-secondary text-primary"><PackageSearch size={27} /></span>
-            <h3 className="mt-5 text-xl font-extrabold tracking-tight">{q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly ? "No reports match those filters" : "Start the board with a report"}</h3>
+            <h3 className="mt-5 text-xl font-extrabold tracking-normal">{q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly ? "No reports match those filters" : "Start the board with a report"}</h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Try a synonym, check the spelling, clear filters, or create a new report.</p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground">Create a report <ArrowUpRight size={16} /></Link>
-              <button type="button" onClick={clearFilters} className="rounded-xl border border-border px-4 py-3 text-sm font-extrabold hover:bg-secondary">Clear all filters</button>
+              <Button variant="plain" type="button" onClick={clearFilters} className="rounded-xl border border-border px-4 py-3 text-sm font-extrabold hover:bg-secondary">Clear all filters</Button>
             </div>
           </div>
         )}
 
         {!loading && hasMore && (
           <div className="mt-8 text-center">
-            <button type="button" onClick={() => void fetchPage(false)} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-5 py-3 text-sm font-extrabold text-foreground shadow-sm hover:bg-secondary disabled:opacity-60">
+            <Button variant="plain" type="button" onClick={() => void fetchPage(false)} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-extrabold text-foreground shadow-sm hover:bg-secondary disabled:opacity-60">
               <RefreshCw size={15} className={loadingMore ? "animate-spin" : ""} /> {loadingMore ? "Loading more…" : "Load more reports"}
-            </button>
+            </Button>
           </div>
         )}
       </section>
 
       {detailTarget && (
-        <div className="cf-dialog-backdrop fixed inset-0 z-[75] flex items-center justify-center p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setDetailTarget(null); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="item-detail-title" className="cf-item-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <AccessibleModal labelledBy="item-detail-title" onClose={() => setDetailTarget(null)}>
+          <section className="cf-item-dialog max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -603,14 +606,14 @@ function Browse() {
                   <span className="cf-category-chip">{detailTarget.category}</span>
                   <span className={`cf-status-pill cf-status-${detailTarget.report_status ?? "new"}`}>{statusLabels[detailTarget.report_status ?? "new"]}</span>
                 </div>
-                <h2 id="item-detail-title" className="mt-3 text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">{detailTarget.name}</h2>
+                <h2 id="item-detail-title" className="mt-3 text-2xl font-extrabold tracking-normal text-foreground sm:text-3xl">{detailTarget.name}</h2>
                 <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground"><MapPin size={15} className="shrink-0 text-primary" /> {detailTarget.location}</p>
               </div>
-              <button type="button" onClick={() => setDetailTarget(null)} className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close item details"><X size={18} /></button>
+              <Button variant="plain" type="button" onClick={() => setDetailTarget(null)} className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close item details"><X size={18} /></Button>
             </div>
             <div className="grid gap-5 p-5 sm:grid-cols-[.9fr_1.1fr] sm:p-6">
               <div className="overflow-hidden rounded-xl bg-secondary">
-                {detailTarget.image_url ? <button type="button" onClick={() => setLightboxImage(detailTarget.image_url ?? null)} className="group relative block min-h-48 w-full cursor-zoom-in bg-secondary" aria-label={`View ${detailTarget.name} photograph full screen`}><img src={detailTarget.image_url} alt={detailTarget.name} className="max-h-[360px] min-h-48 w-full object-contain" /><span className="absolute bottom-3 right-3 rounded-lg bg-ink/80 px-3 py-2 text-xs font-bold text-white opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">View full image</span></button> : <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-muted-foreground"><PackageSearch size={42} strokeWidth={1.5} /><span className="text-xs font-bold">No photograph was added</span></div>}
+                {detailTarget.image_url ? <Button variant="plain" type="button" onClick={() => setLightboxImage(detailTarget.image_url ?? null)} className="group relative block min-h-48 w-full cursor-zoom-in bg-secondary" aria-label={`View ${detailTarget.name} photograph full screen`}><img src={detailTarget.image_url} alt={detailTarget.name} className="max-h-[360px] min-h-48 w-full object-contain" /><span className="absolute bottom-3 right-3 rounded-lg bg-ink/80 px-3 py-2 text-xs font-bold text-ink-foreground opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">View full image</span></Button> : <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-muted-foreground"><PackageSearch size={42} strokeWidth={1.5} /><span className="text-xs font-bold">No photograph was added</span></div>}
               </div>
               <div className="min-w-0">
                 <dl className="grid grid-cols-2 gap-3">
@@ -621,47 +624,47 @@ function Browse() {
                   <div className="rounded-lg bg-background p-3 sm:col-span-2"><dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Model</dt><dd className="mt-1 text-sm font-bold text-foreground">{detailTarget.model || "Not provided"}</dd></div>
                 </dl>
                 <div className="mt-4"><p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Public description</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-foreground">{detailTarget.note || "The reporter did not add a public description."}</p></div>
-                <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">A possible match is not proof of ownership. Keep unique identifying details private and let the administrator review claims.</p>
+                <p className="mt-4 rounded-lg border border-warning bg-warning-soft p-3 text-xs leading-5 text-warning-foreground">A possible match is not proof of ownership. Keep unique identifying details private and let the administrator review claims.</p>
               </div>
             </div>
             <div className="flex flex-wrap justify-end gap-2 border-t border-border p-5 sm:p-6">
-              <button type="button" onClick={() => setDetailTarget(null)} className="rounded-lg border border-border px-4 py-2.5 text-sm font-extrabold hover:bg-secondary">Close</button>
-              {canClaimFoundReport(profile, { ...detailTarget, report_status: detailTarget.report_status ?? "new" }, me) && <button type="button" onClick={() => { openClaim(detailTarget); setDetailTarget(null); }} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-extrabold text-white">Submit ownership claim</button>}
+              <Button variant="plain" type="button" onClick={() => setDetailTarget(null)} className="rounded-lg border border-border px-4 py-2.5 text-sm font-extrabold hover:bg-secondary">Close</Button>
+              {canClaimFoundReport(profile, { ...detailTarget, report_status: detailTarget.report_status ?? "new" }, me) && <Button variant="plain" type="button" onClick={() => { openClaim(detailTarget); setDetailTarget(null); }} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-extrabold text-ink-foreground">Submit ownership claim</Button>}
               {detailTarget.user_id === me && <Link to="/my-reports" onClick={() => setDetailTarget(null)} className="rounded-lg bg-secondary px-4 py-2.5 text-sm font-extrabold text-foreground">Track my report</Link>}
             </div>
           </section>
-        </div>
+        </AccessibleModal>
       )}
 
       {lightboxImage && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/95 p-3 sm:p-8" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setLightboxImage(null); }}>
-          <section role="dialog" aria-modal="true" aria-label="Full-size item photograph" className="relative flex h-full w-full items-center justify-center">
-            <button type="button" onClick={() => setLightboxImage(null)} className="absolute right-1 top-1 z-10 inline-flex items-center gap-2 rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-sm font-bold text-white hover:bg-black/70" aria-label="Close full-size image"><X size={17} /> Close</button>
+        <AccessibleModal label="Full-size item photograph" className="cf-lightbox" onClose={() => setLightboxImage(null)}>
+          <section className="relative flex h-full w-full items-center justify-center">
+            <Button variant="plain" type="button" onClick={() => setLightboxImage(null)} className="absolute right-1 top-1 z-10 inline-flex items-center gap-2 rounded-lg border border-ink-foreground/20 bg-ink/50 px-3 py-2 text-sm font-bold text-ink-foreground hover:bg-ink/70" aria-label="Close full-size image"><X size={17} /> Close</Button>
             <img src={lightboxImage} alt="Full-size item photograph" className="max-h-full max-w-full object-contain" />
           </section>
-        </div>
+        </AccessibleModal>
       )}
 
       {claimTarget && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/65 p-4" role="presentation">
-          <section role="dialog" aria-modal="true" aria-labelledby="claim-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7">
+        <AccessibleModal labelledBy="claim-title" className="cf-claim-dialog" onClose={() => { setClaimTarget(null); setClaimError(""); }}>
+          <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-5 shadow-2xl sm:p-7">
             <div className="flex items-start justify-between gap-3">
-              <div><p className="kicker text-emerald-800">Private ownership claim</p><h2 id="claim-title" className="mt-2 text-2xl font-extrabold">Claim {claimTarget.name}</h2><p className="mt-2 text-sm text-muted-foreground">{claimTarget.location} · {claimTarget.category}</p></div>
-              <button type="button" onClick={() => { setClaimTarget(null); setClaimError(""); }} className="grid size-9 place-items-center rounded-lg hover:bg-secondary" aria-label="Close claim form"><X size={18} /></button>
+              <div><p className="kicker text-success-foreground">Private ownership claim</p><h2 id="claim-title" className="mt-2 text-2xl font-extrabold">Claim {claimTarget.name}</h2><p className="mt-2 text-sm text-muted-foreground">{claimTarget.location} · {claimTarget.category}</p></div>
+              <Button variant="plain" type="button" onClick={() => { setClaimTarget(null); setClaimError(""); }} className="grid size-9 place-items-center rounded-lg hover:bg-secondary" aria-label="Close claim form"><X size={18} /></Button>
             </div>
-            <p className="mt-5 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">Describe a detail that proves the item belongs to you. Do not publish this proof on the report board. Only you and authorised administrators can read it.</p>
+            <p className="mt-5 rounded-xl bg-warning-soft p-4 text-sm leading-6 text-warning-foreground">Describe a detail that proves the item belongs to you. Do not publish this proof on the report board. Only you and authorised administrators can read it.</p>
             <form onSubmit={submitClaim} className="mt-5">
               <label htmlFor="claim-proof" className="block text-sm font-extrabold text-foreground">Private proof of ownership</label>
               <textarea id="claim-proof" required minLength={20} maxLength={1500} rows={5} value={claimProof} onChange={(event) => setClaimProof(event.target.value)} placeholder="Describe a unique detail, contents, mark, serial details, or other evidence only the owner would know." className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm leading-6 outline-none focus:border-primary" />
               <p className="mt-1 text-xs text-muted-foreground">{claimProof.trim().length}/1,500 characters · minimum 20</p>
               {claimError && <p role="alert" className="mt-3 rounded-xl bg-destructive/5 p-3 text-sm font-bold text-destructive">{claimError}</p>}
               <div className="mt-5 flex flex-wrap justify-end gap-2">
-                <button type="button" onClick={() => setClaimTarget(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-extrabold hover:bg-secondary">Cancel</button>
-                <button type="submit" disabled={claimBusy} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground disabled:opacity-60">{claimBusy ? "Submitting…" : "Send private claim"}</button>
+                <Button variant="plain" type="button" onClick={() => setClaimTarget(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-extrabold hover:bg-secondary">Cancel</Button>
+                <Button variant="plain" type="submit" disabled={claimBusy} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground disabled:opacity-60">{claimBusy ? "Submitting…" : "Send private claim"}</Button>
               </div>
             </form>
           </section>
-        </div>
+        </AccessibleModal>
       )}
     </Page>
   );

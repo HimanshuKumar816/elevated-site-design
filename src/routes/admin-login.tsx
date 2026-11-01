@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowRight, ArrowUpRight, LockKeyhole, ShieldCheck } from "lucide-react";
@@ -9,6 +10,10 @@ import { isAdminProfile, NO_ADMIN_ACCESS } from "@/lib/auth-validation";
 export const Route = createFileRoute("/admin-login")({
   head: () => ({
     meta: [
+      { property: "og:title", content: "Administrator sign in — CampusFind" },
+      { property: "og:description", content: "Restricted administrator access to the CampusFind moderation console." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Administrator sign in — CampusFind" },
       { name: "description", content: "Restricted administrator access to the CampusFind moderation console." },
       { name: "robots", content: "noindex, nofollow" },
@@ -18,7 +23,7 @@ export const Route = createFileRoute("/admin-login")({
 });
 
 const field =
-  "mt-2 w-full rounded-xl border border-input bg-background px-4 py-3.5 text-sm transition placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15";
+  "mt-2 w-full rounded-xl border border-input bg-background px-4 py-3.5 text-sm transition placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/15";
 
 function AdminLoginPage() {
   const navigate = useNavigate();
@@ -81,48 +86,45 @@ function AdminLoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink px-4 py-8 text-ink-foreground sm:px-6 sm:py-12">
-      <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-0 size-80 rounded-full bg-emerald-300/10 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -right-24 bottom-0 size-96 rounded-full bg-blue-300/10 blur-3xl" />
+    <main className="admin-login relative flex min-h-screen items-center justify-center overflow-hidden bg-ink px-4 py-8 text-ink-foreground sm:px-6 sm:py-12">
 
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl shadow-black/20 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative flex min-h-[260px] flex-col justify-between overflow-hidden bg-gradient-ink p-7 text-white sm:p-10 lg:min-h-[600px] lg:p-12">
-          <div aria-hidden="true" className="pointer-events-none absolute -right-20 top-10 size-64 rounded-full bg-emerald-300/15 blur-3xl" />
+      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-ink-foreground/10 bg-card shadow-2xl shadow-ink/20 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="relative flex min-h-[260px] flex-col justify-between overflow-hidden bg-gradient-ink p-7 text-ink-foreground sm:p-10 lg:min-h-[600px] lg:p-12">
           <div className="relative">
             <div className="inline-flex items-center gap-3">
-              <span className="grid size-12 place-items-center rounded-2xl border border-white/15 bg-white/10 text-emerald-200">
+              <span className="grid size-12 place-items-center rounded-2xl border border-ink-foreground/15 bg-card/10 text-success">
                 <ShieldCheck size={24} />
               </span>
               <span>
-                <span className="block text-lg font-extrabold tracking-tight">CampusFind</span>
-                <span className="mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/55">Administration</span>
+                <span className="block text-lg font-extrabold tracking-normal">CampusFind</span>
+                <span className="mt-0.5 block text-[10px] font-extrabold uppercase tracking-normal text-ink-foreground/55">Administration</span>
               </span>
             </div>
-            <p className="mt-10 inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-extrabold uppercase tracking-[0.16em] text-emerald-100">
+            <p className="mt-10 inline-flex rounded-full border border-ink-foreground/15 bg-card/5 px-3 py-2 text-[11px] font-extrabold uppercase tracking-normal text-success">
               Restricted access
             </p>
-            <h1 className="mt-5 max-w-lg text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+            <h1 className="mt-5 max-w-lg text-4xl font-extrabold leading-tight tracking-normal sm:text-5xl">
               CampusFind administrator portal.
             </h1>
-            <p className="mt-5 max-w-md text-sm leading-7 text-white/65 sm:text-base">
+            <p className="mt-5 max-w-md text-sm leading-7 text-ink-foreground/65 sm:text-base">
               A separate workspace for authorised moderation and report oversight. Student sign-in does not grant administrator access.
             </p>
           </div>
-          <div className="relative mt-8 flex items-center gap-2 border-t border-white/10 pt-5 text-xs font-bold text-white/60">
-            <LockKeyhole size={15} className="text-emerald-200" />
+          <div className="relative mt-8 flex items-center gap-2 border-t border-ink-foreground/10 pt-5 text-xs font-bold text-ink-foreground/60">
+            <LockKeyhole size={15} className="text-success" />
             Access is checked against the account's server-managed role.
           </div>
         </section>
 
         <section className="flex flex-col justify-center p-6 text-foreground sm:p-10 lg:p-12">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-            <span className="rounded-full bg-secondary px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.15em] text-secondary-foreground">Admin sign in</span>
+            <span className="rounded-full bg-secondary px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-normal text-secondary-foreground">Admin sign in</span>
             <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-extrabold text-muted-foreground transition hover:text-primary">
               Student site <ArrowUpRight size={14} />
             </Link>
           </div>
 
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Welcome back.</h2>
+          <h2 className="text-3xl font-extrabold tracking-normal sm:text-4xl">Welcome back.</h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Use your administrator UID and password to continue to the moderation console.
           </p>
@@ -164,7 +166,7 @@ function AdminLoginPage() {
               </p>
             )}
 
-            <button
+            <Button variant="plain"
               type="submit"
               disabled={busy}
               aria-busy={busy}
@@ -172,7 +174,7 @@ function AdminLoginPage() {
             >
               {busy ? "Checking access…" : "Sign in to admin portal"}
               {!busy && <ArrowRight size={17} />}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-7 border-t border-border pt-5">

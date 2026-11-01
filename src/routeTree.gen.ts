@@ -10,17 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminLoginRouteImport } from './routes/admin-login'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedBrowseRouteImport } from './routes/_authenticated/browse'
-import { Route as HowItWorksRouteImport } from './routes/how-it-works'
-import { Route as AuthenticatedReportRouteImport } from './routes/_authenticated/report'
 import { Route as AuthenticatedMyReportsRouteImport } from './routes/_authenticated/my-reports'
+import { Route as AuthenticatedReportRouteImport } from './routes/_authenticated/report'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiHealthLiveRouteImport } from './routes/api.health.live'
 
@@ -29,18 +29,13 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin-login',
+  path: '/admin-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -48,9 +43,19 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/admin-login',
-  path: '/admin-login',
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -68,19 +73,14 @@ const AuthenticatedBrowseRoute = AuthenticatedBrowseRouteImport.update({
   path: '/browse',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const HowItWorksRoute = HowItWorksRouteImport.update({
-  id: '/how-it-works',
-  path: '/how-it-works',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedMyReportsRoute = AuthenticatedMyReportsRouteImport.update({
+  id: '/my-reports',
+  path: '/my-reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedReportRoute = AuthenticatedReportRouteImport.update({
   id: '/report',
   path: '/report',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedMyReportsRoute = AuthenticatedMyReportsRouteImport.update({
-  id: '/my-reports',
-  path: '/my-reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -96,48 +96,48 @@ const ApiHealthLiveRoute = ApiHealthLiveRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/contact': typeof ContactRoute
-  '/privacy': typeof PrivacyRoute
-  '/auth': typeof AuthRoute
   '/admin-login': typeof AdminLoginRoute
+  '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/browse': typeof AuthenticatedBrowseRoute
-  '/how-it-works': typeof HowItWorksRoute
-  '/report': typeof AuthenticatedReportRoute
   '/my-reports': typeof AuthenticatedMyReportsRoute
+  '/report': typeof AuthenticatedReportRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/contact': typeof ContactRoute
-  '/privacy': typeof PrivacyRoute
-  '/auth': typeof AuthRoute
   '/admin-login': typeof AdminLoginRoute
+  '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/browse': typeof AuthenticatedBrowseRoute
-  '/how-it-works': typeof HowItWorksRoute
-  '/report': typeof AuthenticatedReportRoute
   '/my-reports': typeof AuthenticatedMyReportsRoute
+  '/report': typeof AuthenticatedReportRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/contact': typeof ContactRoute
-  '/privacy': typeof PrivacyRoute
-  '/how-it-works': typeof HowItWorksRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
   '/admin-login': typeof AdminLoginRoute
+  '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/browse': typeof AuthenticatedBrowseRoute
-  '/_authenticated/report': typeof AuthenticatedReportRoute
   '/_authenticated/my-reports': typeof AuthenticatedMyReportsRoute
+  '/_authenticated/report': typeof AuthenticatedReportRoute
   '/api/health': typeof ApiHealthRouteWithChildren
   '/api/health/live': typeof ApiHealthLiveRoute
 }
@@ -145,59 +145,59 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/contact'
-    | '/privacy'
-    | '/auth'
     | '/admin-login'
+    | '/auth'
+    | '/contact'
+    | '/how-it-works'
+    | '/privacy'
     | '/reset-password'
     | '/admin'
     | '/browse'
-    | '/how-it-works'
-    | '/report'
     | '/my-reports'
+    | '/report'
     | '/api/health'
     | '/api/health/live'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/contact'
-    | '/privacy'
-    | '/auth'
     | '/admin-login'
+    | '/auth'
+    | '/contact'
+    | '/how-it-works'
+    | '/privacy'
     | '/reset-password'
     | '/admin'
     | '/browse'
-    | '/how-it-works'
-    | '/report'
     | '/my-reports'
+    | '/report'
     | '/api/health'
     | '/api/health/live'
   id:
     | '__root__'
     | '/'
-    | '/contact'
-    | '/privacy'
     | '/_authenticated'
-    | '/auth'
     | '/admin-login'
+    | '/auth'
+    | '/contact'
+    | '/how-it-works'
+    | '/privacy'
     | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/browse'
-    | '/how-it-works'
-    | '/_authenticated/report'
     | '/_authenticated/my-reports'
+    | '/_authenticated/report'
     | '/api/health'
     | '/api/health/live'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ContactRoute: typeof ContactRoute
-  PrivacyRoute: typeof PrivacyRoute
-  HowItWorksRoute: typeof HowItWorksRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AuthRoute: typeof AuthRoute
+  ContactRoute: typeof ContactRoute
+  HowItWorksRoute: typeof HowItWorksRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiHealthRoute: typeof ApiHealthRouteWithChildren
 }
@@ -211,25 +211,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-login': {
+      id: '/admin-login'
+      path: '/admin-login'
+      fullPath: '/admin-login'
+      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -239,11 +232,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin-login': {
-      id: '/admin-login'
-      path: '/admin-login'
-      fullPath: '/admin-login'
-      preLoaderRoute: typeof AdminLoginRouteImport
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -267,25 +274,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBrowseRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/how-it-works': {
-      id: '/how-it-works'
-      path: '/how-it-works'
-      fullPath: '/how-it-works'
-      preLoaderRoute: typeof HowItWorksRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/my-reports': {
+      id: '/_authenticated/my-reports'
+      path: '/my-reports'
+      fullPath: '/my-reports'
+      preLoaderRoute: typeof AuthenticatedMyReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/report': {
       id: '/_authenticated/report'
       path: '/report'
       fullPath: '/report'
       preLoaderRoute: typeof AuthenticatedReportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/my-reports': {
-      id: '/_authenticated/my-reports'
-      path: '/my-reports'
-      fullPath: '/my-reports'
-      preLoaderRoute: typeof AuthenticatedMyReportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/health': {
@@ -308,15 +308,15 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedBrowseRoute: typeof AuthenticatedBrowseRoute
-  AuthenticatedReportRoute: typeof AuthenticatedReportRoute
   AuthenticatedMyReportsRoute: typeof AuthenticatedMyReportsRoute
+  AuthenticatedReportRoute: typeof AuthenticatedReportRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedBrowseRoute: AuthenticatedBrowseRoute,
-  AuthenticatedReportRoute: AuthenticatedReportRoute,
   AuthenticatedMyReportsRoute: AuthenticatedMyReportsRoute,
+  AuthenticatedReportRoute: AuthenticatedReportRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -336,12 +336,12 @@ const ApiHealthRouteWithChildren = ApiHealthRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ContactRoute: ContactRoute,
-  PrivacyRoute: PrivacyRoute,
-  HowItWorksRoute: HowItWorksRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AuthRoute: AuthRoute,
+  ContactRoute: ContactRoute,
+  HowItWorksRoute: HowItWorksRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiHealthRoute: ApiHealthRouteWithChildren,
 }

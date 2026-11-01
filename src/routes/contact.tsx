@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ArrowUpRight, CheckCircle2, Mail, Send } from "lucide-react";
@@ -6,6 +7,8 @@ import { Page } from "@/components/site";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Contact CampusFind" },
       { name: "description", content: "Send a question or report a problem to the CampusFind administrators." },
       { property: "og:title", content: "Contact CampusFind" },
@@ -103,24 +106,24 @@ function ContactPage() {
 
   return (
     <Page>
-      <section className="mx-auto max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
+      <section className="cf-contact mx-auto max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
         <nav aria-label="Breadcrumb" className="mb-7 text-sm text-muted-foreground">
           <Link to="/" className="font-bold text-primary hover:underline">Home</Link>
           <span className="px-2" aria-hidden="true">/</span>
           <span aria-current="page">Contact</span>
         </nav>
-        <div className="rounded-[2rem] border border-border bg-white p-6 shadow-sm sm:p-10">
+        <div className="cf-contact-content p-0">
           <div className="flex items-start gap-4">
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-secondary text-primary"><Mail size={22} /></span>
             <div>
-              <p className="kicker text-emerald-800">We’re listening</p>
-              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Contact CampusFind</h1>
+              <p className="kicker text-primary">We’re listening</p>
+              <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-foreground sm:text-4xl">Contact CampusFind</h1>
               <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">Send the administrator team a question, correction, or report of a problem. Your message is stored in a restricted inbox that only authorised administrators can read.</p>
             </div>
           </div>
 
           {success && (
-            <p role="status" className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-900">
+            <p role="status" className="mt-6 flex items-start gap-3 rounded-xl border border-success/10 bg-success-soft p-4 text-sm font-bold leading-6 text-success-foreground">
               <CheckCircle2 size={19} className="mt-0.5 shrink-0" /> Your message was received. Please do not include passwords, one-time codes, or private proof-of-ownership details in contact messages.
             </p>
           )}
@@ -147,9 +150,9 @@ function ContactPage() {
               <label>Leave this blank<input name="website" tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} /></label>
             </div>
             <p className="text-xs leading-5 text-muted-foreground sm:col-span-2">Messages are saved for the administrator team. Don't send passwords, OTPs, financial details, or sensitive identity information.</p>
-            <button type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2">
+            <Button variant="plain" type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2">
               {busy ? "Sending…" : "Send message"} {!busy && <Send size={16} />}
-            </button>
+            </Button>
           </form>
           <p className="mt-6 text-sm text-muted-foreground">Read the <Link to="/privacy" className="font-bold text-primary hover:underline">Privacy Policy</Link> to learn how contact messages are handled.</p>
         </div>

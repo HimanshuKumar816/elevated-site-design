@@ -1,3 +1,5 @@
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Bell, Check, CheckCheck, ClipboardList, Clock3, PackageCheck, ShieldCheck } from "lucide-react";
@@ -8,6 +10,10 @@ import type { ModerationFlag, ReportStatus } from "@/lib/items";
 export const Route = createFileRoute("/_authenticated/my-reports")({
   head: () => ({
     meta: [
+      { property: "og:title", content: "My reports — CampusFind" },
+      { property: "og:description", content: "Track your lost and found reports, matches, and item claims." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "My reports — CampusFind" },
       { name: "description", content: "Track your lost and found reports, matches, and item claims." },
       { name: "robots", content: "noindex" },
@@ -112,7 +118,7 @@ function ReportStatusTimeline({ report, events }: { report: OwnReport; events: O
   return (
     <div className="mt-4 rounded-xl border border-border bg-background p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Report journey</p>
+        <p className="text-[10px] font-extrabold uppercase tracking-normal text-muted-foreground">Report journey</p>
         {report.report_status === "closed" && (
           <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-extrabold text-muted-foreground">Closed by admin</span>
         )}
@@ -124,7 +130,7 @@ function ReportStatusTimeline({ report, events }: { report: OwnReport; events: O
           const eventDate = event?.created_at ?? (step.status === "new" ? report.created_at : null);
           return (
             <li key={step.status} className="flex min-w-0 items-start gap-3 sm:flex-col sm:gap-2">
-              <span className={"grid size-7 shrink-0 place-items-center rounded-full border text-xs font-extrabold " + (completed ? "border-primary bg-primary text-white" : "border-border bg-white text-muted-foreground")}>
+              <span className={"grid size-7 shrink-0 place-items-center rounded-full border text-xs font-extrabold " + (completed ? "border-primary bg-primary text-ink-foreground" : "border-border bg-card text-muted-foreground")}>
                 {completed ? <Check size={14} /> : index + 1}
               </span>
               <span className="min-w-0">
@@ -274,17 +280,17 @@ function MyReportsPage() {
 
   return (
     <Page>
-      <section className="mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
+      <section className="cf-my-workspace mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="kicker text-emerald-800">Your CampusFind account</p>
-            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-foreground">My reports</h1>
+            <p className="kicker text-primary">Your CampusFind account</p>
+            <h1 className="mt-2 text-4xl font-extrabold tracking-normal text-foreground">My reports</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Track reports you submitted and claims you made. Private proof is only visible to you and authorised administrators.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-3 text-sm font-extrabold hover:bg-secondary disabled:opacity-60">
+            <Button variant="plain" type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-extrabold hover:bg-secondary disabled:opacity-60">
               <Clock3 size={16} /> {loading ? "Refreshing…" : "Refresh"}
-            </button>
+            </Button>
             <Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground">
               Report an item <ArrowUpRight size={16} />
             </Link>
@@ -297,8 +303,8 @@ function MyReportsPage() {
             { label: "Active reports", value: counts.active, icon: PackageCheck },
             { label: "Claims submitted", value: counts.claims, icon: ShieldCheck },
           ].map(({ label, value, icon: Icon }) => (
-            <div key={label} className="rounded-2xl border border-border bg-white p-5 shadow-sm">
-              <Icon size={19} className="text-emerald-800" />
+            <div key={label} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <Icon size={19} className="text-success-foreground" />
               <p className="mt-4 text-3xl font-extrabold text-foreground">{value}</p>
               <p className="mt-1 text-xs font-bold text-muted-foreground">{label}</p>
             </div>
@@ -307,31 +313,31 @@ function MyReportsPage() {
 
         {error && <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">{error}</div>}
         {claimsNeedingHandover > 0 && (
-          <button type="button" onClick={() => setActiveTab("claims")} className="cf-handover-alert mt-5 flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-900/10 bg-amber-50 p-4 text-left">
-            <span><strong className="block text-sm text-amber-950">{claimsNeedingHandover} approved {claimsNeedingHandover === 1 ? "claim needs" : "claims need"} your attention</strong><span className="mt-1 block text-xs leading-5 text-amber-900">Open Claims to review the next handover step.</span></span>
-            <span className="text-xs font-extrabold text-amber-950">View claims <ArrowUpRight size={13} className="ml-1 inline" /></span>
-          </button>
+          <Button variant="plain" type="button" onClick={() => setActiveTab("claims")} className="cf-handover-alert mt-5 flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/10 bg-warning-soft p-4 text-left">
+            <span><strong className="block text-sm text-warning-foreground">{claimsNeedingHandover} approved {claimsNeedingHandover === 1 ? "claim needs" : "claims need"} your attention</strong><span className="mt-1 block text-xs leading-5 text-warning-foreground">Open Claims to review the next handover step.</span></span>
+            <span className="text-xs font-extrabold text-warning-foreground">View claims <ArrowUpRight size={13} className="ml-1 inline" /></span>
+          </Button>
         )}
 
-        <div className="cf-workspace-tabs mt-7" role="tablist" aria-label="Your CampusFind workspace">
-          <button type="button" role="tab" aria-selected={activeTab === "reports"} aria-controls="my-reports-panel" onClick={() => setActiveTab("reports")} className={activeTab === "reports" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ClipboardList size={16} /> Reports <span>{reports.length}</span></button>
-          <button type="button" role="tab" aria-selected={activeTab === "claims"} aria-controls="my-claims-panel" onClick={() => setActiveTab("claims")} className={activeTab === "claims" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ShieldCheck size={16} /> Claims <span>{claims.length}</span></button>
-          <button type="button" role="tab" aria-selected={activeTab === "notifications"} aria-controls="my-notifications-panel" onClick={() => setActiveTab("notifications")} className={activeTab === "notifications" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><Bell size={16} /> Notifications <span>{unreadNotifications > 0 ? unreadNotifications : "✓"}</span></button>
-        </div>
+        <Tabs value={activeTab} onValueChange={(value) => { if (value === "reports" || value === "claims" || value === "notifications") setActiveTab(value); }}><TabsList className="cf-workspace-tabs mt-7 h-auto w-full justify-start bg-transparent" aria-label="Your CampusFind workspace">
+          <TabsTrigger value="reports" className={activeTab === "reports" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ClipboardList size={16} /> Reports <span>{reports.length}</span></TabsTrigger>
+          <TabsTrigger value="claims" className={activeTab === "claims" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ShieldCheck size={16} /> Claims <span>{claims.length}</span></TabsTrigger>
+          <TabsTrigger value="notifications" className={activeTab === "notifications" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><Bell size={16} /> Notifications <span>{unreadNotifications > 0 ? unreadNotifications : "✓"}</span></TabsTrigger>
+        </TabsList>
 
-        <section id="my-notifications-panel" role="tabpanel" aria-labelledby="account-notifications-title" tabIndex={0} hidden={activeTab !== "notifications"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <TabsContent value="notifications" forceMount hidden={activeTab !== "notifications"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary"><Bell size={19} /></span>
               <div>
-                <p className="kicker text-emerald-800">Account updates</p>
+                <p className="kicker text-primary">Account updates</p>
                 <h2 id="account-notifications-title" className="mt-1 text-xl font-extrabold">Notifications</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{unreadNotifications} unread · Latest 30 updates</p>
               </div>
             </div>
-            <button type="button" onClick={() => void markAllNotificationsRead()} disabled={unreadNotifications === 0} className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">
+            <Button variant="plain" type="button" onClick={() => void markAllNotificationsRead()} disabled={unreadNotifications === 0} className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">
               <CheckCheck size={14} /> Mark all read
-            </button>
+            </Button>
           </div>
           {notificationError && <p role="alert" className="mx-5 mt-4 rounded-lg bg-destructive/5 p-3 text-xs font-bold text-destructive sm:mx-6">{notificationError}</p>}
           {notifications.length === 0 ? (
@@ -339,7 +345,7 @@ function MyReportsPage() {
           ) : (
             <div className="divide-y divide-border">
               {notifications.map((notification) => (
-                <article key={notification.id} className={"flex flex-wrap items-start justify-between gap-3 p-5 " + (notification.read_at ? "bg-white" : "bg-[#fbf7f6]")}>
+                <article key={notification.id} className={"flex flex-wrap items-start justify-between gap-3 p-5 " + (notification.read_at ? "bg-card" : "bg-primary/5")}>
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     <span className={"mt-1 size-2 shrink-0 rounded-full " + (notification.read_at ? "bg-transparent" : "bg-primary")} aria-label={notification.read_at ? "Read" : "Unread"} />
                     <div className="min-w-0">
@@ -348,17 +354,17 @@ function MyReportsPage() {
                       <time dateTime={notification.created_at} className="mt-2 block text-[11px] text-muted-foreground">{dateLabel(notification.created_at)}</time>
                     </div>
                   </div>
-                  {!notification.read_at && <button type="button" onClick={() => void markNotificationRead(notification.id)} className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary">Mark read</button>}
+                  {!notification.read_at && <Button variant="plain" type="button" onClick={() => void markNotificationRead(notification.id)} className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary">Mark read</Button>}
                 </article>
               ))}
             </div>
           )}
-        </section>
+        </TabsContent>
 
-        <section id="my-reports-panel" role="tabpanel" aria-labelledby="my-reports-title" tabIndex={0} hidden={activeTab !== "reports"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <TabsContent value="reports" forceMount hidden={activeTab !== "reports"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div>
-              <p className="kicker text-emerald-800">Your submissions</p>
+              <p className="kicker text-primary">Your submissions</p>
               <h2 id="my-reports-title" className="mt-2 text-2xl font-extrabold">Lost and found reports</h2>
               <p className="mt-1 text-sm text-muted-foreground">Each report has its own status and review history.</p>
             </div>
@@ -386,7 +392,7 @@ function MyReportsPage() {
                   <p className="mt-2 text-sm text-muted-foreground">{report.location} · Item date {report.item_date}{report.item_time ? ` · ${report.item_time}` : ""}</p>
                   {(report.brand || report.color || report.model) && <p className="mt-1 text-xs font-semibold text-muted-foreground">{[report.brand, report.color, report.model].filter(Boolean).join(" · ")}</p>}
                   <p className="mt-1 text-xs text-muted-foreground">Submitted {dateLabel(report.created_at)}</p>
-                  {report.moderation_flag !== "none" && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs font-bold text-amber-900">This report has been flagged for administrator review. Contact the CampusFind team if you need help.</p>}
+                  {report.moderation_flag !== "none" && <p className="mt-3 rounded-lg bg-warning-soft p-3 text-xs font-bold text-warning-foreground">This report has been flagged for administrator review. Contact the CampusFind team if you need help.</p>}
                   <ReportStatusTimeline report={report} events={statusHistory[report.id] ?? []} />
                   {report.note && <p className="mt-3 text-sm leading-6 text-muted-foreground">{report.note}</p>}
                   <p className="mt-3 break-all text-[10px] text-muted-foreground">Report ID: {report.id}</p>
@@ -394,12 +400,12 @@ function MyReportsPage() {
               ))}
             </div>
           )}
-        </section>
+        </TabsContent>
 
-        <section id="my-claims-panel" role="tabpanel" aria-labelledby="my-claims-title" tabIndex={0} hidden={activeTab !== "claims"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+        <TabsContent value="claims" forceMount hidden={activeTab !== "claims"} className="mt-5 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div>
-              <p className="kicker text-emerald-800">Ownership requests</p>
+              <p className="kicker text-primary">Ownership requests</p>
               <h2 id="my-claims-title" className="mt-2 text-2xl font-extrabold">My item claims</h2>
               <p className="mt-1 text-sm text-muted-foreground">Claims are reviewed by an administrator. Your proof is private.</p>
             </div>
@@ -422,17 +428,19 @@ function MyReportsPage() {
                     <span className={`cf-claim-pill cf-claim-${claim.status}`}>{claimLabels[claim.status]}</span>
                   </div>
                   <div className="mt-4 rounded-lg bg-secondary/60 p-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Your private proof</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-normal text-muted-foreground">Your private proof</p>
                     <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{claim.proof}</p>
                   </div>
-                  {claim.status === "approved" && <p className="mt-3 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900">Your approval notification contains a one-time 12-character handover code. Show it to a CampusFind administrator in person when the item is handed over. Do not share it in advance.</p>}
-                  {claim.admin_note && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900">Admin update: {claim.admin_note}</p>}
+                  {claim.status === "approved" && <p className="mt-3 rounded-lg border border-success/10 bg-success-soft p-3 text-xs leading-5 text-success-foreground">Your approval notification contains a one-time 12-character handover code. Show it to a CampusFind administrator in person when the item is handed over. Do not share it in advance.</p>}
+                  {claim.admin_note && <p className="mt-3 rounded-lg bg-warning-soft p-3 text-sm leading-6 text-warning-foreground">Admin update: {claim.admin_note}</p>}
                   {claim.reviewed_at && <p className="mt-2 text-xs text-muted-foreground">Reviewed {dateLabel(claim.reviewed_at)}</p>}
                 </article>
               ))}
             </div>
           )}
-        </section>
+        </TabsContent>
+
+        </Tabs>
 
         <div className="mt-7">
           <Link to="/browse" className="inline-flex items-center gap-2 text-sm font-extrabold text-primary hover:underline"><ArrowLeft size={16} /> Back to campus reports</Link>

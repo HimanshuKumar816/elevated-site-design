@@ -24,6 +24,7 @@ CampusFind is a campus lost-and-found app for Chandigarh University students. Pr
 - Build: npm run build
 
 ## Important files
+- Frontend surfaces use semantic colors from src/styles.css and explicit page classes; modal focus management uses AccessibleModal with existing Radix primitives to keep keyboard access consistent without altering workflows.
 - src/lib/auth.functions.ts: server-side UID login
 - src/lib/uid.ts: UID normalization and validation
 - src/integrations/supabase/client.ts: browser Supabase client
