@@ -92,6 +92,15 @@ const reportStatusSteps: Array<{ status: ReportStatus; label: string }> = [
   { status: "returned", label: "Returned" },
 ];
 
+const reportNextSteps: Record<ReportStatus, string> = {
+  new: "Your report is on the campus board. Check Notifications for possible matches.",
+  under_review: "An administrator is reviewing this report. Any status change will appear here.",
+  matched: "A possible match has been identified. Keep an eye on Notifications while the details are checked.",
+  claimed: "A claim has been approved. Open the Claims tab and follow the handover instructions.",
+  returned: "This item is marked as returned. No further action is needed for this report.",
+  closed: "This report is closed. Contact the CampusFind team if you believe it should be reopened.",
+};
+
 function ReportStatusTimeline({ report, events }: { report: OwnReport; events: OwnStatusEvent[] }) {
   const activeEvents = events.filter((event) => event.new_status !== "closed");
   const lastActiveEvent = activeEvents[activeEvents.length - 1];
@@ -126,6 +135,10 @@ function ReportStatusTimeline({ report, events }: { report: OwnReport; events: O
           );
         })}
       </ol>
+      <div className="cf-timeline-guidance mt-4">
+        <span>What happens next</span>
+        <p>{reportNextSteps[report.report_status]}</p>
+      </div>
       {report.report_status === "closed" && (
         <p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
           This report is closed and is no longer included in active campus searches. Contact the administrator team if you need it reopened.
@@ -251,6 +264,7 @@ function MyReportsPage() {
   }
 
   const unreadNotifications = notifications.filter((notification) => !notification.read_at).length;
+  const claimsNeedingHandover = claims.filter((claim) => claim.status === "approved").length;
 
   const counts = useMemo(() => ({
     total: reports.length,
@@ -292,6 +306,12 @@ function MyReportsPage() {
         </div>
 
         {error && <div role="alert" className="mt-6 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-bold text-destructive">{error}</div>}
+        {claimsNeedingHandover > 0 && (
+          <button type="button" onClick={() => setActiveTab("claims")} className="cf-handover-alert mt-5 flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-900/10 bg-amber-50 p-4 text-left">
+            <span><strong className="block text-sm text-amber-950">{claimsNeedingHandover} approved {claimsNeedingHandover === 1 ? "claim needs" : "claims need"} your attention</strong><span className="mt-1 block text-xs leading-5 text-amber-900">Open Claims to review the next handover step.</span></span>
+            <span className="text-xs font-extrabold text-amber-950">View claims <ArrowUpRight size={13} className="ml-1 inline" /></span>
+          </button>
+        )}
 
         <div className="cf-workspace-tabs mt-7" role="tablist" aria-label="Your CampusFind workspace">
           <button type="button" role="tab" aria-selected={activeTab === "reports"} aria-controls="my-reports-panel" onClick={() => setActiveTab("reports")} className={activeTab === "reports" ? "cf-workspace-tab is-active" : "cf-workspace-tab"}><ClipboardList size={16} /> Reports <span>{reports.length}</span></button>

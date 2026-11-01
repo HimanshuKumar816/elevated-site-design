@@ -9,6 +9,8 @@ import {
   BookmarkCheck,
   Check,
   MapPin,
+  LayoutGrid,
+  List as ListIcon,
   PackageSearch,
   RefreshCw,
   Search,
@@ -97,6 +99,7 @@ function Browse() {
   const [type, setType] = useState<"All" | "Lost" | "Found">("All");
   const [cat, setCat] = useState("All");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [alertBusy, setAlertBusy] = useState(false);
   const [claimTarget, setClaimTarget] = useState<BoardItem | null>(null);
@@ -319,6 +322,18 @@ function Browse() {
 
   const shown = useMemo(() => items, [items]);
 
+  function clearFilters() {
+    setQ("");
+    setType("All");
+    setCat("All");
+    setLocationFilter("All");
+    setStatusFilter("All");
+    setDateFrom("");
+    setDateTo("");
+    setSavedOnly(false);
+    setSortBy("newest");
+  }
+
   return (
     <Page>
       <section className="student-workspace mx-auto max-w-7xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
@@ -419,14 +434,14 @@ function Browse() {
           <label htmlFor="item-search" className="mb-2 block text-xs font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Search reports</label>
           <div className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 transition focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-ring/10">
             <Search size={19} className="shrink-0 text-muted-foreground" />
-            <input id="item-search" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Try “purse”, “mobile”, “libary”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus:ring-0" />
+            <input id="item-search" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Try “purse”, “mobile”, “library”, or “black bottle”…" className="min-h-12 w-full border-0 bg-transparent text-sm outline-none ring-0 placeholder:text-muted-foreground/70 focus:ring-0" />
             {!q && <kbd aria-hidden="true" className="hidden rounded-md border border-border bg-white px-2 py-1 text-xs font-extrabold text-muted-foreground sm:block">/</kbd>}
             {q && <button type="button" onClick={() => setQ("")} className="shrink-0 rounded-lg px-2 py-1 text-xs font-extrabold text-primary hover:bg-secondary">Clear</button>}
           </div>
           <details className="cf-filter-details mt-3 md:mt-4">
-            <summary className="cf-filter-summary"><span className="inline-flex items-center gap-2"><SlidersHorizontal size={15} /> Filters and sorting</span><span className="text-xs font-bold text-muted-foreground">Show / hide</span></summary>
+            <summary className="cf-filter-summary"><span className="inline-flex items-center gap-2"><SlidersHorizontal size={15} /> Filters</span><span className="text-xs font-bold text-muted-foreground">Show / hide</span></summary>
             <div className="cf-filter-controls">
-<div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2 xl:grid-cols-4 md:items-end">
+<div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2 md:items-end">
             <div>
               <span className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><SlidersHorizontal size={14} /> Item type</span>
               <div className="flex flex-wrap items-center gap-2">
@@ -438,11 +453,6 @@ function Browse() {
             <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Category
               <select aria-label="Filter by category" value={cat} onChange={(event) => setCat(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10">
                 <option value="All">All categories</option>{CATEGORIES.map((category) => <option key={category}>{category}</option>)}
-              </select>
-            </label>
-            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground"><span className="inline-flex items-center gap-2"><ArrowUpDown size={14} /> Sort by</span>
-              <select aria-label="Sort reports" value={sortBy} onChange={(event) => setSortBy(event.target.value as "newest" | "oldest" | "name")} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10">
-                <option value="newest">Newest item date</option><option value="oldest">Oldest item date</option><option value="name">Name A–Z</option>
               </select>
             </label>
           </div>
@@ -492,29 +502,48 @@ function Browse() {
 
         {error && <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><button type="button" onClick={() => void fetchPage(true)} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-extrabold transition hover:bg-destructive/10"><RefreshCw size={15} /> Try again</button></div>}
 
-        <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
-          <div><h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2><p className="mt-1 text-sm text-muted-foreground">{loading ? "Searching the campus board…" : `Showing ${shown.length} loaded results`}</p></div>
-          <div className="flex items-center gap-2">
-            {(q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly) && <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); setLocationFilter("All"); setStatusFilter("All"); setDateFrom(""); setDateTo(""); setSavedOnly(false); }} className="rounded-xl border border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>}
-            {!loading && <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-secondary-foreground"><span className="inline-block size-2 rounded-full bg-emerald-500 mr-2" /> Search ready</span>}
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">Recent reports</h2>
+            <p role="status" aria-live="polite" aria-atomic="true" className="mt-1 text-sm text-muted-foreground">
+              {loading ? "Searching the campus board…" : `Showing ${shown.length} loaded reports`}
+              {!loading && hasMore ? " · More reports are available below" : ""}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly) && (
+              <button type="button" onClick={clearFilters} className="rounded-xl border border-border bg-white px-3 py-2.5 text-xs font-extrabold text-muted-foreground transition hover:bg-secondary hover:text-foreground">Clear filters</button>
+            )}
+            <label className="cf-browse-sort">
+              <span>Sort</span>
+              <select aria-label="Sort reports" value={sortBy} onChange={(event) => setSortBy(event.target.value as "newest" | "oldest" | "name")}>
+                <option value="newest">Newest item date</option>
+                <option value="oldest">Oldest item date</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </label>
+            <div className="cf-browse-view-toggle" role="group" aria-label="Report layout">
+              <button type="button" aria-label="Grid view" title="Grid view" aria-pressed={viewMode === "grid"} onClick={() => setViewMode("grid")} className={viewMode === "grid" ? "is-active" : ""}><LayoutGrid size={16} /></button>
+              <button type="button" aria-label="List view" title="List view" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")} className={viewMode === "list" ? "is-active" : ""}><ListIcon size={17} /></button>
+            </div>
           </div>
         </div>
 
         {loading && <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="cf-skeleton-card p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
 
         {!loading && shown.length > 0 && (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={viewMode === "grid" ? "mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" : "cf-browse-list mt-5 grid gap-3"}>
             {shown.map((item) => {
               const reportStatus = item.report_status ?? "new";
               const canClaim = canClaimFoundReport(profile, { ...item, report_status: reportStatus }, me);
               return (
-                <article key={item.id} className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
-                  <div className="relative aspect-[16/10] overflow-hidden bg-secondary">
+                <article key={item.id} className="cf-browse-card group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
+                  <div className="cf-browse-card-media relative aspect-[16/10] overflow-hidden bg-secondary">
                     {item.image_url ? <img src={item.image_url} alt={item.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-primary/70"><PackageSearch size={38} strokeWidth={1.5} /><span className="text-[10px] font-extrabold uppercase tracking-[0.2em]">Campus report</span></div>}
                     <span className={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] shadow-sm ${item.type === "Found" ? "cf-badge-found" : "cf-badge-lost"}`}>{item.type}</span>
                     <span className="absolute bottom-3 right-3 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-foreground shadow-sm">{item.category}</span>
                   </div>
-                  <div className="flex flex-1 flex-col p-5 sm:p-6">
+                  <div className="cf-browse-card-content flex flex-1 flex-col p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="line-clamp-2 text-xl font-extrabold leading-snug tracking-tight text-foreground">{item.name}</h3>
                       <span className="mt-1 shrink-0 rounded-lg bg-secondary px-2 py-1 text-[10px] font-extrabold text-muted-foreground">{dateLabel(item.item_date)}</span>
@@ -546,11 +575,11 @@ function Browse() {
         {!loading && shown.length === 0 && !error && (
           <div className="mt-5 rounded-3xl border border-dashed border-border bg-white px-6 py-14 text-center sm:py-20">
             <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-secondary text-primary"><PackageSearch size={27} /></span>
-            <h3 className="mt-5 text-xl font-extrabold tracking-tight">{q || type !== "All" || cat !== "All" ? "No reports match that search" : "Start the board with a report"}</h3>
+            <h3 className="mt-5 text-xl font-extrabold tracking-tight">{q || type !== "All" || cat !== "All" || locationFilter !== "All" || statusFilter !== "All" || dateFrom || dateTo || savedOnly ? "No reports match those filters" : "Start the board with a report"}</h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Try a synonym, check the spelling, clear filters, or create a new report.</p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <Link to="/report" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground">Create a report <ArrowUpRight size={16} /></Link>
-              <button type="button" onClick={() => { setQ(""); setType("All"); setCat("All"); }} className="rounded-xl border border-border px-4 py-3 text-sm font-extrabold hover:bg-secondary">Clear filters</button>
+              <button type="button" onClick={clearFilters} className="rounded-xl border border-border px-4 py-3 text-sm font-extrabold hover:bg-secondary">Clear all filters</button>
             </div>
           </div>
         )}

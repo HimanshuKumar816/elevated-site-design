@@ -619,3 +619,168 @@ main section:has(> section[aria-labelledby="account-notifications-title"]) h2 { 
   .cf-filter-details[open] .cf-filter-controls { display: block; }
   .cf-filter-details[open] .cf-filter-summary { border-color: #d8aeb2; background: #fff8f8; }
 }
+
+
+/* Final CampusFind experience polish */
+.cf-browse-sort {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: .55rem;
+  border: 1px solid #d9ddda;
+  border-radius: 10px;
+  background: #fff;
+  padding: .35rem .65rem .35rem .8rem;
+  color: #626b68;
+  font-size: .72rem;
+  font-weight: 800;
+}
+.cf-browse-sort select {
+  min-width: 126px;
+  border: 0;
+  background: transparent;
+  padding: .25rem .1rem;
+  color: #202323;
+  font-size: .76rem;
+  font-weight: 800;
+  outline: none;
+}
+.cf-browse-sort:focus-within {
+  border-color: rgba(181,45,56,.55);
+  box-shadow: 0 0 0 3px rgba(181,45,56,.1);
+}
+.cf-browse-view-toggle {
+  display: inline-flex;
+  gap: 3px;
+  border: 1px solid #d9ddda;
+  border-radius: 10px;
+  background: #fff;
+  padding: 3px;
+}
+.cf-browse-view-toggle button {
+  display: inline-grid;
+  width: 36px;
+  height: 34px;
+  place-items: center;
+  border-radius: 7px;
+  color: #66706b;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.cf-browse-view-toggle button:hover { background: #f1f2ef; color: #202323; }
+.cf-browse-view-toggle button.is-active { background: #f8e9ea; color: #982630; }
+.cf-browse-view-toggle button:focus-visible,
+.cf-browse-sort select:focus-visible {
+  outline: 2px solid #b52d38;
+  outline-offset: 2px;
+}
+.cf-browse-list { grid-template-columns: minmax(0, 1fr); }
+.cf-browse-list .cf-browse-card {
+  flex-direction: row;
+  min-height: 180px;
+  transform: none;
+}
+.cf-browse-list .cf-browse-card:hover { transform: translateY(-1px); }
+.cf-browse-list .cf-browse-card-media {
+  width: 220px;
+  min-height: 180px;
+  flex: 0 0 220px;
+  aspect-ratio: auto;
+}
+.cf-browse-list .cf-browse-card-content {
+  min-width: 0;
+  padding: 1.1rem 1.35rem;
+}
+.cf-browse-list .cf-browse-card-content > div:first-child h3 { font-size: 1.15rem; }
+.cf-browse-list .cf-browse-card-content > div:last-child { padding-top: .85rem; }
+.cf-report-reference {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #e0e3df;
+  border-radius: 12px;
+  background: #f7f7f4;
+  padding: 1rem;
+}
+.cf-report-reference code { user-select: all; }
+.cf-timeline-guidance {
+  border-left: 3px solid #b52d38;
+  border-radius: 0 9px 9px 0;
+  background: #fff;
+  padding: .75rem .9rem;
+}
+.cf-timeline-guidance > span {
+  display: block;
+  color: #982630;
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.cf-timeline-guidance p {
+  margin-top: .3rem;
+  color: #48514e;
+  font-size: .78rem;
+  line-height: 1.55;
+}
+.cf-handover-alert { transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease; }
+.cf-handover-alert:hover { border-color: rgba(135,83,10,.28); background: #fff4dc; transform: translateY(-1px); }
+
+/* Admin workspace: clearer reading rhythm without changing admin tools or permissions. */
+.admin-shell .admin-panel {
+  border-radius: 14px !important;
+  box-shadow: 0 7px 24px rgba(32,35,35,.045);
+}
+.admin-shell .admin-panel > div:first-child {
+  background: linear-gradient(180deg, #fff, #fbfbf9);
+}
+.admin-shell .admin-panel table { border-collapse: separate; border-spacing: 0; }
+.admin-shell .admin-panel thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid #dfe3df;
+  letter-spacing: .07em;
+}
+.admin-shell .admin-panel tbody tr:nth-child(even) { background: #fbfbf9; }
+.admin-shell .admin-panel tbody tr:hover { background: #f5f5f1; }
+.admin-shell .admin-panel input:not([type="checkbox"]),
+.admin-shell .admin-panel select,
+.admin-shell .admin-panel textarea {
+  min-height: 42px;
+  border-color: #d5dbd6;
+}
+.admin-shell .admin-panel button:not(:disabled) { min-height: 36px; }
+.admin-shell .admin-panel button:focus-visible,
+.admin-shell nav[aria-label="Administrator sections"] a:focus-visible {
+  outline: 2px solid #b52d38;
+  outline-offset: 2px;
+}
+.site-frame a:focus-visible,
+.site-frame button:focus-visible,
+.site-frame input:focus-visible,
+.site-frame select:focus-visible,
+.site-frame textarea:focus-visible {
+  outline-color: #b52d38;
+}
+@media (max-width: 700px) {
+  .cf-browse-list .cf-browse-card { min-height: 0; }
+  .cf-browse-list .cf-browse-card-media { width: 116px; min-height: 100%; flex-basis: 116px; }
+  .cf-browse-list .cf-browse-card-content { padding: .85rem; }
+  .cf-browse-list .cf-browse-card-content > div:last-child { padding-top: .65rem; }
+  .cf-browse-list .cf-browse-card-content > div:last-child > div { justify-content: flex-start; }
+  .cf-browse-list .cf-browse-card-content > div:last-child > p { display: none; }
+  .cf-report-reference { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 420px) {
+  .cf-browse-sort { width: 100%; justify-content: space-between; }
+  .cf-browse-sort select { flex: 1; text-align: right; }
+  .cf-browse-view-toggle { margin-left: auto; }
+  .cf-browse-list .cf-browse-card { align-items: stretch; }
+  .cf-browse-list .cf-browse-card-media { width: 96px; flex-basis: 96px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-handover-alert,
+  .cf-browse-view-toggle button { transition: none; }
+  .cf-handover-alert:hover { transform: none; }
+}

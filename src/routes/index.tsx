@@ -19,9 +19,9 @@ export const Route = createFileRoute("/")({
 });
 
 const steps = [
-  { number: "01", title: "Make a report", description: "Share what the item looks like, where it was last seen, and when it went missing.", icon: PackageSearch },
-  { number: "02", title: "Search the board", description: "Browse reports from across campus and narrow the list with useful filters.", icon: Search },
-  { number: "03", title: "Verify and return", description: "Compare a private identifying detail before arranging a handoff.", icon: ShieldCheck },
+  { number: "01", title: "Report lost or found", description: "Choose what happened, then add the item name, date and campus area.", icon: PackageSearch },
+  { number: "02", title: "Search campus reports", description: "Use item names, categories and campus locations to narrow the board.", icon: Search },
+  { number: "03", title: "Verify before handoff", description: "Keep one identifying detail private and use the claim process before returning an item.", icon: ShieldCheck },
 ];
 
 function Home() {
@@ -55,7 +55,7 @@ function Home() {
               <span className="home-headline-accent mt-2 block">Let's bring it back.</span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-              The campus moves quickly. Your belongings shouldn't disappear into group chats and guesswork. Report an item, search what's been found, and take the next step with confidence.
+              The campus moves quickly. Your belongings shouldn't disappear into group chats and guesswork. Search the campus board first; if the item is not listed, report it and follow a clear process to get it back.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link to="/browse" className="home-primary-cta group inline-flex min-h-14 items-center justify-center gap-3 px-6 py-3.5 text-sm font-bold text-white transition">

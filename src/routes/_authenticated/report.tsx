@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowRight, BellRing, Camera, CheckCircle2, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BellRing, Camera, CheckCircle2, Copy, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { Page } from "@/components/site";
 import { CATEGORIES, type Item } from "@/lib/items";
 import { explainItemMatch, findItemMatches } from "@/lib/match-score";
@@ -29,6 +29,8 @@ const field = "mt-2 w-full rounded-xl border border-input bg-background px-4 py-
 function Report() {
   const [type, setType] = useState<"Lost" | "Found">("Lost");
   const [done, setDone] = useState(false);
+  const [reportId, setReportId] = useState("");
+  const [copyMessage, setCopyMessage] = useState("");
   const [matches, setMatches] = useState<Array<{ item: Item; score: number; reasons: string[] }>>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -38,6 +40,11 @@ function Report() {
   const [preferencesAvailable, setPreferencesAvailable] = useState(true);
   const [preferencesDirty, setPreferencesDirty] = useState(false);
   const [verificationState, setVerificationState] = useState<"checking" | "verified" | "unverified" | "unavailable">("checking");
+
+  useEffect(() => {
+    if (!imagePreview) return;
+    return () => URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +125,16 @@ function Report() {
   const [busy, setBusy] = useState(false);
   const [reportStep, setReportStep] = useState(1);
   const reportFormRef = useRef<HTMLFormElement>(null);
+
+  async function copyReportReference() {
+    if (!reportId) return;
+    try {
+      await navigator.clipboard.writeText(reportId);
+      setCopyMessage("Copied");
+    } catch {
+      setCopyMessage("Select the ID to copy");
+    }
+  }
 
   function continueToNextStep() {
     const panel = reportFormRef.current?.querySelector<HTMLElement>(`[data-report-panel="${reportStep}"]`);
@@ -266,6 +283,9 @@ function Report() {
         return;
       }
 
+      setReportId(insertedItem.id);
+      setCopyMessage("");
+
       // SMS is sent only when provider secrets are configured and the student opted in.
       void supabase.functions.invoke("notify-item-matches", { body: { item_id: insertedItem.id } }).catch(() => undefined);
       setImageFile(null);
@@ -309,14 +329,23 @@ function Report() {
           <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-white p-7 shadow-xl shadow-primary/5 sm:p-10">
             <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-800"><CheckCircle2 size={30} /></span>
             <p className="mt-6 kicker text-emerald-800">Submission complete</p><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Report received.</h2>
-            <p className="mt-4 max-w-xl leading-7 text-muted-foreground">Your report has been added to the board. CampusFind checks similar reports and may create alerts when a likely match is found.</p>
+            <p className="mt-4 max-w-xl leading-7 text-muted-foreground">Your report has been saved. You can track its progress in My Reports. CampusFind checks similar reports and may create alerts when a likely match is found.</p>
+            <div className="cf-report-reference mt-6">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Report reference</p>
+                <code className="mt-2 block break-all text-sm font-extrabold text-foreground">{reportId || "Reference unavailable"}</code>
+              </div>
+              <button type="button" onClick={() => void copyReportReference()} disabled={!reportId} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-xs font-extrabold text-foreground hover:bg-secondary disabled:opacity-50">
+                <Copy size={14} /> {copyMessage || "Copy ID"}
+              </button>
+            </div>
             {matches.length > 0 && <div className="mt-7 rounded-2xl border border-emerald-900/10 bg-emerald-50/60 p-5"><h3 className="text-lg font-extrabold">Possible matches</h3><ul className="mt-4 grid gap-3">{matches.map(({ item, score, reasons }) => <li key={item.id} className="rounded-xl border border-border bg-white p-4"><p className="font-extrabold text-foreground">{item.name}</p><p className="mt-1 text-sm text-muted-foreground">{item.type} · {item.category} · {item.location}</p><p className="mt-2 text-xs font-bold text-primary">Match signal: {score}%</p>{reasons.length > 0 && <p className="mt-2 text-xs leading-5 text-muted-foreground">Why it appeared: {reasons.join(" · ")}</p>}<p className="mt-2 text-xs font-semibold text-amber-800">Suggestion only — compare the details and verify ownership before arranging a return.</p></li>)}</ul></div>}
             {matches.length === 0 && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm leading-6 text-muted-foreground">No strong match yet. If a similar report is added later, CampusFind can create a notification.</p>}
             <p className="mt-4 text-xs leading-5 text-muted-foreground">SMS alerts require the project's SMS gateway to be configured. In-app match alerts are recorded in CampusFind.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground">Track my report <ArrowRight size={16} /></Link>
               <Link to="/browse" className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">View the board</Link>
-              <button type="button" onClick={() => { setError(""); setReportStep(1); setDone(false); }} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button>
+              <button type="button" onClick={() => { setError(""); setReportStep(1); setDone(false); setReportId(""); setCopyMessage(""); }} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button>
             </div>
           </div>
         ) : (
@@ -367,7 +396,7 @@ function Report() {
               <label className="mt-6 block text-sm font-extrabold text-foreground">Public description <span className="font-semibold text-muted-foreground">(optional)</span><textarea name="note" rows={4} maxLength={500} placeholder="Colour, brand and general appearance. Keep one proof-of-ownership detail private." className={`${field} resize-y leading-6`} /><span className="mt-1 block text-xs font-semibold text-muted-foreground">Up to 500 characters. Don't include sensitive or unique identifying information.</span></label>
               <div className="cf-photo-drop mt-6 rounded-2xl border border-dashed border-border bg-background p-4 sm:p-5" role="region" aria-label="Item photograph upload" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("is-dragging"); }} onDragLeave={(event) => { event.currentTarget.classList.remove("is-dragging"); }} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("is-dragging"); handleImageChange(event.dataTransfer.files?.[0] ?? null); }}>
                 <label className="flex cursor-pointer items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><Camera size={20} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-extrabold text-foreground">Add an item photo <span className="font-semibold text-muted-foreground">(optional)</span></span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Drop an image here or choose a file · JPG, PNG or WebP · 5 MB max</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => handleImageChange(e.currentTarget.files?.[0] ?? null)} className="mt-3 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-extrabold file:text-white hover:file:bg-primary/90" /></span></label>
-                {imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="mt-2 rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div>}
+                {imagePreview && <div className="mt-4 rounded-xl border border-border bg-white p-3"><img src={imagePreview} alt="Preview of the item being reported" className="max-h-64 w-full rounded-lg object-contain" /><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 truncate text-xs font-semibold text-muted-foreground">{imageFile ? `${imageFile.name} · ${Math.max(1, Math.round(imageFile.size / 1024))} KB` : "Photo selected"} · Choose another file above to replace</p><button type="button" onClick={() => { setImageFile(null); setImagePreview(""); }} className="rounded-lg px-2 py-1 text-xs font-extrabold text-muted-foreground hover:bg-secondary hover:text-foreground">Remove photo</button></div></div>}
               </div>
               <div className="mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-sm"><BellRing size={18} /></span><div><p className="text-sm font-extrabold text-foreground">SMS match alerts <span className="font-semibold text-muted-foreground">(optional)</span></p><p className="mt-1 text-xs leading-5 text-muted-foreground">Your number is stored privately and only used for alerts when you explicitly consent.</p></div></div>{preferencesLoading && <p className="mt-3 text-xs text-muted-foreground">Loading saved SMS preferences…</p>}{!preferencesLoading && !preferencesAvailable && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">SMS settings are temporarily unavailable. You can still submit this report; saved preferences haven't been changed.</p>}<label className="mt-4 block text-sm font-extrabold text-foreground">Mobile number<input name="phone_number" type="tel" inputMode="tel" autoComplete="tel" value={phoneNumber} onChange={(e) => { setPhoneNumber(e.target.value); setPreferencesDirty(true); }} disabled={preferencesLoading || !preferencesAvailable} placeholder="+919876543210" className={field} /></label><label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white p-3 text-sm"><input type="checkbox" name="sms_notifications_enabled" checked={smsEnabled} onChange={(e) => { const enabled = e.target.checked; setSmsEnabled(enabled); setPreferencesDirty(true); if (!enabled) setPhoneNumber(""); }} disabled={preferencesLoading || !preferencesAvailable} className="mt-1 size-4 accent-primary" /><span><span className="block font-extrabold text-foreground">I consent to SMS alerts</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">You can opt out by unchecking this at any time.</span></span></label></div>
             </div>
