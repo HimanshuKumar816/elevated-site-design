@@ -784,3 +784,217 @@ main section:has(> section[aria-labelledby="account-notifications-title"]) h2 { 
   .cf-browse-view-toggle button { transition: none; }
   .cf-handover-alert:hover { transform: none; }
 }
+
+
+/* CampusFind frontend polish — consistent hierarchy, semantic states and responsive controls. */
+:root {
+  --radius: .75rem;
+  --shadow-soft: 0 3px 12px rgba(32, 35, 35, .045);
+  --cf-shadow-card: 0 8px 26px rgba(32, 35, 35, .055);
+  --cf-shadow-hover: 0 12px 30px rgba(32, 35, 35, .085);
+}
+
+html { scroll-padding-top: 6rem; }
+body { min-width: 320px; }
+.site-frame { min-height: 100vh; }
+.site-frame main { min-width: 0; }
+.site-frame main > * { min-width: 0; }
+
+.site-header {
+  background: rgba(251, 251, 249, .96);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(32, 35, 35, .045);
+}
+.site-header > div:first-child { min-height: 72px; }
+.site-header nav[aria-label="Main navigation"] a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+.site-header #campusfind-mobile-nav {
+  max-height: calc(100dvh - 68px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.site-header #campusfind-mobile-nav a,
+.site-header #campusfind-mobile-nav button { min-height: 46px; }
+.site-header a:focus-visible,
+.site-header button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+.site-frame main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.site-frame main select,
+.site-frame main textarea,
+.admin-shell input:not([type="checkbox"]):not([type="radio"]),
+.admin-shell select,
+.admin-shell textarea {
+  min-height: 48px;
+  border-radius: 10px;
+  font-size: 16px;
+}
+.site-frame main textarea,
+.admin-shell textarea { min-height: 112px; }
+.site-frame main input:focus-visible,
+.site-frame main select:focus-visible,
+.site-frame main textarea:focus-visible,
+.admin-shell input:focus-visible,
+.admin-shell select:focus-visible,
+.admin-shell textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(181, 45, 56, .1);
+}
+.site-frame main button:not(:disabled),
+.admin-shell button:not(:disabled) { touch-action: manipulation; }
+.site-frame main button:disabled,
+.admin-shell button:disabled { cursor: not-allowed; }
+
+.site-frame main .surface-card,
+.site-frame main article.interactive-card {
+  border-radius: 16px;
+  box-shadow: var(--cf-shadow-card);
+}
+.site-frame main .surface-card:hover,
+.site-frame main article.interactive-card:hover {
+  border-color: rgba(181, 45, 56, .3);
+  box-shadow: var(--cf-shadow-hover);
+}
+.home-hero {
+  background:
+    radial-gradient(ellipse at 86% 8%, rgba(181, 45, 56, .07), transparent 34%),
+    #fbfbf9;
+}
+.home-hero h1 { max-width: 12ch; text-wrap: balance; line-height: 1.04; }
+.home-hero-copy > p { max-width: 62ch; line-height: 1.8; }
+.home-primary-cta,
+.home-secondary-cta,
+.home-final-primary,
+.home-final-secondary { min-height: 48px; border-radius: 10px; }
+.home-image-frame { overflow: hidden; border-radius: 20px; }
+.home-image-caption { padding: clamp(1.1rem, 3vw, 2rem); }
+.home-process-band { background: #efefeb; }
+.home-process-step { min-height: 172px; padding-block: 28px; }
+.home-trust-section { background: #fff; }
+.home-principle-row { padding-block: 24px; }
+.home-final-cta { background: #efefeb; }
+.home-final-cta > div { border-radius: 18px; }
+
+.student-workspace { padding-top: clamp(1.5rem, 3vw, 3rem); }
+.student-workspace-hero { border-radius: 20px !important; }
+.student-workspace-hero h1 { line-height: 1.12; }
+.student-workspace > .mt-6.grid > div,
+.student-workspace > .mt-7.grid > div { min-width: 0; }
+.student-workspace article.group { overflow: hidden; border-radius: 16px !important; }
+.student-workspace article.group h3 { overflow-wrap: anywhere; }
+.cf-workspace-tabs { gap: .5rem; }
+.cf-workspace-tab { min-height: 46px; border-radius: 10px; }
+.cf-workspace-tab:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.cf-report-steps { gap: .65rem; }
+.cf-report-step { min-height: 44px; }
+.cf-report-step span:first-child { width: 30px; height: 30px; }
+.cf-photo-drop:focus-within { outline: 2px solid var(--primary); outline-offset: 3px; }
+.cf-report-reference { flex-wrap: wrap; }
+.cf-timeline-guidance { border-radius: 0 10px 10px 0; }
+
+.cf-browse-grid { align-items: stretch; }
+.cf-browse-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: var(--cf-shadow-card);
+}
+.cf-browse-card:hover { border-color: rgba(181, 45, 56, .32); box-shadow: var(--cf-shadow-hover); }
+.cf-browse-card h3,
+.cf-browse-card p { overflow-wrap: anywhere; }
+.cf-browse-card-media { background: #eeefec; }
+.cf-filter-chip { min-height: 40px; }
+.cf-filter-summary { min-height: 46px; }
+
+.admin-shell { min-width: 0; }
+.admin-shell .admin-dashboard-header { border-radius: 18px; }
+.admin-shell .admin-stat-card { min-width: 0; border-radius: 14px !important; }
+.admin-shell .admin-panel { min-width: 0; border-radius: 16px !important; }
+.admin-shell .admin-panel table { max-width: 100%; }
+.admin-shell .admin-panel th,
+.admin-shell .admin-panel td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.admin-shell nav[aria-label="Administrator sections"] {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: .5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+.admin-shell nav[aria-label="Administrator sections"] a { min-height: 44px; display: inline-flex; align-items: center; }
+.admin-shell .admin-panel button:focus-visible,
+.admin-shell nav[aria-label="Administrator sections"] a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.site-frame main .text-emerald-900,
+.site-frame main .text-emerald-800,
+.site-frame main .text-emerald-700,
+.student-workspace .text-emerald-900,
+.student-workspace .text-emerald-800,
+.student-workspace .text-emerald-700,
+.admin-shell .text-emerald-900,
+.admin-shell .text-emerald-800,
+.admin-shell .text-emerald-700 {
+  color: #17633a !important;
+}
+.site-frame main .bg-emerald-50,
+.site-frame main .bg-emerald-100,
+.student-workspace .bg-emerald-50,
+.admin-shell .bg-emerald-50,
+.admin-shell .bg-emerald-100 {
+  background-color: #e5f5eb !important;
+}
+.site-frame main .bg-emerald-300,
+.site-frame main .bg-emerald-400,
+.site-frame main .bg-emerald-700,
+.site-frame main .bg-emerald-800,
+.admin-shell .bg-emerald-700,
+.admin-shell .bg-emerald-800 {
+  background-color: #17633a !important;
+  color: #fff !important;
+}
+.site-frame main .text-emerald-200,
+.student-workspace .text-emerald-200,
+.admin-shell .text-emerald-200 { color: #b7dfc5 !important; }
+
+@media (max-width: 767px) {
+  .site-header > div:first-child { min-height: 68px; }
+  .home-hero h1 { max-width: 14ch; }
+  .home-image-frame { aspect-ratio: 4 / 3; }
+  .home-process-step { min-height: 0; padding-block: 22px; }
+  .home-process-step + .home-process-step { border-left: 0; border-top: 1px solid #d0d8d5; padding-left: 0; }
+  .student-workspace-hero { padding: 1.35rem !important; }
+  .cf-workspace-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cf-workspace-tab { justify-content: center; padding-inline: .35rem; font-size: .72rem; }
+  .cf-workspace-tab svg { display: none; }
+  .cf-report-steps { gap: .25rem; }
+  .cf-report-step { flex-direction: column; justify-content: center; gap: .25rem; font-size: .62rem; text-align: center; }
+  .admin-shell nav[aria-label="Administrator sections"] { top: 68px; }
+  .admin-shell .admin-dashboard-title { font-size: clamp(1.8rem, 8vw, 2.3rem); }
+  .admin-shell .admin-panel table { font-size: .82rem; }
+  .admin-shell .admin-panel th,
+  .admin-shell .admin-panel td { padding: 10px 9px; }
+}
+@media (max-width: 420px) {
+  .site-frame main > section { min-width: 0; }
+  .home-hero h1 { font-size: clamp(2.15rem, 11vw, 2.7rem); }
+  .home-primary-cta,
+  .home-secondary-cta { width: 100%; }
+  .cf-browse-list .cf-browse-card { align-items: stretch; }
+  .cf-browse-list .cf-browse-card-media { width: 92px; flex-basis: 92px; }
+  .cf-report-reference { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-frame *,
+  .admin-shell * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
