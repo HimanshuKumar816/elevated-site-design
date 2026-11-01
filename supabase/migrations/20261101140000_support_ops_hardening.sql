@@ -5,7 +5,7 @@
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT ON TABLE public.support_tickets, public.support_messages TO authenticated;
 GRANT INSERT ON TABLE public.support_messages TO authenticated;
-GRANT UPDATE ON TABLE public.support_tickets TO authenticated;
+GRANT UPDATE (status) ON TABLE public.support_tickets TO authenticated;
 
 CREATE INDEX IF NOT EXISTS support_tickets_user_updated_at_idx
   ON public.support_tickets (user_id, updated_at DESC);
