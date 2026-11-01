@@ -13,7 +13,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "CampusFind — Lost & Found at Chandigarh University" },
       { property: "og:description", content: "Report it. Search the board. Bring it home." },
     ],
-    links: [{ rel: "canonical", href: "https://campusfind-fs6c.onrender.com/" }],
+    links: [{ rel: "canonical", href: "https://campusfind-uir0.onrender.com/" }],
   }),
   component: Home,
 });
