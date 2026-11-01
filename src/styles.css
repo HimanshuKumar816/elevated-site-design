@@ -236,3 +236,296 @@
   .home-image-note { position: relative; right: auto; bottom: auto; margin: -1px 12px 0; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { .interactive-card, .admin-refresh-button, .admin-panel, .student-workspace .surface-card { transition: none; } }
+
+
+/* -------------------------------------------------------------------------- */
+/* CampusFind frontend refinement — shared visual system and responsive UX   */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --cf-surface: #ffffff;
+  --cf-surface-muted: #f7f7f4;
+  --cf-ink-soft: #48514e;
+  --cf-border-strong: #cbd1cd;
+  --cf-shadow-card: 0 10px 30px rgba(32, 35, 35, 0.055);
+  --cf-shadow-hover: 0 16px 36px rgba(32, 35, 35, 0.095);
+}
+
+html { scroll-padding-top: 6rem; }
+body { font-size: 15px; line-height: 1.58; }
+::selection { background: #efd7d9; color: #202323; }
+
+.site-frame { background: #f4f4f1; }
+.site-frame main { min-width: 0; }
+.site-frame main section[id],
+.admin-shell main section[id] { scroll-margin-top: 7rem; }
+
+.site-header {
+  background: rgba(251, 251, 249, 0.94);
+  border-color: rgba(32, 35, 35, 0.1);
+  box-shadow: 0 5px 18px rgba(32, 35, 35, 0.035);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.site-header > div:first-child { min-height: 72px; }
+.site-header a { text-decoration: none; }
+.site-header nav a { transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
+.site-header nav a[aria-current="page"] { color: #202323; background: #e9eae7; }
+.site-header nav a[class*="bg-primary"] {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(181, 45, 56, 0.15);
+}
+.site-header nav a[class*="bg-primary"]:hover { box-shadow: 0 7px 17px rgba(181, 45, 56, 0.2); }
+.site-header #campusfind-mobile-nav { background: #fbfbf9; border-color: #d9ddda; }
+.site-header #campusfind-mobile-nav a { min-height: 46px; }
+
+.site-footer { border-top: 1px solid rgba(255,255,255,.08); }
+.site-footer a { text-decoration: none; }
+.site-footer a:hover { color: #fff; }
+
+.site-frame main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.site-frame main select,
+.site-frame main textarea {
+  border-radius: 9px;
+  border-color: #cbd1cd;
+  background-color: #fff;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+.site-frame main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.site-frame main select:focus,
+.site-frame main textarea:focus {
+  border-color: #b52d38;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(181, 45, 56, .11);
+}
+.site-frame main input::placeholder,
+.site-frame main textarea::placeholder { color: #858d89; }
+.site-frame main button:not(:disabled) { transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease, border-color 150ms ease; }
+.site-frame main button:disabled { cursor: not-allowed; }
+.site-frame main a:focus-visible,
+.site-frame main button:focus-visible,
+.site-frame main input:focus-visible,
+.site-frame main select:focus-visible,
+.site-frame main textarea:focus-visible { outline-offset: 3px; }
+
+.home-hero {
+  background:
+    radial-gradient(ellipse at 88% 10%, rgba(181, 45, 56, .055), transparent 36%),
+    #fbfbf9;
+}
+.home-hero h1 { max-width: 11ch; }
+.home-hero-copy > p { color: #59625e; }
+.home-image-frame {
+  aspect-ratio: 1.28 / 1;
+  border-radius: 16px;
+  box-shadow: 0 18px 42px rgba(32, 35, 35, .11);
+}
+.home-image { transition: transform 550ms cubic-bezier(.2,.7,.2,1); }
+.home-image-frame:hover .home-image { transform: scale(1.025); }
+.home-process-step { min-height: 178px; }
+.home-process-step h2 { letter-spacing: -.025em; }
+.home-principle-row { grid-template-columns: 48px minmax(0, 1fr); }
+.home-final-cta > div {
+  border: 1px solid #353b39;
+  border-radius: 16px;
+  box-shadow: 0 14px 32px rgba(32,35,35,.12);
+}
+.home-final-primary, .home-final-secondary { min-height: 46px; }
+
+.student-workspace { padding-top: clamp(1.5rem, 3vw, 2.8rem); }
+.student-workspace-hero {
+  border-radius: 18px !important;
+  background:
+    radial-gradient(ellipse at 94% 0%, rgba(181,45,56,.24), transparent 34%),
+    #202323 !important;
+  border-color: rgba(181,45,56,.28);
+}
+.student-workspace-hero h1 { max-width: 13ch; }
+.student-workspace > .mb-5 {
+  border-radius: 12px !important;
+  box-shadow: 0 3px 12px rgba(32,35,35,.035);
+}
+.student-workspace > .mt-6.grid > .surface-card {
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(32,35,35,.035);
+}
+.student-workspace > .mt-8.rounded-2xl {
+  border-radius: 14px !important;
+  border-color: #d4d9d5;
+  box-shadow: var(--cf-shadow-card);
+}
+.student-workspace > .mt-8.rounded-2xl > div:first-child {
+  border-radius: 10px;
+}
+.student-workspace article.group {
+  border-radius: 13px !important;
+  border-color: #d9ddda;
+  box-shadow: 0 3px 12px rgba(32,35,35,.04);
+}
+.student-workspace article.group:hover {
+  border-color: rgba(181,45,56,.38);
+  box-shadow: var(--cf-shadow-hover);
+}
+.student-workspace article.group .aspect-\[16\/10\] { background: #eeefec; }
+.student-workspace article.group h3 { letter-spacing: -.025em; }
+.student-workspace article.group .p-5,
+.student-workspace article.group .sm\:p-6 { gap: .15rem; }
+.student-workspace article.group [class*="rounded-full"] { letter-spacing: .025em; }
+.student-workspace .surface-card { border-radius: 12px; }
+
+main section:has(> aside) {
+  align-items: start;
+}
+main section:has(> aside) > aside {
+  border-radius: 17px !important;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(181,45,56,.22), transparent 36%),
+    #202323 !important;
+  border: 1px solid rgba(181,45,56,.2);
+  box-shadow: 0 14px 34px rgba(32,35,35,.12);
+}
+main section:has(> aside) > aside h1 { max-width: 12ch; }
+main section:has(> aside) > form {
+  border-radius: 16px !important;
+  border-color: #d9ddda;
+  box-shadow: 0 10px 34px rgba(32,35,35,.065) !important;
+}
+main section:has(> aside) > form > div:first-child {
+  align-items: center;
+}
+main section:has(> aside) > form fieldset { padding: 1rem; border-radius: 11px; background: #f7f7f4; }
+main section:has(> aside) > form label {
+  line-height: 1.55;
+}
+main section:has(> aside) > form textarea { min-height: 112px; }
+main section:has(> aside) > form [type="file"] { font-size: .82rem; }
+main section:has(> aside) > form button[type="submit"] {
+  border-radius: 9px;
+  box-shadow: 0 5px 14px rgba(181,45,56,.15);
+}
+main section:has(> aside) > form button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(181,45,56,.2);
+}
+
+main section:has(> section[aria-labelledby="account-notifications-title"]) > div:first-child h1 {
+  letter-spacing: -.055em;
+}
+main section:has(> section[aria-labelledby="account-notifications-title"]) > div.mt-7.grid > div {
+  border-radius: 13px;
+  box-shadow: 0 4px 14px rgba(32,35,35,.04);
+}
+main section:has(> section[aria-labelledby="account-notifications-title"]) > section {
+  border-radius: 14px;
+  box-shadow: var(--cf-shadow-card);
+}
+main section:has(> section[aria-labelledby="account-notifications-title"]) > section > div article {
+  transition: background-color 150ms ease;
+}
+main section:has(> section[aria-labelledby="account-notifications-title"]) > section > div article:hover {
+  background: #f7f7f4;
+}
+main section:has(> section[aria-labelledby="account-notifications-title"]) > section article[class*="rounded-xl"] {
+  border-color: #d9ddda;
+  box-shadow: 0 3px 10px rgba(32,35,35,.025);
+}
+main section:has(> section[aria-labelledby="account-notifications-title"]) h2 { letter-spacing: -.035em; }
+
+.admin-shell {
+  background: #f4f4f1;
+}
+.admin-topbar {
+  background: rgba(32,35,35,.97);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.admin-dashboard-header {
+  min-height: 160px;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(181,45,56,.22), transparent 35%),
+    #202323;
+  border-color: #3a4140;
+}
+.admin-stat-card { border-radius: 12px !important; }
+.admin-panel { border-radius: 14px !important; }
+.admin-panel > div:first-child { border-color: #e3e6e2; }
+.admin-shell nav[aria-label="Administrator sections"] {
+  position: sticky;
+  top: 76px;
+  z-index: 30;
+  padding: 10px 0;
+  background: rgba(244,244,241,.94);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(32,35,35,.08);
+}
+.admin-shell nav[aria-label="Administrator sections"] a {
+  border-radius: 8px;
+  padding: 9px 12px;
+  white-space: nowrap;
+  background: #fff;
+  border-color: #d9ddda;
+}
+.admin-shell nav[aria-label="Administrator sections"] a:hover {
+  color: #b52d38;
+  border-color: rgba(181,45,56,.35);
+  background: #fff;
+}
+.admin-shell .admin-panel article { border-radius: 11px; }
+.admin-shell .admin-panel table { width: 100%; }
+.admin-shell .admin-panel th,
+.admin-shell .admin-panel td { padding: 12px 14px; }
+.admin-shell .admin-panel button:not(:disabled):hover { transform: translateY(-1px); }
+.admin-shell input:not([type="checkbox"]),
+.admin-shell select,
+.admin-shell textarea { border-radius: 8px; }
+.admin-login > div.relative.grid {
+  border-radius: 16px !important;
+  box-shadow: 0 24px 70px rgba(0,0,0,.22);
+}
+.admin-login section:first-child {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(181,45,56,.2), transparent 38%),
+    #202323;
+}
+.admin-login section:last-child { background: #fff; }
+.admin-login input { min-height: 48px; }
+
+@media (max-width: 767px) {
+  .site-header > div:first-child { min-height: 66px; }
+  .home-hero h1 { max-width: 10ch; }
+  .home-image-frame { aspect-ratio: 1.12 / 1; }
+  .home-process-step { min-height: 0; }
+  .student-workspace-hero { padding: 1.5rem !important; }
+  .student-workspace > .mt-8.rounded-2xl { padding: 1rem; }
+  main section:has(> aside) { grid-template-columns: minmax(0, 1fr); }
+  main section:has(> aside) > aside { position: relative; top: auto; }
+  main section:has(> aside) > form { padding: 1.1rem; }
+  .admin-shell nav[aria-label="Administrator sections"] {
+    top: 65px;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-right: -1.25rem;
+    padding-right: 1.25rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .admin-shell nav[aria-label="Administrator sections"] a { flex: 0 0 auto; }
+  .admin-shell .admin-dashboard-header { border-radius: 13px; }
+  .admin-shell .admin-panel { border-radius: 12px !important; }
+  .admin-login > div.relative.grid { grid-template-columns: minmax(0,1fr); }
+  .admin-login section:first-child { min-height: 250px; }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .student-workspace article.group { min-height: 100%; }
+  main section:has(> aside) { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-image { transition: none; }
+  .student-workspace article.group:hover,
+  .admin-shell .admin-panel button:not(:disabled):hover { transform: none; }
+}
