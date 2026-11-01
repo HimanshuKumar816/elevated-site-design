@@ -98,6 +98,7 @@ type MatchItem = {
   submitter_name: string | null;
   submitter_uid: string | null;
   submitter_verified: boolean;
+  submitter_role: string | null;
 };
 
 type ItemMatch = {
@@ -365,11 +366,11 @@ function AdminPage() {
         .in("id", itemIds);
       if (itemsError) throw itemsError;
       const profilesIds = [...new Set((itemRows ?? []).map((item) => item.user_id))];
-      const profilesById = new Map<string, { full_name: string; uid: string; verified: boolean }>();
+      const profilesById = new Map<string, { full_name: string; uid: string; verified: boolean; role: string }>();
       if (profilesIds.length) {
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id,full_name,uid,verification_status")
+          .select("id,full_name,uid,role,verification_status")
           .in("id", profilesIds);
         if (profilesError) throw profilesError;
         for (const profile of profiles ?? []) {
@@ -377,6 +378,7 @@ function AdminPage() {
             full_name: profile.full_name,
             uid: profile.uid,
             verified: profile.verification_status === "verified",
+            role: profile.role,
           });
         }
       }
@@ -402,6 +404,7 @@ function AdminPage() {
           submitter_name: profile?.full_name ?? null,
           submitter_uid: profile?.uid ?? null,
           submitter_verified: profile?.verified ?? false,
+          submitter_role: profile?.role ?? null,
         } satisfies MatchItem;
       }));
       const itemsById = new Map(enriched.map((item) => [item.id, item]));
@@ -913,7 +916,8 @@ function AdminPage() {
       ) : (
         <div className="grid gap-4 border-t border-border p-4 sm:p-5 lg:grid-cols-2">
           {matches.map((match) => {
-            const ownersVerified = match.lost.submitter_verified && match.found.submitter_verified;
+            const returnEligible = match.lost.submitter_verified
+              && (match.found.submitter_verified || match.found.submitter_role === "admin");
             return (
               <article key={match.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -933,16 +937,16 @@ function AdminPage() {
                 </div>
                 <div className="mt-3 rounded-lg border border-border bg-background p-3 text-xs leading-5">
                   <p className="font-extrabold text-foreground">Report-owner verification</p>
-                  <p className="mt-1 text-muted-foreground">Lost owner: {match.lost.submitter_verified ? "Verified" : "Not verified"} · Found owner: {match.found.submitter_verified ? "Verified" : "Not verified"}</p>
+                  <p className="mt-1 text-muted-foreground">Lost owner: {match.lost.submitter_verified ? "Verified student" : "Not verified"} · Found owner: {match.found.submitter_verified ? "Verified student" : match.found.submitter_role === "admin" ? "Trusted Admin account" : "Not verified"}</p>
                 </div>
                 {match.review_status === "pending" && (
                   <div className="mt-4 border-t border-border pt-4">
                     <label className="block text-xs font-extrabold text-muted-foreground">ADMIN REVIEW NOTE
                       <textarea rows={2} maxLength={1000} value={matchDrafts[match.id] ?? match.admin_note ?? ""} onChange={(event) => setMatchDrafts((current) => ({ ...current, [match.id]: event.target.value }))} placeholder="Optional internal note for this return" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" />
                     </label>
-                    {!ownersVerified && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">Both report owners must be verified before a return can be approved. Reporting itself does not require verification.</p>}
+                    {!returnEligible && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">The Lost report owner must be a verified student. The Found report owner must be verified or use a trusted Admin account. Reporting itself does not require verification.</p>}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button" disabled={actionBusyId === match.id || !ownersVerified} onClick={() => void approveMatchForReturn(match)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Approve for return</button>
+                      <button type="button" disabled={actionBusyId === match.id || !returnEligible} onClick={() => void approveMatchForReturn(match)} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:opacity-50">Approve for return</button>
                       <button type="button" disabled={actionBusyId === match.id} onClick={() => void reviewMatch(match, "rejected")} className="rounded-lg border border-border px-3 py-2 text-xs font-extrabold hover:bg-secondary disabled:opacity-50">Dismiss suggestion</button>
                       {actionBusyId === match.id && <span className="self-center text-xs text-muted-foreground">Saving decision…</span>}
                     </div>
