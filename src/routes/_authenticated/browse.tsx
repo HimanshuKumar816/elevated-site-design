@@ -105,6 +105,7 @@ function Browse() {
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState("");
   const [detailTarget, setDetailTarget] = useState<BoardItem | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const fetchPage = useCallback(async (reset: boolean) => {
     const requestSequence = reset ? fetchSequenceRef.current + 1 : fetchSequenceRef.current;
@@ -291,13 +292,14 @@ function Browse() {
   }
 
   useEffect(() => {
-    if (!detailTarget && !claimTarget) return;
+    if (!detailTarget && !claimTarget && !lightboxImage) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function handleDialogKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setDetailTarget(null);
         setClaimTarget(null);
+        setLightboxImage(null);
       }
     }
     window.addEventListener("keydown", handleDialogKey);
@@ -305,7 +307,7 @@ function Browse() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleDialogKey);
     };
-  }, [detailTarget, claimTarget]);
+  }, [detailTarget, claimTarget, lightboxImage]);
 
   const unreadCount = alerts.filter((alert) => !alert.read_at).length;
   const lostCount = items.filter((item) => item.type === "Lost").length;
@@ -492,7 +494,7 @@ function Browse() {
           </div>
         </div>
 
-        {loading && <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="animate-pulse rounded-2xl border border-border bg-white p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
+        {loading && <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((n) => <div key={n} className="cf-skeleton-card p-4"><div className="aspect-[16/10] rounded-xl bg-secondary" /><div className="mt-4 h-4 w-1/3 rounded bg-secondary" /><div className="mt-3 h-6 w-2/3 rounded bg-secondary" /><div className="mt-3 h-3 w-1/2 rounded bg-secondary" /></div>)}</div>}
 
         {!loading && shown.length > 0 && (
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -573,7 +575,7 @@ function Browse() {
             </div>
             <div className="grid gap-5 p-5 sm:grid-cols-[.9fr_1.1fr] sm:p-6">
               <div className="overflow-hidden rounded-xl bg-secondary">
-                {detailTarget.image_url ? <img src={detailTarget.image_url} alt={detailTarget.name} className="max-h-[360px] min-h-48 w-full object-contain" /> : <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-muted-foreground"><PackageSearch size={42} strokeWidth={1.5} /><span className="text-xs font-bold">No photograph was added</span></div>}
+                {detailTarget.image_url ? <button type="button" onClick={() => setLightboxImage(detailTarget.image_url ?? null)} className="group relative block min-h-48 w-full cursor-zoom-in bg-secondary" aria-label={`View ${detailTarget.name} photograph full screen`}><img src={detailTarget.image_url} alt={detailTarget.name} className="max-h-[360px] min-h-48 w-full object-contain" /><span className="absolute bottom-3 right-3 rounded-lg bg-ink/80 px-3 py-2 text-xs font-bold text-white opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">View full image</span></button> : <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-muted-foreground"><PackageSearch size={42} strokeWidth={1.5} /><span className="text-xs font-bold">No photograph was added</span></div>}
               </div>
               <div className="min-w-0">
                 <dl className="grid grid-cols-2 gap-3">
@@ -592,6 +594,15 @@ function Browse() {
               {canClaimFoundReport(profile, { ...detailTarget, report_status: detailTarget.report_status ?? "new" }, me) && <button type="button" onClick={() => { openClaim(detailTarget); setDetailTarget(null); }} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-extrabold text-white">Submit ownership claim</button>}
               {detailTarget.user_id === me && <Link to="/my-reports" onClick={() => setDetailTarget(null)} className="rounded-lg bg-secondary px-4 py-2.5 text-sm font-extrabold text-foreground">Track my report</Link>}
             </div>
+          </section>
+        </div>
+      )}
+
+      {lightboxImage && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/95 p-3 sm:p-8" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setLightboxImage(null); }}>
+          <section role="dialog" aria-modal="true" aria-label="Full-size item photograph" className="relative flex h-full w-full items-center justify-center">
+            <button type="button" onClick={() => setLightboxImage(null)} className="absolute right-1 top-1 z-10 inline-flex items-center gap-2 rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-sm font-bold text-white hover:bg-black/70" aria-label="Close full-size image"><X size={17} /> Close</button>
+            <img src={lightboxImage} alt="Full-size item photograph" className="max-h-full max-w-full object-contain" />
           </section>
         </div>
       )}

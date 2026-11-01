@@ -316,7 +316,7 @@ function Report() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/my-reports" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-extrabold text-primary-foreground">Track my report <ArrowRight size={16} /></Link>
               <Link to="/browse" className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">View the board</Link>
-              <button type="button" onClick={() => setDone(false)} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button>
+              <button type="button" onClick={() => { setError(""); setReportStep(1); setDone(false); }} className="rounded-xl border border-border px-5 py-3 text-sm font-extrabold text-foreground transition hover:bg-secondary">Report another</button>
             </div>
           </div>
         ) : (
