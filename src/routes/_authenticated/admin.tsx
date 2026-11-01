@@ -636,10 +636,10 @@ function AdminPage() {
         setAiStatusMessage(`Connected to ${data.model ?? "the AI matching model"}.`);
       } else if (!data.ai_configured) {
         setAiStatus("missing");
-        setAiStatusMessage("OPENAI_API_KEY is not configured. Matching will use the text-similarity fallback.");
+        setAiStatusMessage("GROQ_API_KEY is not configured. Matching will use the text-similarity fallback.");
       } else {
         setAiStatus("unreachable");
-        setAiStatusMessage(`The OpenAI key is configured, but the model check failed (${data.error_code ?? "connection error"}).`);
+        setAiStatusMessage(`Groq Free Plan is configured, but the model check failed (${data.error_code ?? "connection error"}).`);
       }
     } catch {
       setAiStatus("unreachable");
