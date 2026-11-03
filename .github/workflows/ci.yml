@@ -33,5 +33,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Validate macOS backup script syntax
         run: bash -n scripts/backup_campusfind.sh
+      - name: Audit locked production dependencies
+        run: bun audit --audit-level=high
       - name: Lint, typecheck, tests and production build
         run: bun run build
