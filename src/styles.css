@@ -1093,3 +1093,61 @@ body { min-width: 320px; }
     margin-left: 0;
   }
 }
+
+
+/* Global responsive safeguards: prevent accidental viewport-level horizontal scroll. */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+#root,
+.site-frame,
+.site-frame main {
+  min-width: 0;
+  max-width: 100%;
+}
+.site-frame img,
+.site-frame video,
+.site-frame iframe,
+.site-frame svg {
+  max-width: 100%;
+}
+.site-frame main *,
+.admin-shell * {
+  min-width: 0;
+}
+.site-frame main :where(p, h1, h2, h3, h4, label, a, button, span, td, th) {
+  overflow-wrap: anywhere;
+}
+.site-frame main pre,
+.admin-shell pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.site-frame main table,
+.admin-shell table {
+  width: 100%;
+  max-width: 100%;
+}
+.site-header nav a,
+.site-header nav button {
+  white-space: normal;
+}
+@media (max-width: 767px) {
+  .site-frame main section,
+  .site-frame main article,
+  .site-frame main form,
+  .site-frame main .container {
+    max-width: 100%;
+  }
+  .site-frame main input,
+  .site-frame main select,
+  .site-frame main textarea {
+    max-width: 100%;
+  }
+  .site-frame footer .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
