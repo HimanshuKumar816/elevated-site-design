@@ -80,7 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:image", content: "https://campusfind-uir0.onrender.com/og-campusfind.svg" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: "https://campusfind-fs6c.onrender.com/og-campusfind.svg" },
+      { name: "twitter:image", content: "https://campusfind-uir0.onrender.com/og-campusfind.svg" },
     ],
     links: [
       {
