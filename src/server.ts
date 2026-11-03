@@ -12,7 +12,7 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 const CANONICAL_ORIGIN = "https://campusfind-uir0.onrender.com";
 const DUPLICATE_HOSTS = new Set(["campusfind-fs6c.onrender.com"]);
 const PRIVATE_PATHS = new Set([
-  "/auth", "/reset-password", "/admin-login", "/admin", "/browse", "/report", "/my-reports",
+  "/auth", "/reset-password", "/admin-login", "/admin", "/browse", "/report", "/my-reports", "/contact",
 ]);
 
 const PAGE_META: Record<string, { title: string; description: string; indexable: boolean }> = {
@@ -27,9 +27,9 @@ const PAGE_META: Record<string, { title: string; description: string; indexable:
     indexable: true,
   },
   "/contact": {
-    title: "Contact CampusFind",
-    description: "Send a question or report a problem to the CampusFind administrators.",
-    indexable: true,
+    title: "Help & Support — CampusFind",
+    description: "Learn how to get help with CampusFind, report an issue, or contact the campus support team.",
+    indexable: false,
   },
   "/privacy": {
     title: "Privacy Policy — CampusFind",
