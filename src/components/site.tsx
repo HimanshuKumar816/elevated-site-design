@@ -115,7 +115,7 @@ export function Header() {
             <span className="mt-0.5 block truncate text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px]">Chandigarh University</span>
           </span>
         </Link>
-        <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
+        <nav id="campusfind-desktop-nav" aria-label="Main navigation" className="hidden min-w-0 items-center gap-1 md:flex">
           <Link to="/how-it-works" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>How it works</Link>
           <Link to="/browse" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>Browse items</Link>
           {uid ? (
@@ -189,7 +189,7 @@ export function Footer() {
           </div>
         </div>
         <div className="flex flex-col gap-3 pt-6 text-xs text-ink-foreground/50 sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 CampusFind · Student-built campus lost & found</p>
+          <p>© {new Date().getFullYear()} CampusFind · Student-built campus lost & found</p>
           <p>Report · Match · Verify · Return</p>
         </div>
       </div>
