@@ -6,9 +6,9 @@
   "engines": { "node": "24.x" },
   "scripts": {
     "dev": "vite dev",
-    "build": "npm run lint && npx tsc --noEmit && npm test && vite build",
+    "build": "bun run lint && bunx tsc --noEmit && bun run test && vite build",
     "start": "node .output/server/index.mjs",
-    "build:dev": "vite build --mode development",
+    "build:dev": "bunx vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
