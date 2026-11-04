@@ -14,12 +14,16 @@ export default defineConfig(({ mode }) => {
   const supabasePublishableKey =
     env["VITE_SUPABASE_PUBLISHABLE_KEY"] || env["SUPABASE_PUBLISHABLE_KEY"] || "";
 
+  // Build for the hosting platform detected by its CI environment.
+  // Vercel needs its own Nitro preset; Render keeps render-com.
+  const nitroPreset = process.env.VERCEL ? "vercel" : "render-com";
+
   return {
     resolve: { tsconfigPaths: true },
     plugins: [
       tailwindcss(),
       tanstackStart({ server: { entry: "server" } }),
-      nitro({ preset: "render-com" }),
+      nitro({ preset: nitroPreset }),
       viteReact(),
     ],
     define: {
