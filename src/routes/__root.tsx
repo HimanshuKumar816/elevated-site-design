@@ -78,9 +78,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "CampusFind — Chandigarh University Lost & Found" },
       { property: "og:description", content: "Report it. Search the board. Bring it home." },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "https://campusfind-uir0.onrender.com/og-campusfind.svg" },
+      { property: "og:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:image", content: "https://campusfind-uir0.onrender.com/og-campusfind.svg" },
+      { name: "twitter:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
     ],
     links: [
       {
