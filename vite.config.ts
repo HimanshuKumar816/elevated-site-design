@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
 
   // Build for the hosting platform detected by its CI environment.
   // Vercel needs its own Nitro preset; Render keeps render-com.
-  const nitroPreset = process.env.VERCEL ? "vercel" : "render-com";
+  const nitroPreset = process.env["VERCEL"] ? "vercel" : "render-com";
 
   return {
     resolve: { tsconfigPaths: true },
