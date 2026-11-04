@@ -1,7 +1,10 @@
-project_id = "upkyaupivigspwwunqpg"
+project_id = "vmpyjsmxynundpufyaqs"
 
 [functions.uid-signin]
 verify_jwt = false
 
 [functions.contact]
 verify_jwt = false
+
+[functions.notify-item-matches]
+verify_jwt = true

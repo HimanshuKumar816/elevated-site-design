@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set +x
+umask 077
 
 # CampusFind PostgreSQL backup for macOS.
 # Creates and validates a local custom-format dump, then mirrors it to the
 # Google Drive for desktop "My Drive" folder so the Drive client can sync it.
 
-PROJECT_REF="upkyaupivigspwwunqpg"
-DB_HOST="aws-0-ap-southeast-1.pooler.supabase.com"
+PROJECT_REF="vmpyjsmxynundpufyaqs"
+DB_HOST="aws-0-ap-south-1.pooler.supabase.com"
 DB_PORT="6543"
 DB_USER="postgres.${PROJECT_REF}"
 DB_NAME="postgres"
@@ -15,6 +17,8 @@ BACKUP_DIR="$HOME/Desktop/CampusFind-Backup"
 LOG_DIR="$BACKUP_DIR/logs"
 KEYCHAIN_SERVICE="CampusFind-Supabase-DB"
 KEYCHAIN_ACCOUNT="$DB_USER"
+KEYCHAIN_FILE="$HOME/Library/Keychains/login.keychain-db"
+MAX_ATTEMPTS=3
 
 # Optional override. When empty, the script looks for the single signed-in
 # Google Drive for desktop "My Drive" folder under ~/Library/CloudStorage.
@@ -27,6 +31,7 @@ LOG_FILE="$LOG_DIR/backup-$(date '+%Y-%m-%d').log"
 exec >> "$LOG_FILE" 2>&1
 
 echo "===== CampusFind backup started: $(date) ====="
+echo "Target Supabase project: $PROJECT_REF"
 
 if ! command -v pg_dump >/dev/null 2>&1; then
   echo "ERROR: pg_dump not found. Install libpq with Homebrew."
@@ -38,34 +43,58 @@ if ! command -v pg_restore >/dev/null 2>&1; then
   exit 1
 fi
 
-DB_PASSWORD="$(/usr/bin/security find-generic-password -s "$KEYCHAIN_SERVICE" -a "$KEYCHAIN_ACCOUNT" -w 2>/dev/null || true)"
+DB_PASSWORD="$(/usr/bin/security find-generic-password -s "$KEYCHAIN_SERVICE" -a "$KEYCHAIN_ACCOUNT" -w "$KEYCHAIN_FILE" 2>/dev/null || true)"
 if [[ -z "$DB_PASSWORD" ]]; then
-  echo "ERROR: Supabase DB password is not available in macOS Keychain."
+  echo "ERROR: Supabase DB password is not available from the configured login Keychain item."
   exit 1
 fi
 
 export PGPASSWORD="$DB_PASSWORD"
-BACKUP_FILE="$BACKUP_DIR/campusfind-$(date '+%Y-%m-%d_%H-%M-%S').dump"
+TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
+BACKUP_FILE="$BACKUP_DIR/campusfind-${TIMESTAMP}-$$.dump"
+PARTIAL_FILE="$BACKUP_FILE.partial"
+cleanup_partial() {
+  if [[ -n "${PARTIAL_FILE:-}" && -e "$PARTIAL_FILE" ]]; then
+    rm -f -- "$PARTIAL_FILE"
+  fi
+  unset PGPASSWORD DB_PASSWORD
+}
+trap cleanup_partial EXIT
 
-pg_dump \
-  --host="$DB_HOST" \
-  --port="$DB_PORT" \
-  --username="$DB_USER" \
-  --dbname="$DB_NAME" \
-  --format=custom \
-  --no-owner \
-  --no-acl \
-  --file="$BACKUP_FILE"
+backup_succeeded=false
+for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+  echo "pg_dump attempt $attempt/$MAX_ATTEMPTS for project $PROJECT_REF"
+  if pg_dump \
+    --host="$DB_HOST" \
+    --port="$DB_PORT" \
+    --username="$DB_USER" \
+    --dbname="$DB_NAME" \
+    --format=custom \
+    --no-owner \
+    --no-acl \
+    --file="$PARTIAL_FILE"; then
+    if [[ -s "$PARTIAL_FILE" ]] && pg_restore --list "$PARTIAL_FILE" >/dev/null 2>&1; then
+      if [[ -e "$BACKUP_FILE" ]]; then
+        echo "ERROR: Refusing to overwrite an existing backup: $BACKUP_FILE"
+        exit 1
+      fi
+      mv -- "$PARTIAL_FILE" "$BACKUP_FILE"
+      backup_succeeded=true
+      break
+    fi
+    echo "ERROR: Dump was empty or failed PostgreSQL archive validation on attempt $attempt."
+  else
+    echo "ERROR: pg_dump failed on attempt $attempt; see PostgreSQL error output above."
+  fi
+  rm -f -- "$PARTIAL_FILE"
+  if [[ "$attempt" -lt "$MAX_ATTEMPTS" ]]; then
+    sleep "$((attempt * 2))"
+  fi
+done
 
 unset PGPASSWORD DB_PASSWORD
-
-if [[ ! -s "$BACKUP_FILE" ]]; then
-  echo "ERROR: Backup file is missing or empty."
-  exit 1
-fi
-
-if ! pg_restore --list "$BACKUP_FILE" >/dev/null 2>&1; then
-  echo "ERROR: PostgreSQL could not read the backup archive."
+if [[ "$backup_succeeded" != true || ! -s "$BACKUP_FILE" ]]; then
+  echo "ERROR: No valid backup was created after $MAX_ATTEMPTS attempts."
   exit 1
 fi
 
@@ -98,18 +127,25 @@ fi
 DRIVE_BACKUP_DIR="$DRIVE_ROOT/CampusFind-Backups"
 mkdir -p "$DRIVE_BACKUP_DIR"
 DRIVE_FILE="$DRIVE_BACKUP_DIR/$(basename "$BACKUP_FILE")"
+if [[ -e "$DRIVE_FILE" ]]; then
+  echo "ERROR: Refusing to overwrite an existing Google Drive backup: $DRIVE_FILE"
+  exit 1
+fi
 
-cp -p "$BACKUP_FILE" "$DRIVE_FILE"
+if ! cp -p "$BACKUP_FILE" "$DRIVE_FILE"; then
+  echo "ERROR: Could not copy the validated backup into the Google Drive folder."
+  # This path was confirmed absent above, so removing it cannot affect an
+  # existing backup. Keep the verified local copy for recovery.
+  rm -f -- "$DRIVE_FILE"
+  exit 1
+fi
 if ! cmp -s "$BACKUP_FILE" "$DRIVE_FILE"; then
   echo "ERROR: The Google Drive folder copy does not match the local backup."
+  rm -f -- "$DRIVE_FILE"
   exit 1
 fi
 
 echo "SUCCESS: Verified a matching local copy in Google Drive for desktop: $DRIVE_FILE"
 echo "NOTE: Google Drive may still be synchronizing. Verify the file appears in Google Drive on the web."
-
-# Retain recent local dumps and logs. Do not automatically delete cloud copies.
-find "$BACKUP_DIR" -maxdepth 1 -type f -name 'campusfind-*.dump' -mtime +7 -delete
-find "$LOG_DIR" -maxdepth 1 -type f -name 'backup-*.log' -mtime +14 -delete
 
 echo "===== CampusFind backup finished: $(date) ====="
