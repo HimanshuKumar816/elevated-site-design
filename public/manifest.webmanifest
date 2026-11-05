@@ -1,0 +1,18 @@
+{
+  "name": "CampusFind — Chandigarh University Lost & Found",
+  "short_name": "CampusFind",
+  "description": "Report lost belongings and reconnect found items at Chandigarh University.",
+  "start_url": "/browse",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#064e3b",
+  "icons": [
+    {
+      "src": "/campusfind-favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
