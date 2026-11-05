@@ -80,6 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#064e3b" },
       { name: "twitter:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
     ],
     links: [
@@ -91,6 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" },
       { rel: "icon", href: "/campusfind-favicon.svg", type: "image/svg+xml" },
       { rel: "apple-touch-icon", href: "/campusfind-favicon.svg" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -115,6 +117,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    // Register after the initial render; never block app startup on PWA setup.
+    void navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("CampusFind service worker registration failed", error);
+    });
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
