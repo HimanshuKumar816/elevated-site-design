@@ -3,7 +3,9 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
-  "engines": { "node": "26.x" },
+  "engines": {
+    "node": "26.x"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "bun run lint && bunx tsc --noEmit && bun run test && vite build",
@@ -16,6 +18,9 @@
     "test:watch": "vitest"
   },
   "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    },
     "rolldown": "1.2.1"
   },
   "dependencies": {
