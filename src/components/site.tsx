@@ -111,7 +111,7 @@ export function Header() {
             <PackageSearch size={23} strokeWidth={2.1} />
           </span>
           <span className="min-w-0">
-            <span className="block font-display text-xl font-extrabold leading-tight tracking-tight text-foreground">CampusFind</span>
+            <span className="block font-display text-xl font-extrabold leading-tight tracking-tight text-foreground">CU-campusfind</span>
             <span className="mt-0.5 block truncate text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px]">Chandigarh University</span>
           </span>
         </Link>
@@ -169,7 +169,7 @@ export function Footer() {
           <div>
             <Link to="/" className="inline-flex items-center gap-3">
               <span className="grid size-11 place-items-center rounded-2xl border border-white/15 bg-white/10"><PackageSearch size={22} /></span>
-              <span className="font-display text-2xl font-extrabold tracking-tight">CampusFind</span>
+              <span className="font-display text-2xl font-extrabold tracking-tight">CU-campusfind</span>
             </Link>
             <p className="mt-4 max-w-md text-sm leading-7 text-ink-foreground/70">A simpler way for Chandigarh University students to report, find, and return lost belongings—with privacy and care at every step.</p>
           </div>
@@ -189,7 +189,7 @@ export function Footer() {
           </div>
         </div>
         <div className="flex flex-col gap-3 pt-6 text-xs text-ink-foreground/50 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} CampusFind · Student-built campus lost & found</p>
+          <p>© {new Date().getFullYear()} CU-campusfind · Student-built campus lost & found</p>
           <p>Report · Match · Verify · Return</p>
         </div>
       </div>
