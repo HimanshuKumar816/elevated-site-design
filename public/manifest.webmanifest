@@ -1,6 +1,6 @@
 {
-  "name": "CU-campusfind — Chandigarh University Lost & Found",
-  "short_name": "CU-campusfind",
+  "name": "CU-CampusFind — Chandigarh University Lost & Found",
+  "short_name": "CU-CampusFind",
   "description": "Report lost belongings and reconnect found items at Chandigarh University.",
   "start_url": "/browse",
   "scope": "/",
