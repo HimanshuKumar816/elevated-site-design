@@ -73,9 +73,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CU-campusfind — Chandigarh University Lost & Found" },
+      { title: "CU-CampusFind — Chandigarh University Lost & Found" },
       { name: "description", content: "Report lost belongings, browse found items, and reconnect campus belongings safely at Chandigarh University." },
-      { property: "og:title", content: "CU-campusfind — Chandigarh University Lost & Found" },
+      { property: "og:title", content: "CU-CampusFind — Chandigarh University Lost & Found" },
       { property: "og:description", content: "Report it. Search the board. Bring it home." },
       { property: "og:type", content: "website" },
       { property: "og:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
@@ -121,7 +121,7 @@ function RootComponent() {
   if (typeof window !== "undefined" && "serviceWorker" in navigator) {
     // Register after the initial render; never block app startup on PWA setup.
     void navigator.serviceWorker.register("/sw.js").catch((error) => {
-      console.warn("CU-campusfind service worker registration failed", error);
+      console.warn("CU-CampusFind service worker registration failed", error);
     });
   }
 
