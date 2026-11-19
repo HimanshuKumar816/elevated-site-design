@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, LogOut, Menu, X } from "lucide-react";
+import { ArrowUpRight, LogOut, Menu, PackageSearch, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import cuLogo from "@/assets/cu-logo.png";
 
@@ -107,9 +107,21 @@ export function Header() {
   return (
     <header className="site-header sticky top-0 z-40 border-b border-border bg-white">
       <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
-        <Link to="/" onClick={() => setMenuOpen(false)} className="group flex min-w-0 items-center gap-3">
-          <img src={cuLogo} alt="Chandigarh University" className="h-[54px] w-auto max-w-[190px] object-contain" />
-        </Link>
+        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+          <Link to="/" onClick={() => setMenuOpen(false)} className="group flex shrink-0 items-center">
+            <img src={cuLogo} alt="Chandigarh University" className="h-[48px] w-auto max-w-[155px] object-contain sm:h-[54px] sm:max-w-[190px]" />
+          </Link>
+          <span aria-hidden="true" className="hidden h-10 w-px bg-border sm:block" />
+          <Link to="/" onClick={() => setMenuOpen(false)} aria-label="CampusFind home" className="group flex min-w-0 items-center gap-2">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white shadow-md transition group-hover:-translate-y-0.5 group-hover:shadow-lg sm:size-11">
+              <PackageSearch size={25} strokeWidth={2.2} />
+            </span>
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate text-base font-black tracking-tight text-slate-900 sm:text-lg">Campus<span className="text-violet-700">Find</span></span>
+              <span className="hidden text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 sm:block">Lost &amp; Found</span>
+            </span>
+          </Link>
+        </div>
         <nav id="campusfind-desktop-nav" aria-label="Main navigation" className="hidden min-w-0 items-center gap-1 md:flex">
           <Link to="/how-it-works" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>How it works</Link>
           <Link to="/browse" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>Browse items</Link>
@@ -162,9 +174,21 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
         <div className="grid gap-10 border-b border-white/10 pb-10 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
-            <Link to="/" className="inline-flex items-center gap-3">
-              <img src={cuLogo} alt="Chandigarh University" className="h-[58px] w-auto max-w-[190px] rounded-sm bg-white object-contain" />
-            </Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link to="/" className="inline-flex items-center">
+                <img src={cuLogo} alt="Chandigarh University" className="h-[54px] w-auto max-w-[180px] rounded-sm bg-white object-contain" />
+              </Link>
+              <span aria-hidden="true" className="h-10 w-px bg-white/20" />
+              <Link to="/" aria-label="CampusFind home" className="inline-flex items-center gap-2">
+                <span className="grid size-10 place-items-center rounded-xl bg-violet-500 text-white">
+                  <PackageSearch size={23} strokeWidth={2.2} />
+                </span>
+                <span className="leading-tight">
+                  <span className="block text-lg font-black tracking-tight text-white">Campus<span className="text-violet-300">Find</span></span>
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.16em] text-ink-foreground/60">Lost &amp; Found</span>
+                </span>
+              </Link>
+            </div>
             <p className="mt-4 max-w-md text-sm leading-7 text-ink-foreground/70">A simpler way for Chandigarh University students to report, find, and return lost belongings—with privacy and care at every step.</p>
           </div>
           <div>
