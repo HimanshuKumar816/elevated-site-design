@@ -449,8 +449,8 @@ function Browse() {
                 ))}
               </div>
             </div>
-            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Category
-              <select aria-label="Filter by category" value={cat} onChange={(event) => setCat(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10">
+            <label className="block text-xs font-extrabold uppercase tracking-[0.12em] text-muted-foreground">Broad category
+              <select aria-label="Filter by broad category" value={cat} onChange={(event) => setCat(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-extrabold normal-case tracking-normal text-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-ring/10">
                 <option value="All">All categories</option>{CATEGORIES.map((category) => <option key={category}>{category}</option>)}
               </select>
             </label>
