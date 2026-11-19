@@ -20,15 +20,13 @@ export type Item = {
 };
 
 export const CATEGORIES = [
-  "ID card",
-  "Wallet",
-  "Keys",
-  "Electronics",
-  "Books",
-  "Bottle",
-  "Documents",
-  "Bag",
-  "Clothing",
-  "Accessories",
-  "Other",
-];
+  "Personal Belongings",
+  "Electronics & Technology",
+  "Study Materials",
+  "Clothing & Wearables",
+  "Everyday Essentials",
+  "Important Documents",
+  "Other / Miscellaneous",
+] as const;
+
+export type ItemCategory = (typeof CATEGORIES)[number];
