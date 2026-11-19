@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, LogOut, Menu, PackageSearch, X } from "lucide-react";
+import { ArrowUpRight, LogOut, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type HeaderProfile = { uid: string; role: string };
@@ -107,13 +107,7 @@ export function Header() {
     <header className="site-header sticky top-0 z-40 border-b border-border bg-white">
       <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link to="/" onClick={() => setMenuOpen(false)} className="group flex min-w-0 items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:-rotate-3">
-            <PackageSearch size={23} strokeWidth={2.1} />
-          </span>
-          <span className="min-w-0">
-            <span className="block font-display text-xl font-extrabold leading-tight tracking-tight text-foreground">CU-campusfind</span>
-            <span className="mt-0.5 block truncate text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px]">Chandigarh University</span>
-          </span>
+          <img src="/cu-logo.png" alt="Chandigarh University" className="h-[54px] w-auto max-w-[190px] object-contain" />
         </Link>
         <nav id="campusfind-desktop-nav" aria-label="Main navigation" className="hidden min-w-0 items-center gap-1 md:flex">
           <Link to="/how-it-works" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>How it works</Link>
@@ -168,8 +162,7 @@ export function Footer() {
         <div className="grid gap-10 border-b border-white/10 pb-10 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <Link to="/" className="inline-flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-2xl border border-white/15 bg-white/10"><PackageSearch size={22} /></span>
-              <span className="font-display text-2xl font-extrabold tracking-tight">CU-campusfind</span>
+              <img src="/cu-logo.png" alt="Chandigarh University" className="h-[58px] w-auto max-w-[190px] rounded-sm bg-white object-contain" />
             </Link>
             <p className="mt-4 max-w-md text-sm leading-7 text-ink-foreground/70">A simpler way for Chandigarh University students to report, find, and return lost belongings—with privacy and care at every step.</p>
           </div>
