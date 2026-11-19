@@ -182,7 +182,7 @@ export function Footer() {
           </div>
         </div>
         <div className="flex flex-col gap-3 pt-6 text-xs text-ink-foreground/50 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} CU-campusfind · Student-built campus lost & found</p>
+          <p>© {new Date().getFullYear()} CU-CampusFind · Student-built campus lost & found</p>
           <p>Report · Match · Verify · Return</p>
         </div>
       </div>
