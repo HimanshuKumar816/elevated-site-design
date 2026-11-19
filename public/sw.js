@@ -1,4 +1,4 @@
-const CACHE_NAME = "campusfind-shell-v1";
+const CACHE_NAME = "cu-campusfind-shell-v2";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/campusfind-favicon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -33,7 +33,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let payload = { title: "CampusFind", body: "You have a new update. Open CampusFind to view it.", url: "/my-reports" };
+  let payload = { title: "CU-campusfind", body: "You have a new update. Open CU-campusfind to view it.", url: "/my-reports" };
   try { if (event.data) payload = { ...payload, ...event.data.json() }; } catch { /* use safe default */ }
   event.waitUntil(self.registration.showNotification(payload.title, {
     body: payload.body,
