@@ -33,7 +33,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let payload = { title: "CU-campusfind", body: "You have a new update. Open CU-campusfind to view it.", url: "/my-reports" };
+  let payload = { title: "CU-CampusFind", body: "You have a new update. Open CU-CampusFind to view it.", url: "/my-reports" };
   try { if (event.data) payload = { ...payload, ...event.data.json() }; } catch { /* use safe default */ }
   event.waitUntil(self.registration.showNotification(payload.title, {
     body: payload.body,
