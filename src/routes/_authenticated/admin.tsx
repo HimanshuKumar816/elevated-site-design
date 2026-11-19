@@ -1093,8 +1093,6 @@ function AdminPage() {
         <div className="min-w-0">
           <p className="kicker text-emerald-800">AI matching system</p>
           <h2 className="mt-2 text-2xl font-extrabold">Suggested Lost/Found pairs</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">The matching engine compares active Lost and Found reports using item names, categories, locations and other text details. Uploaded photos are for manual administrator inspection only; the matching engine does not analyse images. Review every suggestion before approving a return.</p>
-          {aiStatusMessage && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${aiStatus === "ready" ? "bg-emerald-50 text-emerald-900" : aiStatus === "missing" || aiStatus === "unreachable" ? "bg-amber-50 text-amber-950" : "bg-secondary text-muted-foreground"}`}>{aiStatusMessage}</p>}
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Matches are ranked using report text and item details. Uploaded photos are not analysed by the matching engine. Review each suggestion here before approving a return.</p>
           {aiStatusMessage && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${aiStatus === "ready" ? "cf-success-surface cf-success-text bg-emerald-50 text-emerald-900" : aiStatus === "missing" || aiStatus === "unreachable" ? "bg-amber-50 text-amber-950" : "bg-secondary text-muted-foreground"}`}>{aiStatusMessage}</p>}
         </div>
