@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { ArrowRight, ArrowUpRight, Check, LockKeyhole, PackageSearch, Search, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Page } from "@/components/site";
+import heroImage from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -76,7 +77,7 @@ function Home() {
 
           <div className="home-hero-visual relative mx-auto w-full max-w-[640px] lg:ml-auto">
             <div className="home-image-frame relative overflow-hidden">
-              <img src="/cu-campus-hero.jpg" alt="Aerial view of Chandigarh University campus buildings" width={1280} height={853} fetchPriority="high" className="home-image h-full w-full object-cover" />
+              <img src={heroImage} alt="Wallet and student ID card on campus" width={1280} height={853} fetchPriority="high" className="home-image h-full w-full object-cover" />
               <div className="home-image-caption absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-4 p-5 text-white sm:p-7">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">The campus return desk</p>
