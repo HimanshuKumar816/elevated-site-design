@@ -78,10 +78,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "CU-CampusFind — Chandigarh University Lost & Found" },
       { property: "og:description", content: "Report it. Search the board. Bring it home." },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
+      { property: "og:image", content: "https://campusfind-uir0.onrender.com/og-campusfind.svg" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#064e3b" },
-      { name: "twitter:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
+      { name: "twitter:image", content: "https://campusfind-uir0.onrender.com/og-campusfind.svg" },
     ],
     links: [
       {
@@ -90,8 +90,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" },
-      { rel: "icon", href: "/campusfind-favicon.svg", type: "image/svg+xml" },
-      { rel: "apple-touch-icon", href: "/campusfind-favicon.svg" },
+      { rel: "icon", href: "/campusfind-logo.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/campusfind-logo.svg" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
