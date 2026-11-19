@@ -108,10 +108,6 @@ export function Header() {
     <header className="site-header sticky top-0 z-40 border-b border-border bg-white">
       <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-          <Link to="/" onClick={() => setMenuOpen(false)} className="group flex shrink-0 items-center">
-            <img src={cuLogo} alt="Chandigarh University" className="h-[48px] w-auto max-w-[155px] object-contain sm:h-[54px] sm:max-w-[190px]" />
-          </Link>
-          <span aria-hidden="true" className="hidden h-10 w-px bg-border sm:block" />
           <Link to="/" onClick={() => setMenuOpen(false)} aria-label="CampusFind home" className="group flex min-w-0 items-center gap-2">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white shadow-md transition group-hover:-translate-y-0.5 group-hover:shadow-lg sm:size-11">
               <PackageSearch size={25} strokeWidth={2.2} />
@@ -120,6 +116,10 @@ export function Header() {
               <span className="block truncate text-base font-black tracking-tight text-slate-900 sm:text-lg">Campus<span className="text-violet-700">Find</span></span>
               <span className="hidden text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 sm:block">Lost &amp; Found</span>
             </span>
+          </Link>
+          <span aria-hidden="true" className="hidden h-10 w-px bg-border sm:block" />
+          <Link to="/" onClick={() => setMenuOpen(false)} className="group flex shrink-0 items-center">
+            <img src={cuLogo} alt="Chandigarh University" className="h-[42px] w-auto max-w-[130px] object-contain sm:h-[48px] sm:max-w-[165px]" />
           </Link>
         </div>
         <nav id="campusfind-desktop-nav" aria-label="Main navigation" className="hidden min-w-0 items-center gap-1 md:flex">
@@ -175,10 +175,6 @@ export function Footer() {
         <div className="grid gap-10 border-b border-white/10 pb-10 md:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <div className="flex flex-wrap items-center gap-4">
-              <Link to="/" className="inline-flex items-center">
-                <img src={cuLogo} alt="Chandigarh University" className="h-[54px] w-auto max-w-[180px] rounded-sm bg-white object-contain" />
-              </Link>
-              <span aria-hidden="true" className="h-10 w-px bg-white/20" />
               <Link to="/" aria-label="CampusFind home" className="inline-flex items-center gap-2">
                 <span className="grid size-10 place-items-center rounded-xl bg-violet-500 text-white">
                   <PackageSearch size={23} strokeWidth={2.2} />
@@ -187,6 +183,10 @@ export function Footer() {
                   <span className="block text-lg font-black tracking-tight text-white">Campus<span className="text-violet-300">Find</span></span>
                   <span className="block text-[9px] font-bold uppercase tracking-[0.16em] text-ink-foreground/60">Lost &amp; Found</span>
                 </span>
+              </Link>
+              <span aria-hidden="true" className="h-10 w-px bg-white/20" />
+              <Link to="/" className="inline-flex items-center">
+                <img src={cuLogo} alt="Chandigarh University" className="h-[48px] w-auto max-w-[160px] rounded-sm bg-white object-contain" />
               </Link>
             </div>
             <p className="mt-4 max-w-md text-sm leading-7 text-ink-foreground/70">A simpler way for Chandigarh University students to report, find, and return lost belongings—with privacy and care at every step.</p>
