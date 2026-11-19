@@ -33,9 +33,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
   },
   head: () => ({
     meta: [
-      { title: "Administrator dashboard — CU-campusfind" },
+      { title: "Administrator dashboard — CU-CampusFind" },
       { name: "description", content: "Review student verification, lost and found reports, claims, possible matches, and campus recovery activity." },
-      { property: "og:title", content: "Administrator dashboard — CU-campusfind" },
+      { property: "og:title", content: "Administrator dashboard — CU-CampusFind" },
       { property: "og:description", content: "Administrator workspace for reviewing campus lost and found reports, claims, and possible matches." },
       { name: "robots", content: "noindex" },
     ],
@@ -559,11 +559,11 @@ function AdminPage() {
           .from("notifications")
           .select("id")
           .eq("user_id", adminSession.user.id)
-          .eq("title", "New CU-campusfind support message")
+          .eq("title", "New CU-CampusFind support message")
           .is("read_at", null)
           .limit(100);
         if (alertsError) {
-          console.warn("[CU-campusfind] Support alert count could not be loaded", {
+          console.warn("[CU-CampusFind] Support alert count could not be loaded", {
             code: alertsError.code,
             message: alertsError.message,
           });
@@ -622,7 +622,7 @@ function AdminPage() {
           .in("id", senderIds);
         if (profilesError) {
           // Profile labels are useful, but must not make the entire inbox fail.
-          console.warn("[CU-campusfind] Support inbox profile enrichment failed", {
+          console.warn("[CU-CampusFind] Support inbox profile enrichment failed", {
             code: profilesError.code,
             message: profilesError.message,
           });
@@ -661,7 +661,7 @@ function AdminPage() {
       const issue = cause && typeof cause === "object" ? cause as { code?: unknown; message?: unknown } : {};
       const code = typeof issue.code === "string" ? issue.code : "UNKNOWN";
       const message = typeof issue.message === "string" ? issue.message.slice(0, 220) : "Unexpected database error";
-      console.error("[CU-campusfind] Support inbox load failed", { code, message });
+      console.error("[CU-CampusFind] Support inbox load failed", { code, message });
       setContactMessages([]);
       setContactError(`Support inbox error (${code}): ${message}. Check the support database migration and permissions, then refresh.`);
     } finally {
@@ -702,7 +702,7 @@ function AdminPage() {
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
       .eq("user_id", session.user.id)
-      .eq("title", "New CU-campusfind support message")
+      .eq("title", "New CU-CampusFind support message")
       .is("read_at", null);
     if (error) {
       setContactError("We couldn't mark the support alerts as read. Please retry.");
@@ -1152,7 +1152,7 @@ function AdminPage() {
                   </div>
                 )}
                 {match.review_status === "confirmed" && (
-                  <p className="cf-success-surface cf-success-border cf-success-text mt-4 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">Approved for return. CU-campusfind created the claimant’s handover record and sent a one-time code. Verify that code in the Claims section only when the item is physically handed over.</p>
+                  <p className="cf-success-surface cf-success-border cf-success-text mt-4 rounded-lg border border-emerald-900/10 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">Approved for return. CU-CampusFind created the claimant’s handover record and sent a one-time code. Verify that code in the Claims section only when the item is physically handed over.</p>
                 )}
               </article>
             );
@@ -1171,7 +1171,7 @@ function AdminPage() {
               <ShieldCheck size={22} />
             </span>
             <span className="min-w-0">
-              <span className="admin-brand-title block font-display text-lg font-extrabold leading-tight tracking-tight">CU-campusfind</span>
+              <span className="admin-brand-title block font-display text-lg font-extrabold leading-tight tracking-tight">CU-CampusFind</span>
               <span className="admin-brand-subtitle mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.16em]">Administrator console</span>
             </span>
           </Link>
@@ -1410,7 +1410,7 @@ function AdminPage() {
             <div>
               <p className="kicker text-emerald-800">In-site support</p>
               <h2 className="mt-2 text-2xl font-extrabold">Student support conversations</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Reply to issues directly in CU-campusfind. Students see your reply in their own Help & Support inbox.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Reply to issues directly in CU-CampusFind. Students see your reply in their own Help & Support inbox.</p>
               <p className="mt-1 text-sm text-muted-foreground">No email address or external email is used.</p>
             </div>
             <button type="button" onClick={() => void loadContactMessages()} disabled={contactLoading} className="rounded-xl border border-border bg-white px-3 py-2 text-sm font-extrabold disabled:opacity-60">
@@ -1440,7 +1440,7 @@ function AdminPage() {
                   <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
                     <div>
                       <h3 className="font-extrabold text-foreground">{ticket.subject}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">From {ticket.user_name ?? "CU-campusfind user"} · UID {ticket.user_uid ?? "—"}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">From {ticket.user_name ?? "CU-CampusFind user"} · UID {ticket.user_uid ?? "—"}</p>
                       <p className="mt-1 text-xs text-muted-foreground">Received {new Date(ticket.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })} · Updated {new Date(ticket.updated_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1452,7 +1452,7 @@ function AdminPage() {
                     {ticket.messages.map((entry) => (
                       <div key={entry.id} className={entry.sender_role === "admin" ? "ml-0 mr-6 rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 sm:mr-16" : "ml-6 rounded-xl border border-border bg-white p-4 sm:ml-16"}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs font-extrabold text-foreground">{entry.sender_role === "admin" ? "CU-campusfind Administrator" : entry.sender_name ?? "Student"}{entry.sender_role !== "admin" && entry.sender_uid ? " · " + entry.sender_uid : ""}</p>
+                          <p className="text-xs font-extrabold text-foreground">{entry.sender_role === "admin" ? "CU-CampusFind Administrator" : entry.sender_name ?? "Student"}{entry.sender_role !== "admin" && entry.sender_uid ? " · " + entry.sender_uid : ""}</p>
                           <time className="text-[11px] text-muted-foreground" dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</time>
                         </div>
                         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{entry.body}</p>
