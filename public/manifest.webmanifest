@@ -9,7 +9,7 @@
   "theme_color": "#064e3b",
   "icons": [
     {
-      "src": "/campusfind-favicon.svg",
+      "src": "/campusfind-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
