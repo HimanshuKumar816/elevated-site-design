@@ -8,12 +8,12 @@ import heroImage from "@/assets/hero.jpg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "CampusFind — Lost & Found at Chandigarh University" },
+      { title: "CU-campusfind — Lost & Found at Chandigarh University" },
       { name: "description", content: "One clear place for Chandigarh University students to report lost items, browse found belongings, and arrange safer returns." },
-      { property: "og:title", content: "CampusFind — Lost & Found at Chandigarh University" },
+      { property: "og:title", content: "CU-campusfind — Lost & Found at Chandigarh University" },
       { property: "og:description", content: "Report it. Search the board. Bring it home." },
       { property: "og:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
-      { property: "og:image:alt", content: "CampusFind — Chandigarh University lost and found" },
+      { property: "og:image:alt", content: "CU-campusfind — Chandigarh University lost and found" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:image", content: "https://elevated-site-design.vercel.app/og-campusfind.svg" },
     ],
@@ -94,7 +94,7 @@ function Home() {
         </div>
       </section>
 
-      <section aria-label="How CampusFind works" className="home-process-band">
+      <section aria-label="How CU-campusfind works" className="home-process-band">
         <div className="mx-auto grid max-w-7xl gap-0 px-5 sm:px-8 md:grid-cols-3">
           {steps.map(({ number, title, description, icon: Icon }) => (
             <article key={number} className="home-process-step">
@@ -118,7 +118,7 @@ function Home() {
               <span className="block text-primary">More found.</span>
             </h2>
             <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
-              CampusFind turns scattered messages into clear, searchable reports. You stay in control of the details you share and the proof you keep private.
+              CU-campusfind turns scattered messages into clear, searchable reports. You stay in control of the details you share and the proof you keep private.
             </p>
             <Link to="/how-it-works" className="home-text-link mt-7 inline-flex items-center gap-2 text-sm font-bold text-primary">
               See how it works <ArrowUpRight size={17} />
