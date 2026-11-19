@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, LogOut, Menu, PackageSearch, X } from "lucide-react";
+import { ArrowUpRight, LogOut, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import cuLogo from "@/assets/cu-logo.png";
 
@@ -109,9 +109,7 @@ export function Header() {
       <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <div className="flex min-w-0 items-center gap-3 sm:gap-5">
           <Link to="/" onClick={() => setMenuOpen(false)} aria-label="CU-CampusFind home" className="group flex min-w-0 items-center gap-2">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white shadow-md transition group-hover:-translate-y-0.5 group-hover:shadow-lg sm:size-11">
-              <PackageSearch size={25} strokeWidth={2.2} />
-            </span>
+            <img src="/campusfind-logo.svg" alt="" className="size-10 shrink-0 rounded-xl shadow-md transition group-hover:-translate-y-0.5 group-hover:shadow-lg sm:size-11" />
             <span className="min-w-0 leading-tight">
               <span className="block truncate text-base font-black tracking-tight text-slate-900 sm:text-lg">CU-Campus<span className="text-violet-700">Find</span></span>
               <span className="hidden text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 sm:block">Lost &amp; Found</span>
@@ -176,9 +174,7 @@ export function Footer() {
           <div>
             <div className="flex flex-wrap items-center gap-4">
               <Link to="/" aria-label="CU-CampusFind home" className="inline-flex items-center gap-2">
-                <span className="grid size-10 place-items-center rounded-xl bg-violet-500 text-white">
-                  <PackageSearch size={23} strokeWidth={2.2} />
-                </span>
+                <img src="/campusfind-logo.svg" alt="" className="size-10 shrink-0 rounded-xl" />
                 <span className="leading-tight">
                   <span className="block text-lg font-black tracking-tight text-white">CU-Campus<span className="text-violet-300">Find</span></span>
                   <span className="block text-[9px] font-bold uppercase tracking-[0.16em] text-ink-foreground/60">Lost &amp; Found</span>
