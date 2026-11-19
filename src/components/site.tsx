@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowUpRight, LogOut, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import cuLogo from "@/assets/cu-logo.png";
 
 type HeaderProfile = { uid: string; role: string };
 
@@ -132,11 +131,10 @@ export function Header() {
           ) : (
             <Link to="/auth" search={{ redirect: "/browse" }} className="ml-2 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">Student sign in <ArrowUpRight size={16} /></Link>
           )}
-          <span aria-hidden="true" className="mx-2 h-10 w-px shrink-0 bg-border" />
-          <Link to="/" onClick={() => setMenuOpen(false)} aria-label="Chandigarh University home" className="flex shrink-0 items-center">
-            <img src={cuLogo} alt="Chandigarh University" className="h-[42px] w-auto max-w-[135px] object-contain sm:h-[48px] sm:max-w-[155px]" />
-          </Link>
         </nav>
+        <Link to="/" onClick={() => setMenuOpen(false)} aria-label="Chandigarh University home" className="ml-auto flex shrink-0 items-center rounded-md bg-white px-1.5 py-1">
+          <img src="/cu-logo.png" alt="Chandigarh University" width="150" height="48" className="h-9 w-auto max-w-[112px] object-contain sm:h-11 sm:max-w-[150px]" />
+        </Link>
         <button ref={menuButtonRef} type="button" aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={menuOpen} aria-controls="campusfind-mobile-nav" onClick={() => setMenuOpen((open) => !open)} className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-white text-foreground shadow-sm transition hover:bg-secondary md:hidden">
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -182,7 +180,7 @@ export function Footer() {
               </Link>
               <span aria-hidden="true" className="h-10 w-px bg-white/20" />
               <Link to="/" className="inline-flex items-center">
-                <img src={cuLogo} alt="Chandigarh University" className="h-[48px] w-auto max-w-[160px] rounded-sm bg-white object-contain" />
+                <img src="/cu-logo.png" alt="Chandigarh University" width="160" height="48" className="h-12 w-auto max-w-[160px] rounded-sm bg-white object-contain" />
               </Link>
             </div>
             <p className="mt-4 max-w-md text-sm leading-7 text-ink-foreground/70">A simpler way for Chandigarh University students to report, find, and return lost belongings—with privacy and care at every step.</p>
