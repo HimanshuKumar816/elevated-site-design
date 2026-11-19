@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <title>CampusFind</title>
-  <rect width="64" height="64" rx="15" fill="#122A3A"/>
-  <path d="M32 6.5c-10.8 0-19.5 8.7-19.5 19.4 0 13.5 17.1 29.6 18.1 30.3a2.3 2.3 0 0 0 2.8 0c1-.7 18.1-16.8 18.1-30.3C51.5 15.2 42.8 6.5 32 6.5Z" fill="#91E5C2"/>
-  <circle cx="32" cy="25.5" r="10.3" fill="#122A3A"/>
-  <path d="m26.5 25.7 3.8 3.8 7.7-8.3" fill="none" stroke="#FFFDF7" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M14 50.5c4.4 2.8 10.6 5 18 5 7.3 0 13.5-2.2 18-5" fill="none" stroke="#F0A36C" stroke-width="3.2" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><title>CampusFind logo</title><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7c3aed"/><stop offset="1" stop-color="#4338ca"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><path d="m13 22 18-10 18 10v18L31 50 13 40V22Z" fill="none" stroke="#fff" stroke-width="3.2" stroke-linejoin="round"/><path d="m13 22 18 10 18-10M31 32v18" fill="none" stroke="#fff" stroke-width="3.2" stroke-linejoin="round"/><circle cx="43" cy="43" r="10" fill="#fff" stroke="#4338ca" stroke-width="2.5"/><path d="m50.5 50.5 6 6" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>
