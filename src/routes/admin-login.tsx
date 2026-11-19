@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { ArrowRight, ArrowUpRight, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, ArrowUpRight, LockKeyhole } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithUid } from "@/lib/auth.functions";
 import { normalizeUid } from "@/lib/uid";
@@ -90,9 +90,7 @@ function AdminLoginPage() {
           <div aria-hidden="true" className="pointer-events-none absolute -right-20 top-10 size-64 rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="relative">
             <div className="inline-flex items-center gap-3">
-              <span className="grid size-12 place-items-center rounded-2xl border border-white/15 bg-white/10 text-emerald-200">
-                <ShieldCheck size={24} />
-              </span>
+              <img src="/campusfind-logo.svg" alt="" className="size-12 rounded-2xl shadow-lg" />
               <span>
                 <span className="block text-lg font-extrabold tracking-tight">CampusFind</span>
                 <span className="mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/55">Administration</span>
