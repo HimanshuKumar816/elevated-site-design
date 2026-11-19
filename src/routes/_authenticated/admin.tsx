@@ -2,7 +2,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, LogOut, RefreshCw, Search, Send, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, LogOut, RefreshCw, Search, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminProfile } from "@/lib/auth-validation";
 import { countReports, filterReports, type AdminReport, type ReportFilter } from "@/lib/admin-reports";
@@ -1165,9 +1165,7 @@ function AdminPage() {
       <header className="admin-topbar sticky top-0 z-40 border-b backdrop-blur-xl">
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
           <Link to="/admin" className="flex min-w-0 items-center gap-3">
-            <span className="admin-brand-icon grid size-11 shrink-0 place-items-center rounded-2xl shadow-sm">
-              <ShieldCheck size={22} />
-            </span>
+            <img src="/campusfind-logo.svg" alt="" className="size-11 shrink-0 rounded-2xl shadow-sm" />
             <span className="min-w-0">
               <span className="admin-brand-title block font-display text-lg font-extrabold leading-tight tracking-tight">CU-CampusFind</span>
               <span className="admin-brand-subtitle mt-0.5 block text-[10px] font-extrabold uppercase tracking-[0.16em]">Administrator console</span>
