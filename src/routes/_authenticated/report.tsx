@@ -130,7 +130,7 @@ function Report() {
       setBusy(false);
       return;
     }
-    if (!CATEGORIES.includes(category)) {
+    if (!(CATEGORIES as readonly string[]).includes(category)) {
       setError("Choose a valid category.");
       setBusy(false);
       return;
