@@ -117,12 +117,8 @@ export function Header() {
               <span className="hidden text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-500 sm:block">Lost &amp; Found</span>
             </span>
           </Link>
-          <span aria-hidden="true" className="hidden h-10 w-px bg-border sm:block" />
-          <Link to="/" onClick={() => setMenuOpen(false)} className="group flex shrink-0 items-center">
-            <img src={cuLogo} alt="Chandigarh University" className="h-[42px] w-auto max-w-[130px] object-contain sm:h-[48px] sm:max-w-[165px]" />
-          </Link>
         </div>
-        <nav id="campusfind-desktop-nav" aria-label="Main navigation" className="hidden min-w-0 items-center gap-1 md:flex">
+        <nav id="campusfind-desktop-nav" aria-label="Main navigation" className="hidden min-w-0 flex-1 items-center justify-end gap-1 md:flex">
           <Link to="/how-it-works" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>How it works</Link>
           <Link to="/browse" className={navLink} activeProps={{ className: "rounded-xl bg-secondary px-3 py-2.5 text-sm font-extrabold text-foreground" }}>Browse items</Link>
           {uid ? (
@@ -138,6 +134,10 @@ export function Header() {
           ) : (
             <Link to="/auth" search={{ redirect: "/browse" }} className="ml-2 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-extrabold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">Student sign in <ArrowUpRight size={16} /></Link>
           )}
+          <span aria-hidden="true" className="mx-2 h-10 w-px shrink-0 bg-border" />
+          <Link to="/" onClick={() => setMenuOpen(false)} aria-label="Chandigarh University home" className="flex shrink-0 items-center">
+            <img src={cuLogo} alt="Chandigarh University" className="h-[42px] w-auto max-w-[135px] object-contain sm:h-[48px] sm:max-w-[155px]" />
+          </Link>
         </nav>
         <button ref={menuButtonRef} type="button" aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={menuOpen} aria-controls="campusfind-mobile-nav" onClick={() => setMenuOpen((open) => !open)} className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-white text-foreground shadow-sm transition hover:bg-secondary md:hidden">
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
